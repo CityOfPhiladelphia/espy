@@ -37,6 +37,10 @@ TO DO:
 
 
 class GraphAPI:
+    #############################################
+    ##### THESE ARE CLASS ATTRIBUTES THAT #######
+    ##### WILL BE SHARE AMONGST ALL SUBS  #######
+    #############################################
     tenant_id               = creds[GRAPH_APP]["Tenant ID"]
     client_id               = creds[GRAPH_APP]["Application ID"]
     client_secret           = creds[GRAPH_APP]["Secret Value"]
@@ -54,6 +58,11 @@ class GraphAPI:
     }
 
     def __init__(self, site_path, document_library=None, wb_path=None, table_name=None, worksheet_name=None, list_name=None):
+        ###############################################
+        ## THIS CONSTRUCTOR WILL NEED TO BE REWORKED ##
+        ## NAMELY GETTING RID OF ATTRIBS NOT NEEDED  ##
+        ##              IN THE BASE CLASS            ##
+        ###############################################
         self.hostname           = "phila.sharepoint.com"
         self.site_path          = site_path             
         self.document_library   = document_library
@@ -68,9 +77,6 @@ class GraphAPI:
         self.list_id            = None 
 
         self.connect()
-
-        return 
-    
     
     def _get(self, url:str, params:dict | None = None) -> dict:
         '''
@@ -107,6 +113,24 @@ class GraphAPI:
         )
         request.raise_for_status()
 
+    def _patch(self, url:str, body:dict):
+        '''
+        Generic function for making a PATCH request 
+
+        Params:
+        url  - The url you want to patch to 
+        body - json of the body of the post message  
+        ''' 
+
+        # THIS FUNCT WAS NOT FLESHED OUT -- MIGHT REQUIRE DIFFERENT HEADERS 
+        request = httpx.patch(
+            url,
+            headers=GraphAPI.headers,
+            json=body,
+            timeout=60 
+        )
+        request.raise_for_status()
+
     def get_site_id(self) -> str:
         '''
         Grabs the site_id of the SharePoint site specified by site_path. 
@@ -119,265 +143,271 @@ class GraphAPI:
         data = self._get(url)
 
         return data["id"]
+
+
+
+
+    # ERMAGHERD THE BELLOW FUNCTIONS ARE SPECIFIC TO SUB CLASSES SO
+    # THEY ARE COMMENTED OUT HERE ERMAGHERD 
     
-    def get_drive_id(self, site_id) -> str:
-        '''
-        Gets the id of the document library drive. 
-        Searches through all available drives until it finds the one specified 
-        by the document_library attribute. 
+    # def get_drive_id(self, site_id) -> str:
+    #     '''
+    #     Gets the id of the document library drive. 
+    #     Searches through all available drives until it finds the one specified 
+    #     by the document_library attribute. 
 
-        Arguments:
-        site_id - the id of the sharepoint site
+    #     Arguments:
+    #     site_id - the id of the sharepoint site
 
-        Returns:
-        str - The id of the drive 
+    #     Returns:
+    #     str - The id of the drive 
 
-        Throws Error if library is not found 
-        '''
-        url = f"{GRAPH_URL}/sites/{site_id}/drives"
-        drives = self._get(url)["value"]
+    #     Throws Error if library is not found 
+    #     '''
+    #     url = f"{GRAPH_URL}/sites/{site_id}/drives"
+    #     drives = self._get(url)["value"]
 
-        for drive in drives:
-            if drive["name"] == self.document_library:
-                return drive["id"]
+    #     for drive in drives:
+    #         if drive["name"] == self.document_library:
+    #             return drive["id"]
 
-        raise RuntimeError(
-            f"Document library '{self.document_library}' not found."
-        )
+    #     raise RuntimeError(
+    #         f"Document library '{self.document_library}' not found."
+    #     )
 
-    def get_workbook_id(self, drive_id: str):
-        '''
-        Gets the id of the workbook for the specified workbook_path 
+    # def get_workbook_id(self, drive_id: str):
+    #     '''
+    #     Gets the id of the workbook for the specified workbook_path 
 
-        Arguments:
-        drive_id - the id of the document drive that holds the workbook 
+    #     Arguments:
+    #     drive_id - the id of the document drive that holds the workbook 
 
-        Returns:
-        str - the id of the workbook 
-        '''
-        url = (
-            f"{GRAPH_URL}/drives/{drive_id}"
-            f"/root:/{self.workbook_path}"
-        )
+    #     Returns:
+    #     str - the id of the workbook 
+    #     '''
+    #     url = (
+    #         f"{GRAPH_URL}/drives/{drive_id}"
+    #         f"/root:/{self.workbook_path}"
+    #     )
 
-        item = self._get(url)
+    #     item = self._get(url)
 
-        return item["id"]
+    #     return item["id"]
 
-    def get_list_id(self) -> str:
-        '''
-        Gets the list id based on the title of the list. 
+    # def get_list_id(self) -> str:
+    #     '''
+    #     Gets the list id based on the title of the list. 
 
-        Arguments: 
-        title - the title of the list
+    #     Arguments: 
+    #     title - the title of the list
 
-        Returns:
-        str - the id of the list         
-        '''
-        url = (
-            f"{GRAPH_URL}/sites/"
-            f"{self.site_id}/lists/{self.list_name}"
-        )
-        item = self._get(url)
+    #     Returns:
+    #     str - the id of the list         
+    #     '''
+    #     url = (
+    #         f"{GRAPH_URL}/sites/"
+    #         f"{self.site_id}/lists/{self.list_name}"
+    #     )
+    #     item = self._get(url)
 
-        return item["id"]
+    #     return item["id"]
 
 
 
-    def connect(self):
-        '''
-        Function to establish the necessary id's for a sharepoint resource. 
-        '''
-        if self.site_id is not None: 
-            return 
+    # def connect(self):
+    #     '''
+    #     Function to establish the necessary id's for a sharepoint resource. 
+    #     '''
+    #     if self.site_id is not None: 
+    #         return 
 
-        self.site_id = self.get_site_id()
+    #     self.site_id = self.get_site_id()
 
-        if self.list_name:
-            self.list_id = self.get_list_id()
+    #     if self.list_name:
+    #         self.list_id = self.get_list_id()
 
-        if self.document_library:
-            self.drive_id = self.get_drive_id(self.site_id)
+    #     if self.document_library:
+    #         self.drive_id = self.get_drive_id(self.site_id)
         
-        if self.workbook_path is not None and self.table_name is not None and self.worksheet_name is not None:
-            self.item_id = self.get_workbook_id(self.drive_id)
+    #     if self.workbook_path is not None and self.table_name is not None and self.worksheet_name is not None:
+    #         self.item_id = self.get_workbook_id(self.drive_id)
 
-    def protect_worksheet(self, password: str):
-        '''
-        Turns on sheet protection for the specified worksheet 
+    # def protect_worksheet(self, password: str):
+    #     '''
+    #     Turns on sheet protection for the specified worksheet 
 
-        Arguments:
-        password - str that represents the sheet protection password 
-        '''
-        if password is None:
-            print("No password specified, not doing anything")
-            return 
+    #     Arguments:
+    #     password - str that represents the sheet protection password 
+    #     '''
+    #     if password is None:
+    #         print("No password specified, not doing anything")
+    #         return 
         
-        if self.worksheet_name is None: 
-            print("No worksheet has been specified. Doing nothing...")
-            return 
+    #     if self.worksheet_name is None: 
+    #         print("No worksheet has been specified. Doing nothing...")
+    #         return 
         
-        print("Re-Protecting sheet...")
-        url = (
-            f"{GRAPH_URL}/drives/{self.drive_id}"
-            f"/items/{self.item_id}"
-            f"/workbook"
-            f"/worksheets/{self.worksheet_name}"
-            f"/protection/protect"
-        )
+    #     print("Re-Protecting sheet...")
+    #     url = (
+    #         f"{GRAPH_URL}/drives/{self.drive_id}"
+    #         f"/items/{self.item_id}"
+    #         f"/workbook"
+    #         f"/worksheets/{self.worksheet_name}"
+    #         f"/protection/protect"
+    #     )
 
-        body = {
-            "password": password
-        }
+    #     body = {
+    #         "password": password
+    #     }
 
-        self._post(url, body)
+    #     self._post(url, body)
 
-        print("Protection re-enabled!!!")
+    #     print("Protection re-enabled!!!")
     
-    def unprotect_worksheet(self, password):
-        '''
-        Function that turns off protection for the worksheet. 
+    # def unprotect_worksheet(self, password):
+    #     '''
+    #     Function that turns off protection for the worksheet. 
 
-        Arguments:
-        password - str that represents the sheet protection password 
-        '''
-        print("Unprotecting sheet...")
+    #     Arguments:
+    #     password - str that represents the sheet protection password 
+    #     '''
+    #     print("Unprotecting sheet...")
 
-        if password is None:
-            print("No password specified, not doing anything")
-            return 
+    #     if password is None:
+    #         print("No password specified, not doing anything")
+    #         return 
         
-        if self.worksheet_name is None: 
-            print("No worksheet has been specified. Doing nothing...")
-            return 
+    #     if self.worksheet_name is None: 
+    #         print("No worksheet has been specified. Doing nothing...")
+    #         return 
 
-        url = (
-            f"{GRAPH_URL}/drives/{self.drive_id}"
-            f"/items/{self.item_id}"
-            f"/workbook"
-            f"/worksheets/{self.worksheet_name}"
-            f"/protection/unprotect"
-        )
+    #     url = (
+    #         f"{GRAPH_URL}/drives/{self.drive_id}"
+    #         f"/items/{self.item_id}"
+    #         f"/workbook"
+    #         f"/worksheets/{self.worksheet_name}"
+    #         f"/protection/unprotect"
+    #     )
 
-        body = {
-            "password": password
-        }
+    #     body = {
+    #         "password": password
+    #     }
 
-        self._post(url, body)
+    #     self._post(url, body)
 
-        print("Unprotect successful!")
+    #     print("Unprotect successful!")
 
-    def append_row(self, row: List, password=None):
-        '''
-        Appends data, represented by row, to the sharepoint workbook table. 
+    # def append_row(self, row: List, password=None):
+    #     '''
+    #     Appends data, represented by row, to the sharepoint workbook table. 
 
-        Arguments:
-        row - List representing the data to be appended to the sharepoint table 
-        '''
+    #     Arguments:
+    #     row - List representing the data to be appended to the sharepoint table 
+    #     '''
         
-        self.unprotect_worksheet(password)
-        url = (
-            f"{GRAPH_URL}/drives/{self.drive_id}"
-            f"/items/{self.item_id}"
-            f"/workbook/tables/{self.table_name}"
-            f"/rows/add"
-        )
+    #     self.unprotect_worksheet(password)
+    #     url = (
+    #         f"{GRAPH_URL}/drives/{self.drive_id}"
+    #         f"/items/{self.item_id}"
+    #         f"/workbook/tables/{self.table_name}"
+    #         f"/rows/add"
+    #     )
 
-        body = {
-            "values": row
-        }
+    #     body = {
+    #         "values": row
+    #     }
 
-        self._post(url, body)
+    #     self._post(url, body)
 
-        print("Data appended successfully!")
-        self.protect_worksheet(password)
+    #     print("Data appended successfully!")
+    #     self.protect_worksheet(password)
 
-    def upload_file(self, local_path: str, dest_folder: str) -> dict:
-        """
-        Upload a file to a SharePoint document library folder.
+    # def upload_file(self, local_path: str, dest_folder: str) -> dict:
+    #     """
+    #     Upload a file to a SharePoint document library folder.
 
-        Arguments -- whered my shit go?!?!?! 
-        """
-        site_id     = self.site_id
-        headers     = GraphAPI.headers
+    #     Arguments -- whered my shit go?!?!?! 
+    #     """
+    #     site_id     = self.site_id
+    #     headers     = GraphAPI.headers
 
-        file_name = os.path.basename(local_path)
+    #     file_name = os.path.basename(local_path)
 
-        with open(local_path, "rb") as f:
-            file_data = f.read()
+    #     with open(local_path, "rb") as f:
+    #         file_data = f.read()
 
-        upload_url = (
-            f"https://graph.microsoft.com/v1.0/sites/{site_id}"
-            f"/drive/root:/{dest_folder}/{file_name}:/content"
-        )
+    #     upload_url = (
+    #         f"https://graph.microsoft.com/v1.0/sites/{site_id}"
+    #         f"/drive/root:/{dest_folder}/{file_name}:/content"
+    #     )
 
-        print(f"Uploading '{file_name}' -> {dest_folder}/{file_name}")
+    #     print(f"Uploading '{file_name}' -> {dest_folder}/{file_name}")
 
-        resp = httpx.put(upload_url, headers=headers, data=file_data)
-        resp.raise_for_status()
-        return resp.json()
+    #     resp = httpx.put(upload_url, headers=headers, data=file_data)
+    #     resp.raise_for_status()
+    #     return resp.json()
     
-    def get_sharepoint_content(self, file_path, save_path):
-        '''
-        Downloads sharepoint excel at file_path for the instantiated sharepoint page. Saves
-        as new excel file at save_path. Sorry this doc is booty, im exhausted... 
+    # def get_sharepoint_content(self, file_path, save_path):
+    #     '''
+    #     Downloads sharepoint excel at file_path for the instantiated sharepoint page. Saves
+    #     as new excel file at save_path. Sorry this doc is booty, im exhausted... 
 
-        Arguments:
-        file_path - path to the file we want to steal
-        save_path - path to where we want to store it. 
-        '''
-        site_id = self.site_id
-        drive_id = self.drive_id
+    #     Arguments:
+    #     file_path - path to the file we want to steal
+    #     save_path - path to where we want to store it. 
+    #     '''
+    #     site_id = self.site_id
+    #     drive_id = self.drive_id
 
-        file_content_url = f"{GRAPH_URL}/sites/{site_id}/drives/{drive_id}/root:/{file_path}:/content"
-        request = httpx.get(file_content_url, headers=GraphAPI.headers, timeout=60, follow_redirects=True)
+    #     file_content_url = f"{GRAPH_URL}/sites/{site_id}/drives/{drive_id}/root:/{file_path}:/content"
+    #     request = httpx.get(file_content_url, headers=GraphAPI.headers, timeout=60, follow_redirects=True)
 
-        content =  request.content
+    #     content =  request.content
 
-        content_stream = BytesIO(content)
-        workbook = load_workbook(content_stream)
-        workbook.save(save_path)
+    #     content_stream = BytesIO(content)
+    #     workbook = load_workbook(content_stream)
+    #     workbook.save(save_path)
 
-    def get_list_content(self, extract_cols: list | None =None):
-        '''
-        Return the content of the list items by returning a generator of dicts. 
-        Each dictionary can contain multiple rows of the List and are later unpacked. 
-        Handles pagination if the result set is not complete. 
+    # def get_list_content(self, extract_cols: list | None =None):
+    #     '''
+    #     Return the content of the list items by returning a generator of dicts. 
+    #     Each dictionary can contain multiple rows of the List and are later unpacked. 
+    #     Handles pagination if the result set is not complete. 
 
-        Arguments:
-        extract_cols - a list of columns names you wish to extract
+    #     Arguments:
+    #     extract_cols - a list of columns names you wish to extract
 
-        Returns:
-        Iterator[dict] - Returns iterator of dictionaries for each response.
-        '''
-        site_id = self.site_id
-        list_id = self.list_id
+    #     Returns:
+    #     Iterator[dict] - Returns iterator of dictionaries for each response.
+    #     '''
+    #     site_id = self.site_id
+    #     list_id = self.list_id
 
-        list_content_url = (
-            f"{GRAPH_URL}/sites/{site_id}"
-            f"/lists/{list_id}/items"
-        )
+    #     list_content_url = (
+    #         f"{GRAPH_URL}/sites/{site_id}"
+    #         f"/lists/{list_id}/items"
+    #     )
 
-        params = {
-            "$expand": "fields",
-            "$top": "300",
-        }
+    #     params = {
+    #         "$expand": "fields",
+    #         "$top": "300",
+    #     }
 
-        page = 0
-        while list_content_url: 
-            page += 1
-            print(f"Fetching page {page} of list items...")
-            data = self._get(list_content_url, params if page == 1 else None) # params can't be sent during subsequent calls 
-            items = data.get("value", [])
+    #     page = 0
+    #     while list_content_url: 
+    #         page += 1
+    #         print(f"Fetching page {page} of list items...")
+    #         data = self._get(list_content_url, params if page == 1 else None) # params can't be sent during subsequent calls 
+    #         items = data.get("value", [])
 
-            for item in items:              
-                fields = item.get("fields", {})
-                if extract_cols:
-                    yield {key: fields[key] for key in extract_cols} 
-                else:
-                    yield fields
+    #         for item in items:              
+    #             fields = item.get("fields", {})
+    #             if extract_cols:
+    #                 yield {key: fields[key] for key in extract_cols} 
+    #             else:
+    #                 yield fields
             
-            list_content_url = data.get("@odata.nextLink")   
+    #         list_content_url = data.get("@odata.nextLink")   
 
     
 if __name__ == "__main__":
