@@ -1,5 +1,5 @@
 ---
-title: SharePointList class
+title: SharePoint Interface Architecture
 ---
 
 ```mermaid
@@ -7,6 +7,7 @@ title: SharePointList class
 classDiagram
 
     class GraphAPIClient {
+        << Client >>
         + String tenant_id
         + String client_id
         + String secret
@@ -15,7 +16,7 @@ classDiagram
     }
 
     class TabularStorage {
-        <<Protocol>>
+        << Protocol >>
         + get_row(row_id) dict
         + list_rows() List~dict~
         + add_row(data) dict
@@ -24,8 +25,18 @@ classDiagram
         + upsert_row(key_col, data) dict
     }
 
-        class SharePointExcel {
-        << Service >>
+    class ExcelWorkbook {
+        << Aggregate >>
+        - GraphAPIClient client
+        + String site_id
+        + String file_path
+        + list_tables() List~str~
+        + get_table(table_name) ExcelTable
+        + create_table(address, table_name) ExcelTable
+    }
+
+    class ExcelTable {
+        << Entity >>
         - GraphAPIClient client
         + String site_id
         + String file_path
@@ -40,7 +51,7 @@ classDiagram
     }
 
     class SharePointList {
-        << Service >>
+        << Entity >>
         - GraphAPIClient client
         + String site_id
         + String list_id
@@ -52,11 +63,13 @@ classDiagram
         + upsert_row(key_col, data) dict
     }
 
-    %% Excel and List objects implement methods
-    TabularStorage <|.. SharePointExcel : satisfies
+    %% TabularStorage implementations
+    TabularStorage <|.. ExcelTable : satisfies
     TabularStorage <|.. SharePointList : satisfies
 
-    %% Excel and List objects have a GraphAPIConnection
-    SharePointExcel o-- GraphAPIClient : uses
+    %% Composition / Dependencies
+    ExcelWorkbook o-- GraphAPIClient : uses
+    ExcelWorkbook "1" *-- "many" ExcelTable : contains & creates
+    ExcelTable o-- GraphAPIClient : uses
     SharePointList o-- GraphAPIClient : uses
 ```

@@ -1,25 +1,23 @@
 # interfaces.py
+from typing import Any, Protocol
 
-from abc import ABC, abstractmethod
-from requests import Response
+class TabularStorage(Protocol):
+    def get_row(self, row_id: str) -> dict [str, Any]:
+        ...
 
-class RowOperations(ABC):
-    @abstractmethod
-    def add_row(self) -> Response:
-        raise NotImplementedError
+    def list_rows(self) -> list[dict[str, Any]]:
+        ...
 
-    @abstractmethod
-    def edit_row(self) -> Response:
-        raise NotImplementedError
+    def add_row(self, data: dict[str, Any]) -> dict[str, Any]:
+        ...
 
-    @abstractmethod
-    def delete_row(self) -> Response:
-        raise NotImplementedError
+    def edit_row(self, row_id: str, 
+                 data: dict[str, Any]) -> dict[str, Any]:
+        ...
 
-    @abstractmethod
-    def upsert_row(self) -> Response:
-        raise NotImplementedError
-
-    @abstractmethod
-    def get_row(self) -> Response:
-        raise NotImplementedError
+    def delete_row(self, row_id: str) -> bool:
+        ...
+    
+    def upsert_row(self, key_col: str,
+                   data: dict[str, Any]) -> dict[str, Any]:
+        ...

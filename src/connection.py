@@ -1,0 +1,4 @@
+# connection.py
+
+class GraphAPIClient():
+    ...
