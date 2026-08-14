@@ -10,9 +10,9 @@ classDiagram
         << Client >>
         + String tenant_id
         + String client_id
-        + String secret
+        + String client_secret
         + get_headers() dict
-        + request(method, endpoint, json) dict
+        + execute_request(method: Enum, endpoint: str, json: dict) dict
     }
 
     class TabularStorage {
