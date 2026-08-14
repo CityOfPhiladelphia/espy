@@ -5,72 +5,58 @@ title: SharePointList class
 ```mermaid
 
 classDiagram
-    class GraphAPIConnection {
+
+    class GraphAPIClient {
         + String tenant_id
         + String client_id
         + String secret
-        + String /credential
-        + String /token
-        + String /headers
-    }
-    note for GraphAPIConnection "Credential, token, and
-    headers are derived from tenant_id, client_id, 
-    and secret during \_\_init\_\_."
-
-    class SharePointFile {
-        <<Abstract>>
-        + String url
+        + get_headers() dict
+        + request(method, endpoint, json) dict
     }
 
-    class RowwiseSharePointFile {
-        <<Abstract>>
-        + list_rows() HTTPResponse
+    class TabularStorage {
+        <<Protocol>>
+        + get_row(row_id) dict
+        + list_rows() List~dict~
+        + add_row(data) dict
+        + edit_row(row_id, data) dict
+        + delete_row(row_id) bool
+        + upsert_row(key_col, data) dict
     }
 
-    class RowOperations {
-        <<Interface>>
-        + add_row() HTTPResponse
-        + edit_row() HTTPResponse
-        + delete_row() HTTPResponse
-        + upsert_row() HTTPResponse
-        + get_row() HTTPResponse
-    }
-
-
-    class SharePointExcel {
+        class SharePointExcel {
         << Service >>
-        - Connection GraphAPIConnection
-        + add_row() HTTPResponse
-        + edit_row() HTTPResponse
-        + delete_row() HTTPResponse
-        + upsert_row() HTTPResponse
-        + get_row(row_id) HTTPResponse
-        + lock() HTTPResponse
+        - GraphAPIClient client
+        + String site_id
+        + String file_path
+        + String table_name
+        + get_row(row_id) dict
+        + list_rows() List~dict~
+        + add_row(data) dict
+        + edit_row(row_id, data) dict
+        + delete_row(row_id) bool
+        + upsert_row(key_col, data) dict
+        + lock() dict
     }
-
-
 
     class SharePointList {
         << Service >>
-        - Connection GraphAPIConnection
-        + add_row() HTTPResponse
-        + edit_row() HTTPResponse
-        + delete_row() HTTPResponse
-        + upsert_row() HTTPResponse
-        + get_row(row_id) HTTPResponse
-        }
-    
-    %% RowwiseSharePointFile inherits SharePointFile
-    %% RowwiseSharePointFile implements RowOperations
-    SharePointFile <|-- RowwiseSharePointFile
-    RowOperations <|.. RowwiseSharePointFile
-
+        - GraphAPIClient client
+        + String site_id
+        + String list_id
+        + get_row(row_id) dict
+        + list_rows() List~dict~
+        + add_row(data) dict
+        + edit_row(row_id, data) dict
+        + delete_row(row_id) bool
+        + upsert_row(key_col, data) dict
+    }
 
     %% Excel and List objects implement methods
-    RowwiseSharePointFile <|-- SharePointExcel
-    RowwiseSharePointFile <|-- SharePointList
+    TabularStorage <|.. SharePointExcel : satisfies
+    TabularStorage <|.. SharePointList : satisfies
 
     %% Excel and List objects have a GraphAPIConnection
-    GraphAPIConnection --o SharePointExcel
-    GraphAPIConnection --o SharePointList
+    SharePointExcel o-- GraphAPIClient : uses
+    SharePointList o-- GraphAPIClient : uses
 ```
