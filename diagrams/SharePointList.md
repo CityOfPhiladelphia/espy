@@ -35,6 +35,14 @@ classDiagram
         + list_url(site_id, list_name)$ url
     }
 
+    class UrlResolver {
+        << Create >>
+        + get_site_id(hostname, site_path) str
+        + get_drive_id(site_id, document_library) str
+        + get_workbook_id(drive_id, workbook_path) str
+        + get_list_id(site_id, list_name) str
+    }
+
     class ExcelWorkbook {
         << Aggregate >>
         - GraphAPIClient client
@@ -83,7 +91,9 @@ classDiagram
     ExcelTable o-- GraphAPIClient : uses
     SharePointList o-- GraphAPIClient : uses
 
-    ExcelWorkbook o-- UrlConstructor : uses
-    ExcelTable o-- UrlConstructor : uses
-    SharePointList o-- UrlConstructor : uses
+    UrlResolver o-- UrlConstructor : uses
+    UrlResolve o-- GraphAPIClient : uses
+    ExcelWorkbook o-- UrlResolver : uses
+    ExcelTable o-- UrlResolver : uses
+    SharePointList o-- UrlResolver : uses
 ```
