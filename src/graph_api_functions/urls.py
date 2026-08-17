@@ -44,6 +44,12 @@ class UrlConstructor():
         return SharePointURL(url=url)
 
 class URLResolver():
+    """
+    A class that returns SharePointGraph API object ids.
+
+    Args:
+        client: A Microsoft GraphAPIClient instance
+    """
     def __init__(self, client: GraphAPIClient):
          self.client = client
 
