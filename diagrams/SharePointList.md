@@ -12,7 +12,9 @@ classDiagram
         + String client_id
         + String client_secret
         + get_headers() dict
-        + execute_request(method: Enum, endpoint: str, json: dict) dict
+        - _execute_request(method: Enum, endpoint: str, json: dict) HTTPX_response
+        - _unpack_response(response: HTTPX_response) dict
+        + make_request(method: Enum, endpoint: str, json: dict) dict
     }
 
     class TabularStorage {
@@ -23,6 +25,14 @@ classDiagram
         + edit_row(row_id, data) dict
         + delete_row(row_id) bool
         + upsert_row(key_col, data) dict
+    }
+
+    class UrlConstructor {
+        << Create >>
+        + site_url(hostname, site_path)$ url
+        + drive_url(site_id)$ url
+        + workbook_url(drive_id, workbook_path)$ url
+        + list_url(site_id, list_name)$ url
     }
 
     class ExcelWorkbook {
@@ -72,4 +82,8 @@ classDiagram
     ExcelWorkbook "1" *-- "many" ExcelTable : contains & creates
     ExcelTable o-- GraphAPIClient : uses
     SharePointList o-- GraphAPIClient : uses
+
+    ExcelWorkbook o-- UrlConstructor : uses
+    ExcelTable o-- UrlConstructor : uses
+    SharePointList o-- UrlConstructor : uses
 ```
