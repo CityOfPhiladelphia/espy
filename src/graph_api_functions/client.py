@@ -1,8 +1,8 @@
 # client.py
 from azure.identity import ClientSecretCredential
-from graph_api_functions.models import HTTPMethod
-
-SCOPE = "https://graph.microsoft.com/.default"
+from graph_api_functions.constants import SCOPE
+from graph_api_functions.models import HTTPMethod, UnsupportedMethodError
+import httpx
 
 class GraphAPIClient():
     def __init__(self, tenant_id: str, client_id: str, client_secret: str):
@@ -27,5 +27,35 @@ class GraphAPIClient():
                 "Content-Type": "application/json"
             }
 
-    def execute_request(self, method: HTTPMethod, endpoint: str, json: dict):
-        ...
+    def _execute_request(self, method: HTTPMethod, 
+        endpoint: str, **kwargs) -> httpx.Response:
+
+        # Map selected method to HTTPX method
+        func_map = {
+            "GET": httpx.get,
+            "POST": httpx.post
+        }
+
+        try:
+            httpx_func = func_map[method]
+
+        except KeyError:
+            raise UnsupportedMethodError
+
+        return httpx_func(endpoint, **kwargs)
+
+    def _unpack_response(self, response: httpx.Response) -> dict:
+
+        response.raise_for_status()
+
+        return response.json()
+
+    def make_request(self, method: HTTPMethod, endpoint: str, **kwargs) -> dict:
+
+        response = self._execute_request(
+            method=method,
+            endpoint=endpoint,
+            **kwargs
+            )
+
+        return self._unpack_response(response)
