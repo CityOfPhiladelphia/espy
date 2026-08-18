@@ -2,48 +2,48 @@
 
 from graph_api_functions.client import GraphAPIClient
 from graph_api_functions.constants import GRAPH_URL
-from graph_api_functions.models import SharePointURL, HTTPMethod
+from graph_api_functions.models import HTTPMethod
 
-class UrlConstructor():
+class _UrlConstructor():
     """
     A class containing static methods to format URLs
     in the shape needed for the SharePoint API
     """
     @staticmethod
-    def site_url(hostname: str, site_path) -> SharePointURL:
+    def site_url(hostname: str, site_path) -> str:
         url = (
             f"{GRAPH_URL}/sites/"
             f"{hostname}:{site_path}"
         )
 
-        return SharePointURL(url=url)
+        return url
 
     @staticmethod
-    def drive_url(site_id: str) -> SharePointURL:
+    def drive_url(site_id: str) -> str:
         url = f"{GRAPH_URL}/drives/{site_id}"
 
-        return SharePointURL(url=url)
+        return url
 
     @staticmethod
-    def workbook_url(drive_id: str, workbook_path: str) -> SharePointURL:
+    def workbook_url(drive_id: str, workbook_path: str) -> str:
         url = (
                 f"{GRAPH_URL}/drives/{drive_id}"
                 f"/root:/{workbook_path}"
             )
 
-        return SharePointURL(url=url)
+        return url
 
     @staticmethod
-    def list_url(site_id: str, list_name: str) -> SharePointURL:
+    def list_url(site_id: str, list_name: str) -> str:
 
         url = (
             f"{GRAPH_URL}/sites/"
             f"{site_id}/lists/{list_name}"
             )
 
-        return SharePointURL(url=url)
+        return url
 
-class URLResolver():
+class _URLResolver():
     """
     A class that returns SharePointGraph API object ids.
 
@@ -57,9 +57,9 @@ class URLResolver():
         """
         Grabs the site_id of the SharePoint site specified by site_path. 
         """
-        site_id_url = UrlConstructor.site_url(hostname, site_path).url
+        site_id_url = str(_UrlConstructor.site_url(hostname, site_path))
 
-        data = self.client.make_request(HTTPMethod.GET, site_id_url)
+        data = self.client.make_request(HTTPMethod.GET, site_id_url, headers=self.client._get_headers())
 
         return data["id"]
 
@@ -78,7 +78,7 @@ class URLResolver():
         Throws Error if library is not found 
         """
 
-        drive_url = UrlConstructor.drive_url(site_id).url
+        drive_url = _UrlConstructor.drive_url(site_id)
 
         drives_response = self.client.make_request(HTTPMethod.GET, drive_url)
 
@@ -109,9 +109,11 @@ class URLResolver():
         str - the id of the workbook 
         """
 
-        workbook_url = UrlConstructor.workbook_url(drive_id, workbook_path).url
+        workbook_url = _UrlConstructor.workbook_url(drive_id, workbook_path)
 
-        data = self.client.make_request(HTTPMethod.GET, workbook_url)
+        data = self.client.make_request(
+            HTTPMethod.GET, workbook_url, headers=self.client._get_headers
+            )
         
         return data["id"]
 
@@ -127,7 +129,7 @@ class URLResolver():
         str - the id of the list
         """
 
-        list_url = UrlConstructor.list_url(site_id, list_name).url
+        list_url = _UrlConstructor.list_url(site_id, list_name)
 
         data = self.client.make_request(HTTPMethod.GET, list_url)
 
