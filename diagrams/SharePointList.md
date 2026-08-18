@@ -65,7 +65,7 @@ classDiagram
         + edit_row(row_id, data) dict
         + delete_row(row_id) bool
         + upsert_row(key_col, data) dict
-        + lock() dict
+        + toggle_lock(password) dict
     }
 
     class SharePointList {
@@ -92,7 +92,7 @@ classDiagram
     SharePointList o-- GraphAPIClient : uses
 
     UrlResolver o-- UrlConstructor : uses
-    UrlResolve o-- GraphAPIClient : uses
+    UrlResolver o-- GraphAPIClient : uses
     ExcelWorkbook o-- UrlResolver : uses
     ExcelTable o-- UrlResolver : uses
     SharePointList o-- UrlResolver : uses
