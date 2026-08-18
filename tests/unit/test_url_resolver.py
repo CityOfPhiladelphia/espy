@@ -1,13 +1,12 @@
 import pytest
 
-from graph_api_functions.urls import URLResolver
-from graph_api_functions.models import SharePointURL
+from graph_api_functions.urls import _URLResolver
 from unittest.mock import MagicMock
 
 
 @pytest.fixture
 def resolver(configured_client):
-    resolver = URLResolver(configured_client)
+    resolver = _URLResolver(configured_client)
 
     return resolver  
 
