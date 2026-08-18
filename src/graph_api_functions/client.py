@@ -148,7 +148,7 @@ class _URLResolver():
         """
         site_id_url = str(_UrlConstructor.site_url(hostname, site_path))
 
-        data = self.client.make_request(HTTPMethod.GET, site_id_url, headers=self.client._get_headers())
+        data = self.client.make_request(HTTPMethod.GET, site_id_url)
 
         return data["id"]
 
@@ -201,8 +201,7 @@ class _URLResolver():
         workbook_url = _UrlConstructor.workbook_url(drive_id, workbook_path)
 
         data = self.client.make_request(
-            HTTPMethod.GET, workbook_url, headers=self.client._get_headers
-            )
+            HTTPMethod.GET, workbook_url)
 
         return data["id"]
 
