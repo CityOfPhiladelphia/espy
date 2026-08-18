@@ -161,20 +161,20 @@ class _URLResolver():
     Args:
         client: A Microsoft GraphAPIClient instance
     """
-    def __init__(self, client: GraphAPIClient):
-         self.client = client
 
-    def get_site_id(self, hostname: str, site_path: str) -> str:
+    @staticmethod
+    def get_site_id(client: GraphAPIClient, hostname: str, site_path: str) -> str:
         """
         Grabs the site_id of the SharePoint site specified by site_path. 
         """
         site_id_url = str(_UrlConstructor.site_url(hostname, site_path))
 
-        data = self.client.make_request(HTTPMethod.GET, site_id_url)
+        data = client.make_request(HTTPMethod.GET, site_id_url)
 
         return data["id"]
 
-    def get_drive_id(self, site_id: str, document_library) -> str:
+    @staticmethod
+    def get_drive_id(client: GraphAPIClient, site_id: str, document_library: str) -> str:
         """
         Gets the id of the document library drive.
         Searches through all available drives until it finds the one specified 
@@ -191,7 +191,7 @@ class _URLResolver():
 
         drive_url = _UrlConstructor.drive_url(site_id)
 
-        drives_response = self.client.make_request(HTTPMethod.GET, drive_url)
+        drives_response = client.make_request(HTTPMethod.GET, drive_url)
 
         drives = drives_response["value"]
 
@@ -207,8 +207,8 @@ class _URLResolver():
             f"Document library '{document_library}' not found."
         )
 
-
-    def get_workbook_id(self, drive_id: str, workbook_path: str) -> str:
+    @staticmethod
+    def get_workbook_id(client: GraphAPIClient, drive_id: str, workbook_path: str) -> str:
         """
         Gets the id of the workbook for the specified workbook_path 
 
@@ -222,12 +222,13 @@ class _URLResolver():
 
         workbook_url = _UrlConstructor.workbook_url(drive_id, workbook_path)
 
-        data = self.client.make_request(
+        data = client.make_request(
             HTTPMethod.GET, workbook_url)
 
         return data["id"]
 
-    def get_list_id(self, site_id: str, list_name: str) -> str:
+    @staticmethod
+    def get_list_id(client: GraphAPIClient, site_id: str, list_name: str) -> str:
         """
         Gets the list id based on the title of the list.
 
@@ -241,6 +242,6 @@ class _URLResolver():
 
         list_url = _UrlConstructor.list_url(site_id, list_name)
 
-        data = self.client.make_request(HTTPMethod.GET, list_url)
+        data = client.make_request(HTTPMethod.GET, list_url)
 
         return data["id"]

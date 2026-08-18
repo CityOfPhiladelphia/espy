@@ -37,10 +37,10 @@ classDiagram
 
     class UrlResolver {
         << Create >>
-        + get_site_id(hostname, site_path) str
-        + get_drive_id(site_id, document_library) str
-        + get_workbook_id(drive_id, workbook_path) str
-        + get_list_id(site_id, list_name) str
+        + get_site_id(hostname, site_path)$ str
+        + get_drive_id(site_id, document_library)$ str
+        + get_workbook_id(drive_id, workbook_path)$ str
+        + get_list_id(site_id, list_name)$ str
     }
 
     class ExcelWorkbook {
