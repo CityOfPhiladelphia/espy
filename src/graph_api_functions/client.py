@@ -21,6 +21,15 @@ class GraphAPIClient():
     def __init__(self, credential: ClientSecretCredential):
         self.credential = credential
 
+    @classmethod
+    def authenticate(cls):
+        """Authenticate to SharePoint by generating the Client Secret
+        credential."""
+        creds = get_graph_app_secrets()
+        credential = build_client_secret_credential(creds)
+
+        return cls(credential)
+
     def _get_headers(self) -> dict[str, str]:
         """
         Creates the header needed to authenticate each request to the

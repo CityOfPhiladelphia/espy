@@ -20,11 +20,6 @@ build-backend = "setuptools.build_meta"
 [tool.uv.sources]
 citygeo-secrets = { git = "https://github.com/CityOfPhiladelphia/citygeo_secrets.git" }
 
-[tool.uv.workspace]
-members = [
-    "graph_helper",
-]
-
 [tool.uv]
 default-groups = []
 
