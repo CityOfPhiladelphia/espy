@@ -1,4 +1,4 @@
-from graph_api_functions.urls import _UrlConstructor
+from graph_api_functions.client import _UrlConstructor
 
 
 def test_site_url_returns_str():

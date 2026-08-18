@@ -2,7 +2,7 @@
 from graph_api_functions.client import GraphAPIClient
 from graph_api_functions.constants import GRAPH_URL
 from graph_api_functions.models import SharePointSiteInfo, SharePointURL
-from graph_api_functions.urls import _URLResolver
+from graph_api_functions.client import _URLResolver
 from typing import Any
 
 class ExcelWorksheet:

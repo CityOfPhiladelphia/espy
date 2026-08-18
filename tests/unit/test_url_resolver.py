@@ -1,6 +1,6 @@
 import pytest
 
-from graph_api_functions.urls import _URLResolver
+from graph_api_functions.client import _URLResolver
 from unittest.mock import MagicMock
 
 
