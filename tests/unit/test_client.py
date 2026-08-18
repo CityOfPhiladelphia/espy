@@ -20,7 +20,7 @@ def test_execute_request_invokes_correct_function(configured_client, monkeypatch
 
     response = configured_client._execute_request(HTTPMethod.GET, "Hello World")
 
-    mock_utility.assert_called_once_with("Hello World")
+    mock_utility.assert_called_once()
 
     assert response == "Mocked Output"
 

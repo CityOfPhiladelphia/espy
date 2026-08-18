@@ -15,7 +15,7 @@ def test_get_site_id_returns_str(resolver, monkeypatch):
     mock_response.return_value = {"id": "123"}
     
     monkeypatch.setattr(
-        "graph_api_functions.urls.GraphAPIClient.make_request",
+        "graph_api_functions.client.GraphAPIClient.make_request",
         mock_response)
     
     assert isinstance(resolver.get_site_id("test_host.com", "site_path/" ), str)
@@ -28,7 +28,7 @@ def test_get_drive_id_returns_str(resolver, monkeypatch):
         }
     
     monkeypatch.setattr(
-        "graph_api_functions.urls.GraphAPIClient.make_request",
+        "graph_api_functions.client.GraphAPIClient.make_request",
         mock_response)
     
     assert isinstance(resolver.get_drive_id("123", "right_library" ), str)
@@ -41,7 +41,7 @@ def test_get_drive_id_fetches_correct_library(resolver, monkeypatch):
         }
     
     monkeypatch.setattr(
-        "graph_api_functions.urls.GraphAPIClient.make_request",
+        "graph_api_functions.client.GraphAPIClient.make_request",
         mock_response)
     
     assert resolver.get_drive_id("123", "right_library") == "2"
@@ -51,7 +51,7 @@ def test_get_workbook_id_returns_str(resolver, monkeypatch):
     mock_response.return_value = {"id": "123"}
     
     monkeypatch.setattr(
-        "graph_api_functions.urls.GraphAPIClient.make_request",
+        "graph_api_functions.client.GraphAPIClient.make_request",
         mock_response)
     
     assert isinstance(
@@ -63,7 +63,7 @@ def test_get_list_id_returns_str(resolver, monkeypatch):
     mock_response.return_value = {"id": "123"}
     
     monkeypatch.setattr(
-        "graph_api_functions.urls.GraphAPIClient.make_request",
+        "graph_api_functions.client.GraphAPIClient.make_request",
         mock_response)
     
     assert isinstance(
