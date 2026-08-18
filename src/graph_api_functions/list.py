@@ -4,7 +4,7 @@ from typing import Any
 
 class SharePointList:
 
-    def __init__(self, GraphAPIClient, site_id: str, list_id: str):
+    def __init__(self, client: GraphAPIClient, site_id: str, list_id: str):
         ...
 
     def get_row(self, row_id: str) -> dict [str, Any]:
