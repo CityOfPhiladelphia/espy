@@ -60,7 +60,7 @@ class GraphAPIClient():
             method (HTTPMethod): An HTTPMethod Enum
             endpoint (str): The API endpoint to perform the operation on
             **kwargs: can set additional parameters such as params, timeout, 
-            follow_redirects, and json
+                      follow_redirects, and json
         
         Returns:
             HTTPX response
@@ -90,6 +90,11 @@ class GraphAPIClient():
         Unpacks an httpx response into a json object. Throws an error
         if not successful.
 
+        Args:
+            response: the raw json of the httpx response.
+
+        Returns: 
+            dict: the response as a dictionary.
         """
 
         response.raise_for_status()
@@ -107,7 +112,11 @@ class GraphAPIClient():
         Args:
             method (HTTPMethod): An HTTPMethod Enum
             endpoint (str): The API endpoint to perform the operation on
-            **kwargs
+            **kwargs: can set additional parameters such as params, timeout, 
+                      follow_redirects, and json
+            
+        Returns:
+            dict: dictionary of the httpx response 
         """
         response = self._execute_request(
             method=method,
@@ -178,17 +187,18 @@ class _URLResolver():
 
         return data["id"]
 
-    def get_drive_id(self, site_id: str, document_library) -> str:
+    def get_drive_id(self, site_id: str, document_library: str) -> str:
         """
         Gets the id of the document library drive.
         Searches through all available drives until it finds the one specified 
         by the document_library attribute. 
 
-        Arguments:
-            site_id - the id of the sharepoint site
+        Args:
+            site_id(str): the id of the sharepoint site
+            document_library(str): the name of the document library you want to access  
 
         Returns:
-            str - The id of the drive 
+            str: The id of the drive 
 
         Throws Error if library is not found 
         """
@@ -216,12 +226,12 @@ class _URLResolver():
         """
         Gets the id of the workbook for the specified workbook_path 
 
-        Arguments:
-        drive_id - the id of the document drive that holds the workbook 
-        workbook_path - the path to the workbook
+        Args:
+        drive_id(str): the id of the document drive that holds the workbook 
+        workbook_path(str): the path to the workbook
 
         Returns:
-        str - the id of the workbook 
+        str: the id of the workbook 
         """
 
         workbook_url = _UrlConstructor.workbook_url(drive_id, workbook_path)
@@ -235,12 +245,12 @@ class _URLResolver():
         """
         Gets the list id based on the title of the list.
 
-        Arguments:
-            site_id - the id of the sharepoint site
-            list_name - The name of the list
+        Args:
+            site_id(str): The id of the sharepoint site
+            list_name(str): The name of the list
 
         Returns:
-        str - the id of the list
+            str: the id of the list
         """
 
         list_url = _UrlConstructor.list_url(site_id, list_name)
