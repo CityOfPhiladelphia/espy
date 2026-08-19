@@ -1,9 +1,11 @@
 # client.py
-from azure.identity import ClientSecretCredential
 import citygeo_secrets as cgs
+import httpx
+from azure.identity import ClientSecretCredential
+
 from graph_api_functions.constants import GRAPH_APP, GRAPH_URL, SCOPE
 from graph_api_functions.models import HTTPMethod, UnsupportedMethodError
-import httpx
+
 
 class GraphAPIClient():
     def __init__(self, credential: ClientSecretCredential):
@@ -128,7 +130,7 @@ class GraphAPIClient():
         return self._unpack_response(response)  
 
 
-class _UrlConstructor():
+class _UrlConstructor:
     """
     A class containing static methods to format URLs
     in the shape needed for the SharePoint API
@@ -168,7 +170,7 @@ class _UrlConstructor():
         return url
 
 
-class _URLResolver():
+class _URLResolver:
     """
     A class that returns SharePointGraph API object ids.
 
