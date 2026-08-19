@@ -182,7 +182,7 @@ class _URLResolver():
         """
         Grabs the site_id of the SharePoint site specified by site_path. 
         """
-        site_id_url = str(_UrlConstructor.site_url(hostname, site_path))
+        site_id_url = _UrlConstructor.site_url(hostname, site_path)
 
         data = self.client.make_request(HTTPMethod.GET, site_id_url)
 
