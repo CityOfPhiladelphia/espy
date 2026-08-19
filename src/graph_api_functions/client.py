@@ -131,7 +131,7 @@ class _UrlConstructor:
     in the shape needed for the SharePoint API
     """
     @staticmethod
-    def site_url(hostname: str, site_path) -> str:
+    def site_id_url(hostname: str, site_path) -> str:
         url = (
             f"{GRAPH_URL}/sites/"
             f"{hostname}:{site_path}"
@@ -140,13 +140,13 @@ class _UrlConstructor:
         return url
 
     @staticmethod
-    def drive_url(site_id: str) -> str:
+    def drive_id_url(site_id: str) -> str:
         url = f"{GRAPH_URL}/drives/{site_id}"
 
         return url
 
     @staticmethod
-    def workbook_url(drive_id: str, workbook_path: str) -> str:
+    def workbook_id_url(drive_id: str, workbook_path: str) -> str:
         url = (
                 f"{GRAPH_URL}/drives/{drive_id}"
                 f"/root:/{workbook_path}"
@@ -155,7 +155,7 @@ class _UrlConstructor:
         return url
 
     @staticmethod
-    def list_url(site_id: str, list_name: str) -> str:
+    def list_id_url(site_id: str, list_name: str) -> str:
 
         url = (
             f"{GRAPH_URL}/sites/"
