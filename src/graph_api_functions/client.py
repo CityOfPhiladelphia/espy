@@ -12,11 +12,6 @@ class GraphAPIClient():
         self.credential = credential
 
     @staticmethod
-    def get_graph_app_secrets() -> dict:
-        # CGS nests the response under GRAPH_APP twice; unwrapping
-        return cgs.get_secrets(GRAPH_APP)[GRAPH_APP]
-
-    @staticmethod
     def build_client_secret_credential(creds: dict) -> ClientSecretCredential:
         tenant_id               = creds["Tenant ID"]
         client_id               = creds["Application ID"]
@@ -28,7 +23,7 @@ class GraphAPIClient():
     def authenticate(cls):
         """Authenticate to SharePoint by generating the Client Secret
         credential."""
-        creds      = cls.get_graph_app_secrets()
+        creds      = cgs.get_secrets(GRAPH_APP)[GRAPH_APP]
         credential = cls.build_client_secret_credential(creds)
 
         return cls(credential)
@@ -193,7 +188,7 @@ class _URLResolver:
         """
         Grabs the site_id of the SharePoint site specified by site_path. 
         """
-        site_id_url = _UrlConstructor.site_url(hostname, site_path)
+        site_id_url = _UrlConstructor.site_id_url(hostname, site_path)
 
         data = client.make_request(HTTPMethod.GET, site_id_url)
 
