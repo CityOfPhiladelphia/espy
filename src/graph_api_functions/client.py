@@ -179,7 +179,7 @@ class _URLResolver:
         """
         Grabs the site_id of the SharePoint site specified by site_path. 
         """
-        site_id_url = _UrlConstructor.site_url(hostname, site_path)
+        site_id_url = _UrlConstructor.site_id_url(hostname, site_path)
 
         data = self.client.make_request(HTTPMethod.GET, site_id_url)
 
@@ -201,7 +201,7 @@ class _URLResolver:
         Throws Error if library is not found 
         """
 
-        drive_url = _UrlConstructor.drive_url(site_id)
+        drive_url = _UrlConstructor.drive_id_url(site_id)
 
         drives_response = self.client.make_request(HTTPMethod.GET, drive_url)
 
@@ -232,7 +232,7 @@ class _URLResolver:
         str: the id of the workbook 
         """
 
-        workbook_url = _UrlConstructor.workbook_url(drive_id, workbook_path)
+        workbook_url = _UrlConstructor.workbook_id_url(drive_id, workbook_path)
 
         data = self.client.make_request(
             HTTPMethod.GET, workbook_url)
@@ -251,7 +251,7 @@ class _URLResolver:
             str: the id of the list
         """
 
-        list_url = _UrlConstructor.list_url(site_id, list_name)
+        list_url = _UrlConstructor.list_id_url(site_id, list_name)
 
         data = self.client.make_request(HTTPMethod.GET, list_url)
 
