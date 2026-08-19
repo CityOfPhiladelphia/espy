@@ -34,6 +34,9 @@ class GraphAPIClient():
         """
         Creates the header needed to authenticate each request to the
         API.
+
+        Returns:
+            dict representing the header to send in the request
         """
         # Microsoft caches the token, so getting token repeatedly
         # should not be a problem. Automatic refresh is handled
@@ -56,7 +59,8 @@ class GraphAPIClient():
         Args:
             method (HTTPMethod): An HTTPMethod Enum
             endpoint (str): The API endpoint to perform the operation on
-            **kwargs
+            **kwargs: can set additional parameters such as params, timeout, 
+            follow_redirects, and json
         
         Returns:
             HTTPX response
