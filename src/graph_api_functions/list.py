@@ -1,5 +1,6 @@
 # list.py
-from graph_api_functions.client import GraphAPIClient, _URLResolver
+from graph_api_functions.client import GraphAPIClient, _URLResolver, _UrlConstructor
+from graph_api_functions.models import HTTPMethod
 from graph_api_functions.constants import HOST_NAME
 from typing import Any
 
@@ -13,16 +14,20 @@ class SharePointList:
     @classmethod
     def get_list(cls, site_path: str, list_name: str):
          client = GraphAPIClient.authenticate()
-         site_id = _URLResolver.get_site_id(HOST_NAME, site_path)
-         list_id = _URLResolver.get_list_id(site_id, list_name)
+         site_id = _URLResolver.get_site_id(client, HOST_NAME, site_path)
+         list_id = _URLResolver.get_list_id(client, site_id, list_name)
 
          return cls(client, site_id, list_id)
 
     def get_row(self, row_id: str) -> dict [str, Any]:
-            ...
+        ...
     
     def list_rows(self) -> list[dict[str, Any]]:
-        ...
+        list_url = _UrlConstructor.list_url(self.list_id)
+
+        result = self.client.make_request(HTTPMethod.GET, list_url)
+
+        return result
 
     def add_row(self, data: dict[str, Any]) -> dict[str, Any]:
         ...

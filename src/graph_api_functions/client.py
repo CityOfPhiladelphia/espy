@@ -5,10 +5,6 @@ from graph_api_functions.constants import GRAPH_APP, GRAPH_URL, SCOPE
 from graph_api_functions.models import HTTPMethod, UnsupportedMethodError
 import httpx
 
-def get_graph_app_secrets() -> dict:
-    # CGS nests the response under GRAPH_APP twice; unwrapping
-    return cgs.get_secrets(GRAPH_APP)[GRAPH_APP]
-
 
 def build_client_secret_credential(creds: dict) -> ClientSecretCredential:
     tenant_id               = creds["Tenant ID"]
@@ -25,7 +21,7 @@ class GraphAPIClient():
     def authenticate(cls):
         """Authenticate to SharePoint by generating the Client Secret
         credential."""
-        creds = get_graph_app_secrets()
+        creds = cgs.get_secrets(GRAPH_APP)[GRAPH_APP]
         credential = build_client_secret_credential(creds)
 
         return cls(credential)
@@ -120,7 +116,7 @@ class _UrlConstructor():
     in the shape needed for the SharePoint API
     """
     @staticmethod
-    def site_url(hostname: str, site_path) -> str:
+    def site_id_url(hostname: str, site_path) -> str:
         url = (
             f"{GRAPH_URL}/sites/"
             f"{hostname}:{site_path}"
@@ -129,13 +125,13 @@ class _UrlConstructor():
         return url
 
     @staticmethod
-    def drive_url(site_id: str) -> str:
+    def drive_id_url(site_id: str) -> str:
         url = f"{GRAPH_URL}/drives/{site_id}"
 
         return url
 
     @staticmethod
-    def workbook_url(drive_id: str, workbook_path: str) -> str:
+    def workbook_id_url(drive_id: str, workbook_path: str) -> str:
         url = (
                 f"{GRAPH_URL}/drives/{drive_id}"
                 f"/root:/{workbook_path}"
@@ -144,12 +140,22 @@ class _UrlConstructor():
         return url
 
     @staticmethod
-    def list_url(site_id: str, list_name: str) -> str:
+    def list_id_url(site_id: str, list_name: str) -> str:
 
         url = (
             f"{GRAPH_URL}/sites/"
             f"{site_id}/lists/{list_name}"
             )
+
+        return url
+
+    @staticmethod
+    def list_url(site_id: str, list_id: str) -> str:
+
+        url = (
+            f"{GRAPH_URL}/sites/{site_id}/"
+            f"lists/{list_id}/items"
+        )
 
         return url
 
@@ -167,7 +173,7 @@ class _URLResolver():
         """
         Grabs the site_id of the SharePoint site specified by site_path. 
         """
-        site_id_url = str(_UrlConstructor.site_url(hostname, site_path))
+        site_id_url = str(_UrlConstructor.site_id_url(hostname, site_path))
 
         data = client.make_request(HTTPMethod.GET, site_id_url)
 
@@ -189,7 +195,7 @@ class _URLResolver():
         Throws Error if library is not found 
         """
 
-        drive_url = _UrlConstructor.drive_url(site_id)
+        drive_url = _UrlConstructor.drive_id_url(site_id)
 
         drives_response = client.make_request(HTTPMethod.GET, drive_url)
 
@@ -220,7 +226,7 @@ class _URLResolver():
         str - the id of the workbook 
         """
 
-        workbook_url = _UrlConstructor.workbook_url(drive_id, workbook_path)
+        workbook_url = _UrlConstructor.workbook_id_url(drive_id, workbook_path)
 
         data = client.make_request(
             HTTPMethod.GET, workbook_url)
@@ -240,7 +246,7 @@ class _URLResolver():
         str - the id of the list
         """
 
-        list_url = _UrlConstructor.list_url(site_id, list_name)
+        list_url = _UrlConstructor.list_id_url(site_id, list_name)
 
         data = client.make_request(HTTPMethod.GET, list_url)
 
