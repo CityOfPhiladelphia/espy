@@ -1,28 +1,35 @@
 # client.py
-from azure.identity import ClientSecretCredential
 import citygeo_secrets as cgs
+import httpx
+from azure.identity import ClientSecretCredential
+
 from graph_api_functions.constants import GRAPH_APP, GRAPH_URL, SCOPE
 from graph_api_functions.models import HTTPMethod, UnsupportedMethodError
-import httpx
 
-
-def build_client_secret_credential(creds: dict) -> ClientSecretCredential:
-    tenant_id               = creds["Tenant ID"]
-    client_id               = creds["Application ID"]
-    client_secret           = creds["Secret Value"]
-
-    return ClientSecretCredential(tenant_id, client_id, client_secret)
 
 class GraphAPIClient():
     def __init__(self, credential: ClientSecretCredential):
         self.credential = credential
 
+    @staticmethod
+    def get_graph_app_secrets() -> dict:
+        # CGS nests the response under GRAPH_APP twice; unwrapping
+        return cgs.get_secrets(GRAPH_APP)[GRAPH_APP]
+
+    @staticmethod
+    def build_client_secret_credential(creds: dict) -> ClientSecretCredential:
+        tenant_id               = creds["Tenant ID"]
+        client_id               = creds["Application ID"]
+        client_secret           = creds["Secret Value"]
+
+        return ClientSecretCredential(tenant_id, client_id, client_secret)
+
     @classmethod
     def authenticate(cls):
         """Authenticate to SharePoint by generating the Client Secret
         credential."""
-        creds = cgs.get_secrets(GRAPH_APP)[GRAPH_APP]
-        credential = build_client_secret_credential(creds)
+        creds      = cls.get_graph_app_secrets()
+        credential = cls.build_client_secret_credential(creds)
 
         return cls(credential)
 
@@ -30,6 +37,9 @@ class GraphAPIClient():
         """
         Creates the header needed to authenticate each request to the
         API.
+
+        Returns:
+            dict representing the header to send in the request
         """
         # Microsoft caches the token, so getting token repeatedly
         # should not be a problem. Automatic refresh is handled
@@ -52,7 +62,8 @@ class GraphAPIClient():
         Args:
             method (HTTPMethod): An HTTPMethod Enum
             endpoint (str): The API endpoint to perform the operation on
-            **kwargs
+            **kwargs: can set additional parameters such as params, timeout, 
+                      follow_redirects, and json
         
         Returns:
             HTTPX response
@@ -82,6 +93,11 @@ class GraphAPIClient():
         Unpacks an httpx response into a json object. Throws an error
         if not successful.
 
+        Args:
+            response: the raw json of the httpx response.
+
+        Returns: 
+            dict: the response as a dictionary.
         """
 
         response.raise_for_status()
@@ -99,7 +115,11 @@ class GraphAPIClient():
         Args:
             method (HTTPMethod): An HTTPMethod Enum
             endpoint (str): The API endpoint to perform the operation on
-            **kwargs
+            **kwargs: can set additional parameters such as params, timeout, 
+                      follow_redirects, and json
+            
+        Returns:
+            dict: dictionary of the httpx response 
         """
         response = self._execute_request(
             method=method,
@@ -110,7 +130,7 @@ class GraphAPIClient():
         return self._unpack_response(response)  
 
 
-class _UrlConstructor():
+class _UrlConstructor:
     """
     A class containing static methods to format URLs
     in the shape needed for the SharePoint API
@@ -160,7 +180,7 @@ class _UrlConstructor():
         return url
 
 
-class _URLResolver():
+class _URLResolver:
     """
     A class that returns SharePointGraph API object ids.
 
@@ -173,24 +193,24 @@ class _URLResolver():
         """
         Grabs the site_id of the SharePoint site specified by site_path. 
         """
-        site_id_url = str(_UrlConstructor.site_id_url(hostname, site_path))
+        site_id_url = _UrlConstructor.site_url(hostname, site_path)
 
         data = client.make_request(HTTPMethod.GET, site_id_url)
 
         return data["id"]
 
-    @staticmethod
-    def get_drive_id(client: GraphAPIClient, site_id: str, document_library: str) -> str:
+    def get_drive_id(self, site_id: str, document_library: str) -> str:
         """
         Gets the id of the document library drive.
         Searches through all available drives until it finds the one specified 
         by the document_library attribute. 
 
-        Arguments:
-            site_id - the id of the sharepoint site
+        Args:
+            site_id(str): the id of the sharepoint site
+            document_library(str): the name of the document library you want to access  
 
         Returns:
-            str - The id of the drive 
+            str: The id of the drive 
 
         Throws Error if library is not found 
         """
@@ -218,12 +238,12 @@ class _URLResolver():
         """
         Gets the id of the workbook for the specified workbook_path 
 
-        Arguments:
-        drive_id - the id of the document drive that holds the workbook 
-        workbook_path - the path to the workbook
+        Args:
+        drive_id(str): the id of the document drive that holds the workbook 
+        workbook_path(str): the path to the workbook
 
         Returns:
-        str - the id of the workbook 
+        str: the id of the workbook 
         """
 
         workbook_url = _UrlConstructor.workbook_id_url(drive_id, workbook_path)
@@ -238,12 +258,12 @@ class _URLResolver():
         """
         Gets the list id based on the title of the list.
 
-        Arguments:
-            site_id - the id of the sharepoint site
-            list_name - The name of the list
+        Args:
+            site_id(str): The id of the sharepoint site
+            list_name(str): The name of the list
 
         Returns:
-        str - the id of the list
+            str: the id of the list
         """
 
         list_url = _UrlConstructor.list_id_url(site_id, list_name)
