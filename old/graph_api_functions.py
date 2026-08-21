@@ -14,7 +14,7 @@ GRAPH_APP = "AppReg: CityGeo-Databridge-Updates (All Fields)"
 GRAPH_URL = "https://graph.microsoft.com/v1.0"
 creds = cgs.get_secrets(GRAPH_APP)
 
-'''
+"""
 TO DO: 
 1. Make subclasses of GraphAPI class to delineate SharePoint Excel objects from SharePoint Lists
 ---> There would be methods for GraphAPI class such connecting, _get, _post, etc that would be inherited 
@@ -33,7 +33,7 @@ TO DO:
 ---> This is the most space efficient approach since it relies on memory and not disk space.
 
 7. Make __init__ files so that we can import this and use the functions 
-'''
+"""
 
 
 class GraphAPI:
@@ -41,9 +41,9 @@ class GraphAPI:
     ##### THESE ARE CLASS ATTRIBUTES THAT #######
     ##### WILL BE SHARE AMONGST ALL SUBS  #######
     #############################################
-    tenant_id               = creds[GRAPH_APP]["Tenant ID"]
-    client_id               = creds[GRAPH_APP]["Application ID"]
-    client_secret           = creds[GRAPH_APP]["Secret Value"]
+    tenant_id = creds[GRAPH_APP]["Tenant ID"]
+    client_id = creds[GRAPH_APP]["Application ID"]
+    client_secret = creds[GRAPH_APP]["Secret Value"]
 
     credential = ClientSecretCredential(
         tenant_id=tenant_id,
@@ -54,115 +54,113 @@ class GraphAPI:
     token = credential.get_token("https://graph.microsoft.com/.default")
     headers = {
         "Authorization": f"Bearer {token.token}",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
     }
 
-    def __init__(self, site_path, document_library=None, wb_path=None, table_name=None, worksheet_name=None, list_name=None):
+    def __init__(
+        self,
+        site_path,
+        document_library=None,
+        wb_path=None,
+        table_name=None,
+        worksheet_name=None,
+        list_name=None,
+    ):
         ###############################################
         ## THIS CONSTRUCTOR WILL NEED TO BE REWORKED ##
         ## NAMELY GETTING RID OF ATTRIBS NOT NEEDED  ##
         ##              IN THE BASE CLASS            ##
         ###############################################
-        self.hostname           = "phila.sharepoint.com"
-        self.site_path          = site_path             
-        self.document_library   = document_library
-        self.workbook_path      = wb_path
-        self.table_name         = table_name
-        self.worksheet_name     = worksheet_name
-        self.list_name          = list_name 
+        self.hostname = "phila.sharepoint.com"
+        self.site_path = site_path
+        self.document_library = document_library
+        self.workbook_path = wb_path
+        self.table_name = table_name
+        self.worksheet_name = worksheet_name
+        self.list_name = list_name
 
-        self.site_id            = None
-        self.drive_id           = None 
-        self.item_id            = None 
-        self.list_id            = None 
+        self.site_id = None
+        self.drive_id = None
+        self.item_id = None
+        self.list_id = None
 
         self.connect()
-    
-    def _get(self, url:str, params:dict | None = None) -> dict:
-        '''
-        Generic function for requesting a specific url. 
+
+    def _get(self, url: str, params: dict | None = None) -> dict:
+        """
+        Generic function for requesting a specific url.
 
         Params:
-        url - The url you are requesting 
+        url - The url you are requesting
 
-        Returns: 
-        dict - The GET response 
-        ''' 
-        request = httpx.get(url, 
-                            headers=GraphAPI.headers, 
-                            params = params,
-                            timeout=60, 
-                            follow_redirects=True)
-        request.raise_for_status()
-
-        return request.json()
-    
-    def _post(self, url:str, body:dict):
-        '''
-        Generic function for posting body to a specific url. 
-
-        Params:
-        url  - The url you want to post to 
-        body - json of the body of the post message  
-        ''' 
-        request = httpx.post(
+        Returns:
+        dict - The GET response
+        """
+        request = httpx.get(
             url,
             headers=GraphAPI.headers,
-            json=body,
-            timeout=60 
+            params=params,
+            timeout=60,
+            follow_redirects=True,
         )
         request.raise_for_status()
 
-    def _patch(self, url:str, body:dict):
-        '''
-        Generic function for making a PATCH request 
+        return request.json()
+
+    def _post(self, url: str, body: dict):
+        """
+        Generic function for posting body to a specific url.
 
         Params:
-        url  - The url you want to patch to 
-        body - json of the body of the post message  
-        ''' 
+        url  - The url you want to post to
+        body - json of the body of the post message
+        """
+        request = httpx.post(
+            url, headers=GraphAPI.headers, json=body, timeout=60
+        )
+        request.raise_for_status()
 
-        # THIS FUNCT WAS NOT FLESHED OUT -- MIGHT REQUIRE DIFFERENT HEADERS 
+    def _patch(self, url: str, body: dict):
+        """
+        Generic function for making a PATCH request
+
+        Params:
+        url  - The url you want to patch to
+        body - json of the body of the post message
+        """
+
+        # THIS FUNCT WAS NOT FLESHED OUT -- MIGHT REQUIRE DIFFERENT HEADERS
         request = httpx.patch(
-            url,
-            headers=GraphAPI.headers,
-            json=body,
-            timeout=60 
+            url, headers=GraphAPI.headers, json=body, timeout=60
         )
         request.raise_for_status()
 
     def get_site_id(self) -> str:
-        '''
-        Grabs the site_id of the SharePoint site specified by site_path. 
-        '''
-        url = (
-            f"{GRAPH_URL}/sites/"
-            f"{self.hostname}:{self.site_path}"
-        )
+        """
+        Grabs the site_id of the SharePoint site specified by site_path.
+        """
+        url = f"{GRAPH_URL}/sites/{self.hostname}:{self.site_path}"
 
         data = self._get(url)
 
         return data["id"]
 
-
-
-
     # ERMAGHERD THE BELLOW FUNCTIONS ARE SPECIFIC TO SUB CLASSES SO
-    # THEY ARE COMMENTED OUT HERE ERMAGHERD 
-    
+    # THEY ARE COMMENTED OUT HERE ERMAGHERD
+
     # def get_drive_id(self, site_id) -> str:
     #     '''
-    #     Gets the id of the document library drive. 
-    #     Searches through all available drives until it finds the one specified 
-    #     by the document_library attribute. 
+    #     Gets the id of the document library drive.
+    #     Searches through all available drives until it finds the one specified
+    #     by the document_library attribute.
 
     #     Arguments:
     #     site_id - the id of the sharepoint site
 
     #     Returns:
-    #     str - The id of the drive 
+    #     str - The id of the drive
 
-    #     Throws Error if library is not found 
+    #     Throws Error if library is not found
     #     '''
     #     url = f"{GRAPH_URL}/sites/{site_id}/drives"
     #     drives = self._get(url)["value"]
@@ -177,13 +175,13 @@ class GraphAPI:
 
     # def get_workbook_id(self, drive_id: str):
     #     '''
-    #     Gets the id of the workbook for the specified workbook_path 
+    #     Gets the id of the workbook for the specified workbook_path
 
     #     Arguments:
-    #     drive_id - the id of the document drive that holds the workbook 
+    #     drive_id - the id of the document drive that holds the workbook
 
     #     Returns:
-    #     str - the id of the workbook 
+    #     str - the id of the workbook
     #     '''
     #     url = (
     #         f"{GRAPH_URL}/drives/{drive_id}"
@@ -196,13 +194,13 @@ class GraphAPI:
 
     # def get_list_id(self) -> str:
     #     '''
-    #     Gets the list id based on the title of the list. 
+    #     Gets the list id based on the title of the list.
 
-    #     Arguments: 
+    #     Arguments:
     #     title - the title of the list
 
     #     Returns:
-    #     str - the id of the list         
+    #     str - the id of the list
     #     '''
     #     url = (
     #         f"{GRAPH_URL}/sites/"
@@ -212,14 +210,12 @@ class GraphAPI:
 
     #     return item["id"]
 
-
-
     # def connect(self):
     #     '''
-    #     Function to establish the necessary id's for a sharepoint resource. 
+    #     Function to establish the necessary id's for a sharepoint resource.
     #     '''
-    #     if self.site_id is not None: 
-    #         return 
+    #     if self.site_id is not None:
+    #         return
 
     #     self.site_id = self.get_site_id()
 
@@ -228,25 +224,25 @@ class GraphAPI:
 
     #     if self.document_library:
     #         self.drive_id = self.get_drive_id(self.site_id)
-        
+
     #     if self.workbook_path is not None and self.table_name is not None and self.worksheet_name is not None:
     #         self.item_id = self.get_workbook_id(self.drive_id)
 
     # def protect_worksheet(self, password: str):
     #     '''
-    #     Turns on sheet protection for the specified worksheet 
+    #     Turns on sheet protection for the specified worksheet
 
     #     Arguments:
-    #     password - str that represents the sheet protection password 
+    #     password - str that represents the sheet protection password
     #     '''
     #     if password is None:
     #         print("No password specified, not doing anything")
-    #         return 
-        
-    #     if self.worksheet_name is None: 
+    #         return
+
+    #     if self.worksheet_name is None:
     #         print("No worksheet has been specified. Doing nothing...")
-    #         return 
-        
+    #         return
+
     #     print("Re-Protecting sheet...")
     #     url = (
     #         f"{GRAPH_URL}/drives/{self.drive_id}"
@@ -263,23 +259,23 @@ class GraphAPI:
     #     self._post(url, body)
 
     #     print("Protection re-enabled!!!")
-    
+
     # def unprotect_worksheet(self, password):
     #     '''
-    #     Function that turns off protection for the worksheet. 
+    #     Function that turns off protection for the worksheet.
 
     #     Arguments:
-    #     password - str that represents the sheet protection password 
+    #     password - str that represents the sheet protection password
     #     '''
     #     print("Unprotecting sheet...")
 
     #     if password is None:
     #         print("No password specified, not doing anything")
-    #         return 
-        
-    #     if self.worksheet_name is None: 
+    #         return
+
+    #     if self.worksheet_name is None:
     #         print("No worksheet has been specified. Doing nothing...")
-    #         return 
+    #         return
 
     #     url = (
     #         f"{GRAPH_URL}/drives/{self.drive_id}"
@@ -299,12 +295,12 @@ class GraphAPI:
 
     # def append_row(self, row: List, password=None):
     #     '''
-    #     Appends data, represented by row, to the sharepoint workbook table. 
+    #     Appends data, represented by row, to the sharepoint workbook table.
 
     #     Arguments:
-    #     row - List representing the data to be appended to the sharepoint table 
+    #     row - List representing the data to be appended to the sharepoint table
     #     '''
-        
+
     #     self.unprotect_worksheet(password)
     #     url = (
     #         f"{GRAPH_URL}/drives/{self.drive_id}"
@@ -326,7 +322,7 @@ class GraphAPI:
     #     """
     #     Upload a file to a SharePoint document library folder.
 
-    #     Arguments -- whered my shit go?!?!?! 
+    #     Arguments -- whered my shit go?!?!?!
     #     """
     #     site_id     = self.site_id
     #     headers     = GraphAPI.headers
@@ -346,15 +342,15 @@ class GraphAPI:
     #     resp = httpx.put(upload_url, headers=headers, data=file_data)
     #     resp.raise_for_status()
     #     return resp.json()
-    
+
     # def get_sharepoint_content(self, file_path, save_path):
     #     '''
     #     Downloads sharepoint excel at file_path for the instantiated sharepoint page. Saves
-    #     as new excel file at save_path. Sorry this doc is booty, im exhausted... 
+    #     as new excel file at save_path. Sorry this doc is booty, im exhausted...
 
     #     Arguments:
     #     file_path - path to the file we want to steal
-    #     save_path - path to where we want to store it. 
+    #     save_path - path to where we want to store it.
     #     '''
     #     site_id = self.site_id
     #     drive_id = self.drive_id
@@ -370,9 +366,9 @@ class GraphAPI:
 
     # def get_list_content(self, extract_cols: list | None =None):
     #     '''
-    #     Return the content of the list items by returning a generator of dicts. 
-    #     Each dictionary can contain multiple rows of the List and are later unpacked. 
-    #     Handles pagination if the result set is not complete. 
+    #     Return the content of the list items by returning a generator of dicts.
+    #     Each dictionary can contain multiple rows of the List and are later unpacked.
+    #     Handles pagination if the result set is not complete.
 
     #     Arguments:
     #     extract_cols - a list of columns names you wish to extract
@@ -394,33 +390,32 @@ class GraphAPI:
     #     }
 
     #     page = 0
-    #     while list_content_url: 
+    #     while list_content_url:
     #         page += 1
     #         print(f"Fetching page {page} of list items...")
-    #         data = self._get(list_content_url, params if page == 1 else None) # params can't be sent during subsequent calls 
+    #         data = self._get(list_content_url, params if page == 1 else None) # params can't be sent during subsequent calls
     #         items = data.get("value", [])
 
-    #         for item in items:              
+    #         for item in items:
     #             fields = item.get("fields", {})
     #             if extract_cols:
-    #                 yield {key: fields[key] for key in extract_cols} 
+    #                 yield {key: fields[key] for key in extract_cols}
     #             else:
     #                 yield fields
-            
-    #         list_content_url = data.get("@odata.nextLink")   
 
-    
+    #         list_content_url = data.get("@odata.nextLink")
+
+
 if __name__ == "__main__":
-    
-    '''Appending data to a specified workbook example'''
+    """Appending data to a specified workbook example"""
     # site_path        = "/sites/ps360-metrics-share"
     # document_library = "Documents"
     # workbook_path    = 'etl_tools_test_workbook.xlsx'
-    # table_name       = 'testing'  
+    # table_name       = 'testing'
     # worksheet_name   = 'Dataset'
     # sp_client = GraphAPI(
-    #     site_path, 
-    #     document_library, 
+    #     site_path,
+    #     document_library,
     #     workbook_path,
     #     table_name,
     #     worksheet_name
@@ -431,7 +426,7 @@ if __name__ == "__main__":
 
     # sp_client.append_row(data, password="yo password here")
 
-    ''' Uploading a file to a sharepoint site example: '''
+    """ Uploading a file to a sharepoint site example: """
     # site_path        = "/sites/ps360-metrics-share"
     # document_library = "Documents"
     # local_path       = "/home/ubuntu/Repos/testing/lol.xlsx"
@@ -440,21 +435,28 @@ if __name__ == "__main__":
     # sp_client = GraphAPI(site_path, document_library)
     # sp_client.upload_file(local_path, dest_folder)
 
-    '''Downloading Sharepoint excel example:'''
+    """Downloading Sharepoint excel example:"""
     # site_path        = "/sites/ps360-metrics-share"
     # document_library = "Documents"
     # file_path        = 'Philly Stat - Law/rtk_requests.xlsx'
-    # save_path        = "haha.xlsx" 
+    # save_path        = "haha.xlsx"
     # sp_client = GraphAPI(site_path, document_library)
 
     # sp_client.get_sharepoint_content(file_path, save_path)
 
+    """Extracting from Microsoft Lists"""
+    site_path = "/sites/ps360-metrics-share"
+    list_name = "testing_lists"
+    sp_client = GraphAPI(site_path, list_name=list_name)
 
-    '''Extracting from Microsoft Lists'''
-    site_path        = "/sites/ps360-metrics-share"
-    list_name        = "testing_lists"
-    sp_client        = GraphAPI(site_path, list_name=list_name)
-
-    extract_cols     = ["text_col", "choice_col", "date_col", "mult_line_col", "yes_no_col", "location_col", "image_col"] 
-    raw_items        = list(sp_client.get_list_content(extract_cols))
+    extract_cols = [
+        "text_col",
+        "choice_col",
+        "date_col",
+        "mult_line_col",
+        "yes_no_col",
+        "location_col",
+        "image_col",
+    ]
+    raw_items = list(sp_client.get_list_content(extract_cols))
     print(raw_items)
