@@ -1,18 +1,13 @@
 # list.py
+import string
 from collections.abc import Iterator
-
-from graph_api_functions.client import GraphAPIClient, _URLResolver
-from graph_api_functions.models import (
-    HTTPMethod,
-    GraphAPIResponse,
-    SharePointListRow,
-)
-from graph_api_functions.constants import HOST_NAME
-
 from enum import StrEnum
 from typing import Any
 
-import string
+from graph_api_functions.client import GraphAPIClient, _URLResolver
+from graph_api_functions.constants import HOST_NAME
+from graph_api_functions.models import (GraphAPIResponse, HTTPMethod,
+                                        SharePointListRow)
 
 
 class ListEndpoints(StrEnum):

@@ -1,7 +1,8 @@
+from unittest.mock import MagicMock
+
 import pytest
 
 from graph_api_functions.client import _URLResolver
-from unittest.mock import MagicMock
 
 
 def test_get_site_id_returns_str(configured_client, monkeypatch):

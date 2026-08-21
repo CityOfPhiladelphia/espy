@@ -1,9 +1,10 @@
+from collections.abc import Iterator
+from unittest.mock import MagicMock
+
 import pytest
 
-from collections.abc import Iterator
 from graph_api_functions.list import SharePointList
 from graph_api_functions.models import GraphAPIResponse
-from unittest.mock import MagicMock
 
 
 @pytest.fixture

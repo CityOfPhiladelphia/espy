@@ -1,8 +1,9 @@
 # tests/unit/test_client.py
-import pytest
-
 from enum import StrEnum
 from unittest.mock import MagicMock
+
+import pytest
+
 from graph_api_functions.models import HTTPMethod, UnsupportedMethodError
 
 
