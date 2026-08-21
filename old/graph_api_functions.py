@@ -1,14 +1,7 @@
-import csv
-import io
-import os
-from io import BytesIO
-from typing import List
 
 import citygeo_secrets as cgs
 import httpx
-import psycopg2
 from azure.identity import ClientSecretCredential
-from openpyxl import load_workbook
 
 GRAPH_APP = "AppReg: CityGeo-Databridge-Updates (All Fields)"
 GRAPH_URL = "https://graph.microsoft.com/v1.0"

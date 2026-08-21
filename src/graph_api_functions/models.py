@@ -1,9 +1,15 @@
-import ast
 from enum import StrEnum
-from typing import Any, List, Optional, Protocol
+from typing import Any, Protocol
 
-from pydantic import (BaseModel, ConfigDict, DirectoryPath, Field, HttpUrl,
-                      JsonValue, RootModel)
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    DirectoryPath,
+    Field,
+    HttpUrl,
+    JsonValue,
+    RootModel,
+)
 
 
 ## Enums
@@ -47,9 +53,9 @@ class DynamicGraphNode(RootModel[JsonValue]):
 
 class GraphAPIResponse[T](BaseModel):
     # OData metadata context link
-    odata_context: Optional[str] = Field(None, alias="@odata.context")
-    next_link: Optional[str] = Field(None, alias="@odata.nextLink")
-    value: List[T]
+    odata_context: str | None = Field(None, alias="@odata.context")
+    next_link: str | None = Field(None, alias="@odata.nextLink")
+    value: list[T]
     model_config = ConfigDict(populate_by_name=True)
 
 

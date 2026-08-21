@@ -6,8 +6,11 @@ from typing import Any
 
 from graph_api_functions.client import GraphAPIClient, _URLResolver
 from graph_api_functions.constants import HOST_NAME
-from graph_api_functions.models import (GraphAPIResponse, HTTPMethod,
-                                        SharePointListRow)
+from graph_api_functions.models import (
+    GraphAPIResponse,
+    HTTPMethod,
+    SharePointListRow,
+)
 
 
 class ListEndpoints(StrEnum):

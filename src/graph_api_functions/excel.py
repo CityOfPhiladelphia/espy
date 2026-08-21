@@ -3,7 +3,7 @@ from typing import Any
 
 from graph_api_functions.client import GraphAPIClient, _URLResolver
 from graph_api_functions.constants import GRAPH_URL
-from graph_api_functions.models import SharePointSiteInfo, SharePointURL
+from graph_api_functions.models import SharePointURL
 
 
 class ExcelWorksheet:
