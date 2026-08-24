@@ -8,13 +8,12 @@ from graph_api_functions.constants import GRAPH_APP, SCOPE
 from graph_api_functions.models import HTTPMethod, UnsupportedMethodError
 
 class ClientEndpoints(StrEnum):
-    ...
-    # TODO: Move site id, drive id
+    SITE_ID = "{GRAPH_URL}/sites/{hostname}:{site_path}"
 
-    # SITE_ID =
-    # DRIVE_ID = 
+    DRIVE_ID = "{GRAPH_URL}/drives/{site_id}"
 
 class GraphAPIClient:
+    #TODO: Function that gets id information from ClientEndpoints
     def __init__(self, credential: ClientSecretCredential):
         self.credential = credential
 
