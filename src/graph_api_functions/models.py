@@ -6,11 +6,8 @@ from pydantic import (
     ConfigDict,
     DirectoryPath,
     Field,
-    HttpUrl,
-    JsonValue,
-    RootModel,
+    HttpUrl
 )
-
 
 ## Enums
 class HTTPMethod(StrEnum):
@@ -55,8 +52,18 @@ class GraphAPIResponse[T](BaseModel):
     value: list[T]
     model_config = ConfigDict(populate_by_name=True)
 
-
 class SharePointListRow(BaseModel):
     fields: dict = Field(default_factory=dict)
 
-
+class SharePointListColumn(BaseModel):
+    column_group: str = Field(alias="columnGroup")
+    description: str | None = Field(None)
+    display_name: str = Field(alias="displayName")
+    enforce_unique_values: bool = Field(alias="enforceUniqueValues")
+    hidden: bool
+    id: str
+    indexed: bool
+    name: str
+    readOnly: bool
+    required: bool
+    text: dict

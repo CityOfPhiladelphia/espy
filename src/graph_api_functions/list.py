@@ -3,15 +3,16 @@ from collections.abc import Iterator
 from enum import StrEnum
 from typing import Any
 
-from graph_api_functions.client import GraphAPIClient
+from graph_api_functions.client import GraphAPIClient, ClientEndpoints
 #TODO: Make host name a variable, not a constant. Edit in optional config file?
-from graph_api_functions.constants import HOST_NAME
+from graph_api_functions.constants import HOST_NAME, GRAPH_URL
 from graph_api_functions.models import (
     GraphAPIResponse,
     HTTPMethod,
     SharePointListRow,
+    SharePointListColumn,
 )
-from graph_api_functions.urls import _URLResolver, build_url
+from graph_api_functions.urls import build_url
 
 
 class ListEndpoints(StrEnum):
@@ -19,19 +20,21 @@ class ListEndpoints(StrEnum):
     An endpoint registry for all API operations made by the SharePointList
     class.
     """
-    LIST_ROWS = ("https://graph.microsoft.com/v1.0/sites/"
+    LIST_ID = ("{GRAPH_URL}/sites/{site_id}/lists/{list_name}")
+
+    LIST_ROWS = ("{GRAPH_URL}/sites/"
                  "{site_id}/lists/{list_id}/items?")
 
-    LIST_COLUMNS = ("https://graph.microsoft.com/v1.0/sites/"
+    LIST_COLUMNS = ("{GRAPH_URL}/sites/"
                     "{site_id}/lists/{list_id}/columns?")
 
     GET_ROW = (
-        "https://graph.microsoft.com/v1.0/sites/"
+        "{GRAPH_URL}/sites/"
         "{site_id}/lists/{list_id}/items/{row_id}?$expand=fields"
     )
 
-    CREATE_ROW = (
-        "/sites/{site_id}/lists/{list_id}/items"
+    ADD_ROW = (
+        "{GRAPH_URL}/sites/{site_id}/lists/{list_id}/items"
     )
 
 
@@ -53,8 +56,24 @@ class SharePointList:
         """
         # TODO: New method to get site and list ID
         client = GraphAPIClient.authenticate()
-        site_id = _URLResolver.get_site_id(client, HOST_NAME, site_path)
-        list_id = _URLResolver.get_list_id(client, site_id, list_name)
+
+        site_id_url = build_url(
+              ClientEndpoints.SITE_ID, 
+              GRAPH_URL=GRAPH_URL, 
+              hostname=HOST_NAME, 
+              site_path=site_path
+              )
+
+        site_id = client.make_request("GET", site_id_url)["id"]
+
+        list_id_url = build_url(
+              ListEndpoints.LIST_ID,
+              GRAPH_URL=GRAPH_URL,
+              site_id=site_id,
+              list_name=list_name
+        )
+
+        list_id = client.make_request("GET", list_id_url)["id"]
 
         return cls(client, site_id, list_id)
 
@@ -71,6 +90,7 @@ class SharePointList:
         
         row_url = build_url(
             ListEndpoints.GET_ROW,
+            GRAPH_URL=GRAPH_URL,
             site_id=self.site_id,
             list_id=self.list_id,
             row_id=row_id,
@@ -86,11 +106,14 @@ class SharePointList:
     def list_columns(self) -> dict:
         columns_url = build_url(
             ListEndpoints.LIST_COLUMNS,
+            GRAPH_URL=GRAPH_URL,
             site_id=self.site_id,
             list_id=self.list_id,
         )
 
         raw_columns_data = self.client.make_request(HTTPMethod.GET, columns_url)
+
+        response_envelope = GraphAPIClient[SharePointListColumn]
 
         return raw_columns_data
 
@@ -112,7 +135,10 @@ class SharePointList:
 
     def list_rows(self) -> Iterator[dict]:
         next_link = build_url(
-            ListEndpoints.LIST_ROWS, site_id=self.site_id, list_id=self.list_id
+            ListEndpoints.LIST_ROWS,
+            GRAPH_URL=GRAPH_URL,
+            site_id=self.site_id, 
+            list_id=self.list_id
         )
 
         params: dict | None = {"expand": "fields", "list": "fields"}
@@ -128,7 +154,12 @@ class SharePointList:
                 yield row.model_dump()
 
     def add_row(self, data: dict[str, Any]) -> dict[str, Any]:
-        pass
+        add_row_url = build_url(ListEndpoints.ADD_ROW, GRAPH_URL=GRAPH_URL)
+
+        response = self.client.make_request(
+            "POST", add_row_url)
+
+        print(response)
 
     def edit_row(self, row_id: str, data: dict[str, Any]) -> dict[str, Any]: ...
 
