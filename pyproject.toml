@@ -3,14 +3,14 @@ name = "graph-api-functions"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 dependencies = [
     "azure-identity>=1.25.3",
     "citygeo-secrets",
     "httpx>=0.28.1",
     "openpyxl>=3.1.5",
     "psycopg2>=2.9.12",
-    "pydantic>=2.13.4",
+    "pydantic[email]>=2.13.4",
 ]
 
 [build-system]
@@ -23,6 +23,9 @@ citygeo-secrets = { git = "https://github.com/CityOfPhiladelphia/citygeo_secrets
 [tool.uv]
 default-groups = []
 
+[tool.ruff]
+line-length = 80
+
 [tool.mypy]
 explicit_package_bases = true
 ignore_missing_imports = true
@@ -30,6 +33,7 @@ ignore_missing_imports = true
 [dependency-groups]
 dev = [
     "ipython>=9.16.1",
+    "isort>=8.0.1",
     "mypy>=2.3.1",
     "pip>=26.2.1",
     "pytest>=9.1.1",

@@ -1,19 +1,24 @@
 # tests/unit/test_client.py
-import pytest 
-
 from enum import StrEnum
 from unittest.mock import MagicMock
+
+import pytest
+
 from graph_api_functions.models import HTTPMethod, UnsupportedMethodError
+
 
 def test_get_headers_constructs_valid_header_dict(configured_client):
     headers = configured_client._get_headers()
 
     assert headers == {
         "Authorization": "Bearer mock-token",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
     }
 
-def test_execute_request_invokes_correct_function(configured_client, monkeypatch):
+
+def test_execute_request_invokes_correct_function(
+    configured_client, monkeypatch
+):
     mock_utility = MagicMock(return_value="Mocked Output")
 
     monkeypatch.setattr("graph_api_functions.client.httpx.get", mock_utility)
@@ -24,11 +29,13 @@ def test_execute_request_invokes_correct_function(configured_client, monkeypatch
 
     assert response == "Mocked Output"
 
+
 def test_unpack_response_returns_json(configured_client):
     mock_response = MagicMock()
     mock_response.json.return_value = {"status": "success", "code": 200}
 
     assert isinstance(configured_client._unpack_response(mock_response), dict)
+
 
 def test_execute_request_returns_error_with_wrong_method(configured_client):
 
@@ -36,4 +43,6 @@ def test_execute_request_returns_error_with_wrong_method(configured_client):
         MOCK_METHOD = "mock_method"
 
     with pytest.raises(UnsupportedMethodError):
-        configured_client._execute_request(MockHTTPMethod.MOCK_METHOD, "TEST_ENDPOINT")
+        configured_client._execute_request(
+            MockHTTPMethod.MOCK_METHOD, "TEST_ENDPOINT"
+        )
