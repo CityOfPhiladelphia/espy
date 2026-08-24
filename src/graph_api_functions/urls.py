@@ -7,6 +7,7 @@ import string
 from graph_api_functions.models import HTTPMethod
 
 
+#TODO: Add data typing to this that avoids circular import, maybe add a blank class or protocol
 def build_url(url, **kwargs) -> str:
     """
     Given a GraphAPI endpoint template, builds the actual URL to request
