@@ -48,9 +48,6 @@ class TabularStorage(Protocol):
 
 
 ## API Response Classes
-class DynamicGraphNode(RootModel[JsonValue]):
-    pass
-
 class GraphAPIResponse[T](BaseModel):
     # OData metadata context link
     odata_context: str | None = Field(None, alias="@odata.context")

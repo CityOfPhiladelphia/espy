@@ -14,9 +14,15 @@ from graph_api_functions.models import (
 
 
 class ListEndpoints(StrEnum):
-    LIST_ROWS = "https://graph.microsoft.com/v1.0/sites/{site_id}/lists/{list_id}/items?"
+    """
+    An endpoint registry for all API operations made by the SharePointList
+    class.
+    """
+    LIST_ROWS = ("https://graph.microsoft.com/v1.0/sites/"
+                 "{site_id}/lists/{list_id}/items?")
 
-    LIST_COLUMNS = "https://graph.microsoft.com/v1.0/sites/{site_id}/lists/{list_id}/columns?"
+    LIST_COLUMNS = ("https://graph.microsoft.com/v1.0/sites/"
+                    "{site_id}/lists/{list_id}/columns?")
 
     GET_ROW = (
         "https://graph.microsoft.com/v1.0/sites/"
@@ -24,10 +30,19 @@ class ListEndpoints(StrEnum):
     )
 
 
-def build_url(url: ListEndpoints, **kwargs):
+def build_url(url: ListEndpoints, **kwargs) -> str:
     """
     Given a GraphAPI endpoint template, builds the actual URL to request
     against. Returns an error if keys are missing.
+
+    Args:
+        url: ListEndpoints, A ListEndpoints enum object. 
+            Must be a valid endpoint, with placeholders.
+        **kwargs: Key word arguments that fill out the templated values contained
+        in url.
+    
+    Returns:
+        str, a formatted string
     """
 
     # get all placeholder fields in the string
@@ -55,6 +70,14 @@ class SharePointList:
 
     @classmethod
     def get_list(cls, site_path: str, list_name: str):
+        """
+        Authenticates and fetches the ids needed to create the SharePointList
+        object.
+
+        Args:
+            site_path: str, the site path of the SharePoint list.
+            list_name: str, the name of the SharePoint list.
+        """
         client = GraphAPIClient.authenticate()
         site_id = _URLResolver.get_site_id(client, HOST_NAME, site_path)
         list_id = _URLResolver.get_list_id(client, site_id, list_name)
@@ -62,6 +85,16 @@ class SharePointList:
         return cls(client, site_id, list_id)
 
     def get_row(self, row_id: str) -> dict[str, Any]:
+        """
+        Get a single row from a list.
+        
+        Args:
+            row_id: The id of the row to return
+
+        Returns:
+            dict: A dictionary with row data
+        """
+        
         row_url = build_url(
             ListEndpoints.GET_ROW,
             site_id=self.site_id,
@@ -72,6 +105,9 @@ class SharePointList:
         raw_row_data = self.client.make_request(HTTPMethod.GET, row_url)
 
         return raw_row_data
+        # validated_row_data = SharePointListRow(raw_row_data)
+
+        # return validated_row_data.model_dump()
 
     def list_columns(self) -> dict:
         columns_url = build_url(

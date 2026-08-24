@@ -38,6 +38,9 @@ def mocked_single_page_data() -> dict:
 
     return mock_page_data
 
+@pytest.fixture
+def mocked_row_data() -> dict:
+    ...
 
 def test_fetch_page_returns_graph_api_response(
     configured_test_list, mocked_single_page_data, monkeypatch
@@ -91,3 +94,18 @@ def test_list_page_yields_dict(
 
     with pytest.raises(StopIteration):
         next(result)
+
+def test_get_row_yields_dict(
+        configured_test_list,
+        monkeypatch,
+    ):
+
+    mock_response = MagicMock()
+    mock_response.return_value = mocked_single_page_data
+
+    monkeypatch.setattr(
+            "graph_api_functions.list.GraphAPIClient.make_request", mock_response
+        )
+
+    result = configured_test_list.get_row("1")
+    
