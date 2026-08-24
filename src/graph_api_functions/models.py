@@ -66,4 +66,3 @@ class SharePointListColumn(BaseModel):
     name: str
     readOnly: bool
     required: bool
-    text: dict

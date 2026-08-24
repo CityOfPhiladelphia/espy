@@ -20,21 +20,21 @@ class ListEndpoints(StrEnum):
     An endpoint registry for all API operations made by the SharePointList
     class.
     """
-    LIST_ID = ("{GRAPH_URL}/sites/{site_id}/lists/{list_name}")
+    LIST_ID = ("{graph_url}/sites/{site_id}/lists/{list_name}")
 
-    LIST_ROWS = ("{GRAPH_URL}/sites/"
+    LIST_ROWS = ("{graph_url}/sites/"
                  "{site_id}/lists/{list_id}/items?")
 
-    LIST_COLUMNS = ("{GRAPH_URL}/sites/"
+    LIST_COLUMNS = ("{graph_url}/sites/"
                     "{site_id}/lists/{list_id}/columns?")
 
     GET_ROW = (
-        "{GRAPH_URL}/sites/"
+        "{graph_url}/sites/"
         "{site_id}/lists/{list_id}/items/{row_id}?$expand=fields"
     )
 
     ADD_ROW = (
-        "{GRAPH_URL}/sites/{site_id}/lists/{list_id}/items"
+        "{graph_url}/sites/{site_id}/lists/{list_id}/items"
     )
 
 
@@ -43,6 +43,7 @@ class SharePointList:
         self.client = client
         self.site_id = site_id
         self.list_id = list_id
+        self._column_mapping = None
 
     @classmethod
     def get_list(cls, site_path: str, list_name: str):
@@ -59,7 +60,7 @@ class SharePointList:
 
         site_id_url = build_url(
               ClientEndpoints.SITE_ID, 
-              GRAPH_URL=GRAPH_URL, 
+              graph_url=GRAPH_URL, 
               hostname=HOST_NAME, 
               site_path=site_path
               )
@@ -68,7 +69,7 @@ class SharePointList:
 
         list_id_url = build_url(
               ListEndpoints.LIST_ID,
-              GRAPH_URL=GRAPH_URL,
+              graph_url=GRAPH_URL,
               site_id=site_id,
               list_name=list_name
         )
@@ -90,7 +91,7 @@ class SharePointList:
         
         row_url = build_url(
             ListEndpoints.GET_ROW,
-            GRAPH_URL=GRAPH_URL,
+            graph_url=GRAPH_URL,
             site_id=self.site_id,
             list_id=self.list_id,
             row_id=row_id,
@@ -103,19 +104,38 @@ class SharePointList:
 
         # return validated_row_data.model_dump()
 
-    def list_columns(self) -> dict:
+    def list_columns(self) -> list:
         columns_url = build_url(
             ListEndpoints.LIST_COLUMNS,
-            GRAPH_URL=GRAPH_URL,
+            graph_url=GRAPH_URL,
             site_id=self.site_id,
             list_id=self.list_id,
         )
 
         raw_columns_data = self.client.make_request(HTTPMethod.GET, columns_url)
 
-        response_envelope = GraphAPIClient[SharePointListColumn]
+        response_envelope = GraphAPIResponse[SharePointListColumn]\
+           .model_validate(raw_columns_data)
 
-        return raw_columns_data
+        return [column for column in response_envelope.model_dump()["value"]]
+
+    def _get_column_mapping(self) -> dict[str, str]:
+        """
+        Gets a column mapping for the list mapping the column's user-visible
+        name to the column's real name in the graph API.
+        """
+
+        column_mapping = {}
+
+        columns = self.list_columns()
+
+        for column in columns:
+            column_mapping[column["display_name"]] = column["name"]
+
+        self._column_mapping = column_mapping
+        
+        return column_mapping
+
 
     def _fetch_page(
         self, url: str | None, params
@@ -136,7 +156,7 @@ class SharePointList:
     def list_rows(self) -> Iterator[dict]:
         next_link = build_url(
             ListEndpoints.LIST_ROWS,
-            GRAPH_URL=GRAPH_URL,
+            graph_url=GRAPH_URL,
             site_id=self.site_id, 
             list_id=self.list_id
         )
@@ -154,7 +174,7 @@ class SharePointList:
                 yield row.model_dump()
 
     def add_row(self, data: dict[str, Any]) -> dict[str, Any]:
-        add_row_url = build_url(ListEndpoints.ADD_ROW, GRAPH_URL=GRAPH_URL)
+        add_row_url = build_url(ListEndpoints.ADD_ROW, graph_url=GRAPH_URL)
 
         response = self.client.make_request(
             "POST", add_row_url)

@@ -8,9 +8,9 @@ from graph_api_functions.constants import GRAPH_APP, SCOPE
 from graph_api_functions.models import HTTPMethod, UnsupportedMethodError
 
 class ClientEndpoints(StrEnum):
-    SITE_ID = "{GRAPH_URL}/sites/{hostname}:{site_path}"
+    SITE_ID = "{graph_url}/sites/{hostname}:{site_path}"
 
-    DRIVE_ID = "{GRAPH_URL}/drives/{site_id}"
+    DRIVE_ID = "{graph_url}/drives/{site_id}"
 
 class GraphAPIClient:
     #TODO: Function that gets id information from ClientEndpoints
