@@ -1,14 +1,14 @@
 from graph_api_functions.client import GraphAPIClient, ClientEndpoints
 from graph_api_functions.constants import GRAPH_URL
-from graph_api_functions.list import ListEndpoints
 
 
 import string
 
 from graph_api_functions.models import HTTPMethod
+from enum import StrEnum
 
-
-def build_url(url: ListEndpoints, **kwargs) -> str:
+#TODO: Add data typing to this that avoids circular import, maybe add a blank class or protocol
+def build_url(url: StrEnum, **kwargs) -> str:
     """
     Given a GraphAPI endpoint template, builds the actual URL to request
     against. Returns an error if keys are missing.
