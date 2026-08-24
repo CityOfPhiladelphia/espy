@@ -1,9 +1,10 @@
 # excel.py
 from typing import Any
 
-from graph_api_functions.client import GraphAPIClient, _URLResolver
+from graph_api_functions.client import GraphAPIClient
 from graph_api_functions.constants import GRAPH_URL
 from graph_api_functions.models import SharePointURL
+from graph_api_functions.urls import _URLResolver
 
 
 class ExcelWorksheet:

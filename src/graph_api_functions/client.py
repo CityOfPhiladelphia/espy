@@ -2,10 +2,17 @@
 import citygeo_secrets as cgs
 import httpx
 from azure.identity import ClientSecretCredential
+from enum import StrEnum
 
-from graph_api_functions.constants import GRAPH_APP, GRAPH_URL, SCOPE
+from graph_api_functions.constants import GRAPH_APP, SCOPE
 from graph_api_functions.models import HTTPMethod, UnsupportedMethodError
 
+class ClientEndpoints(StrEnum):
+    ...
+    # TODO: Move site id, drive id
+
+    # SITE_ID =
+    # DRIVE_ID = 
 
 class GraphAPIClient:
     def __init__(self, credential: ClientSecretCredential):
@@ -124,143 +131,3 @@ class GraphAPIClient:
         return self._unpack_response(response)
 
 
-class _UrlConstructor:
-    """
-    A class containing static methods to format URLs
-    in the shape needed for the SharePoint API
-    """
-
-    @staticmethod
-    def site_id_url(hostname: str, site_path) -> str:
-        url = f"{GRAPH_URL}/sites/{hostname}:{site_path}"
-
-        return url
-
-    @staticmethod
-    def drive_id_url(site_id: str) -> str:
-        url = f"{GRAPH_URL}/drives/{site_id}"
-
-        return url
-
-    @staticmethod
-    def workbook_id_url(drive_id: str, workbook_path: str) -> str:
-        url = f"{GRAPH_URL}/drives/{drive_id}/root:/{workbook_path}"
-
-        return url
-
-    @staticmethod
-    def list_id_url(site_id: str, list_name: str) -> str:
-
-        url = f"{GRAPH_URL}/sites/{site_id}/lists/{list_name}"
-
-        return url
-
-    @staticmethod
-    def list_url(site_id: str, list_id: str) -> str:
-
-        url = f"{GRAPH_URL}/sites/{site_id}/lists/{list_id}/items"
-
-        return url
-
-
-class _URLResolver:
-    """
-    A class that returns SharePointGraph API object ids.
-
-    Args:
-        client: A Microsoft GraphAPIClient instance
-    """
-
-    @staticmethod
-    def get_site_id(
-        client: GraphAPIClient, hostname: str, site_path: str
-    ) -> str:
-        """
-        Grabs the site_id of the SharePoint site specified by site_path.
-        """
-        site_id_url = _UrlConstructor.site_id_url(hostname, site_path)
-
-        data = client.make_request(HTTPMethod.GET, site_id_url)
-
-        return data["id"]
-
-    @staticmethod
-    def get_drive_id(
-        client: GraphAPIClient, site_id: str, document_library: str
-    ) -> str:
-        """
-        Gets the id of the document library drive.
-        Searches through all available drives until it finds the one specified
-        by the document_library attribute.
-
-        Args:
-            site_id(str): the id of the sharepoint site
-            document_library(str): the name of the document library you want to access
-
-        Returns:
-            str: The id of the drive
-
-        Throws Error if library is not found
-        """
-
-        drive_url = _UrlConstructor.drive_id_url(site_id)
-
-        drives_response = client.make_request(HTTPMethod.GET, drive_url)
-
-        drives = drives_response["value"]
-
-        result = next(
-            (
-                drive
-                for drive in drives
-                if drive.get("name") == document_library
-            ),
-            None,
-        )
-
-        if result:
-            return result["id"]
-
-        raise RuntimeError(f"Document library '{document_library}' not found.")
-
-    @staticmethod
-    def get_workbook_id(
-        client: GraphAPIClient, drive_id: str, workbook_path: str
-    ) -> str:
-        """
-        Gets the id of the workbook for the specified workbook_path
-
-        Args:
-        drive_id(str): the id of the document drive that holds the workbook
-        workbook_path(str): the path to the workbook
-
-        Returns:
-        str: the id of the workbook
-        """
-
-        workbook_url = _UrlConstructor.workbook_id_url(drive_id, workbook_path)
-
-        data = client.make_request(HTTPMethod.GET, workbook_url)
-
-        return data["id"]
-
-    @staticmethod
-    def get_list_id(
-        client: GraphAPIClient, site_id: str, list_name: str
-    ) -> str:
-        """
-        Gets the list id based on the title of the list.
-
-        Args:
-            site_id(str): The id of the sharepoint site
-            list_name(str): The name of the list
-
-        Returns:
-            str: the id of the list
-        """
-
-        list_url = _UrlConstructor.list_id_url(site_id, list_name)
-
-        data = client.make_request(HTTPMethod.GET, list_url)
-
-        return data["id"]

@@ -1,16 +1,17 @@
 # list.py
-import string
 from collections.abc import Iterator
 from enum import StrEnum
 from typing import Any
 
-from graph_api_functions.client import GraphAPIClient, _URLResolver
+from graph_api_functions.client import GraphAPIClient
+#TODO: Make host name a variable, not a constant. Edit in optional config file?
 from graph_api_functions.constants import HOST_NAME
 from graph_api_functions.models import (
     GraphAPIResponse,
     HTTPMethod,
     SharePointListRow,
 )
+from graph_api_functions.urls import _URLResolver, build_url
 
 
 class ListEndpoints(StrEnum):
@@ -29,37 +30,9 @@ class ListEndpoints(StrEnum):
         "{site_id}/lists/{list_id}/items/{row_id}?$expand=fields"
     )
 
-
-def build_url(url: ListEndpoints, **kwargs) -> str:
-    """
-    Given a GraphAPI endpoint template, builds the actual URL to request
-    against. Returns an error if keys are missing.
-
-    Args:
-        url: ListEndpoints, A ListEndpoints enum object. 
-            Must be a valid endpoint, with placeholders.
-        **kwargs: Key word arguments that fill out the templated values contained
-        in url.
-    
-    Returns:
-        str, a formatted string
-    """
-
-    # get all placeholder fields in the string
-    fields = {
-        field for _, field, _, _ in string.Formatter().parse(url) if field
-    }
-
-    # If the caller has forgotten a field, raise an error
-    missing_fields = fields - kwargs.keys()
-
-    if missing_fields:
-        raise KeyError(
-            f"The following fields are missing: {', '.join(missing_fields)}"
-        )
-
-    # Return url with correct keyword arguments passed in
-    return url.format(**kwargs)
+    CREATE_ROW = (
+        "/sites/{site_id}/lists/{list_id}/items"
+    )
 
 
 class SharePointList:
@@ -78,6 +51,7 @@ class SharePointList:
             site_path: str, the site path of the SharePoint list.
             list_name: str, the name of the SharePoint list.
         """
+        # TODO: New method to get site and list ID
         client = GraphAPIClient.authenticate()
         site_id = _URLResolver.get_site_id(client, HOST_NAME, site_path)
         list_id = _URLResolver.get_list_id(client, site_id, list_name)
@@ -153,7 +127,8 @@ class SharePointList:
             for row in response_envelope.value:
                 yield row.model_dump()
 
-    def add_row(self, data: dict[str, Any]) -> dict[str, Any]: ...
+    def add_row(self, data: dict[str, Any]) -> dict[str, Any]:
+        pass
 
     def edit_row(self, row_id: str, data: dict[str, Any]) -> dict[str, Any]: ...
 
