@@ -1,6 +1,5 @@
 from graph_api_functions.client import GraphAPIClient, ClientEndpoints
 from graph_api_functions.constants import GRAPH_URL
-from graph_api_functions.list import ListEndpoints
 
 
 import string
@@ -8,7 +7,7 @@ import string
 from graph_api_functions.models import HTTPMethod
 
 
-def build_url(url: ListEndpoints, **kwargs) -> str:
+def build_url(url, **kwargs) -> str:
     """
     Given a GraphAPI endpoint template, builds the actual URL to request
     against. Returns an error if keys are missing.
