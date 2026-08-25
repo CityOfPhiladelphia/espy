@@ -37,7 +37,7 @@ class GraphAPILimitationError(Exception):
 # ========= Microsoft Column Classes ===========
 
 
-class SharePointListColumntype(BaseModel):
+class SharePointListColumnType(BaseModel):
     """A parent class for Share Point List Columns. Converts attributes
     named in Share Point's camel case to pythonic snake case.
 
@@ -51,7 +51,7 @@ class SharePointListColumntype(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
 
-class BooleanColumn(SharePointListColumntype):
+class BooleanColumn(SharePointListColumnType):
     """Boolean column type. Currently empty, per MS documentation.
 
     Args:
@@ -61,7 +61,7 @@ class BooleanColumn(SharePointListColumntype):
     ...
 
 
-class CalculatedColumn(SharePointListColumntype):
+class CalculatedColumn(SharePointListColumnType):
     """Calculated column type.
 
     Args:
@@ -73,7 +73,7 @@ class CalculatedColumn(SharePointListColumntype):
     output_type: str | None = Field(None)
 
 
-class ChoiceColumn(SharePointListColumntype):
+class ChoiceColumn(SharePointListColumnType):
     """Choice column type.
 
     Args:
@@ -85,7 +85,7 @@ class ChoiceColumn(SharePointListColumntype):
     display_as: str | None = Field(None)
 
 
-class ContentApprovalStatusColumn(SharePointListColumntype):
+class ContentApprovalStatusColumn(SharePointListColumnType):
     """Content Approval Status column type.
 
     Args:
@@ -94,7 +94,7 @@ class ContentApprovalStatusColumn(SharePointListColumntype):
     """
 
 
-class CurrencyColumn(SharePointListColumntype):
+class CurrencyColumn(SharePointListColumnType):
     """Currency column type.
 
     Args:
@@ -104,7 +104,7 @@ class CurrencyColumn(SharePointListColumntype):
     locale: str | None = Field(None)
 
 
-class DateTimeColumn(SharePointListColumntype):
+class DateTimeColumn(SharePointListColumnType):
     """Datetime column type.
 
     Args:
@@ -115,7 +115,7 @@ class DateTimeColumn(SharePointListColumntype):
     format: str | None = Field(None)
 
 
-class LookupColumn(SharePointListColumntype):
+class LookupColumn(SharePointListColumnType):
     """Lookup column type.
 
     Args:
@@ -129,7 +129,7 @@ class LookupColumn(SharePointListColumntype):
     primary_lookup_column_id: str | None = Field(None)
 
 
-class NumberColumn(SharePointListColumntype):
+class NumberColumn(SharePointListColumnType):
     """Number column type.
 
     Args:
@@ -145,7 +145,7 @@ class NumberColumn(SharePointListColumntype):
     minimum: float | None = Field(None)
 
 
-class PersonOrGroupColumn(SharePointListColumntype):
+class PersonOrGroupColumn(SharePointListColumnType):
     """Person or Group column type.
 
     Args:
@@ -157,7 +157,7 @@ class PersonOrGroupColumn(SharePointListColumntype):
     display_as: str | None = Field(None)
 
 
-class TermColumn(SharePointListColumntype):
+class TermColumn(SharePointListColumnType):
     """Term column type.
 
     Args:
@@ -168,7 +168,7 @@ class TermColumn(SharePointListColumntype):
     show_fully_qualified_name: bool | None = Field(None)
 
 
-class TextColumn(SharePointListColumntype):
+class TextColumn(SharePointListColumnType):
     """Text column type.
 
     Args:
@@ -182,7 +182,7 @@ class TextColumn(SharePointListColumntype):
     text_type: str | None = Field(None)
 
 
-class ThumbnailColumn(SharePointListColumntype):
+class ThumbnailColumn(SharePointListColumnType):
     """Thumbnail column type. Currently empty, per MS documentation.
 
     Args:
@@ -192,7 +192,7 @@ class ThumbnailColumn(SharePointListColumntype):
     ...
 
 
-class GeolocationColumn(SharePointListColumntype):
+class GeolocationColumn(SharePointListColumnType):
     """Geolocation column type. Currently empty, per MS documentation.
     The GraphAPI currently does not allow data of this type to be added
     or edited with the Graph API.
@@ -204,7 +204,7 @@ class GeolocationColumn(SharePointListColumntype):
     ...
 
 
-class HyperlinkOrPictureColumn(SharePointListColumntype):
+class HyperlinkOrPictureColumn(SharePointListColumnType):
     """Hyperlink or Picture column type. Currently empty, per MS documentation.
     The GraphAPI currently does not allow data of this type to be added
     or edited with the Graph API.
