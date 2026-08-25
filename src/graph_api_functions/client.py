@@ -1,15 +1,11 @@
 # client.py
-from enum import StrEnum
-
 import citygeo_secrets as cgs
 import httpx
 from azure.identity import ClientSecretCredential
+from enum import StrEnum
 
-from graph_api_functions.constants import GRAPH_APP, SCOPE, GRAPH_URL
-from graph_api_functions.models import HTTPMethod, UnsupportedMethodError
-from graph_api_functions.urls import build_url
-from graph_api_functions.models import HTTPMethod
-
+from graph_api_functions.constants import GRAPH_APP, SCOPE
+from graph_api_functions.models.models import HTTPMethod, UnsupportedMethodError
 
 class ClientEndpoints(StrEnum):
     SITE_ID = "{graph_url}/sites/{hostname}:{site_path}"
@@ -17,6 +13,7 @@ class ClientEndpoints(StrEnum):
     DRIVE_ID = "{graph_url}/drives/{site_id}"
 
 class GraphAPIClient:
+    #TODO: Function that gets id information from ClientEndpoints
     def __init__(self, credential: ClientSecretCredential):
         self.credential = credential
 
@@ -52,7 +49,7 @@ class GraphAPIClient:
 
         return {
             "Authorization": f"Bearer {token.token}",
-            "Content-Type": "application/json",
+            "Content-Type": "application/json"
         }
 
     def _execute_request(
@@ -109,6 +106,7 @@ class GraphAPIClient:
 
         return response.json()
 
+    # TODO: Does this need to be 3 functions?
     def make_request(self, method: HTTPMethod, endpoint: str, **kwargs) -> dict:
         """
         Public method.
@@ -126,37 +124,15 @@ class GraphAPIClient:
             dict: dictionary of the httpx response
         """
 
-        try:
+        try: 
             response = self._execute_request(
                 method=method, endpoint=endpoint, **kwargs
             )
 
-    def get_site_id(self, hostname:str, site_path:str)-> str:
-        site_id_url = build_url(
-                    ClientEndpoints.SITE_ID,
-                    graph_url=GRAPH_URL,
-                    hostname=hostname,
-                    site_path=site_path,
-                )
+        except httpx.HTTPStatusError as exc:
+            print("Status:", exc.response.status_code)
+            print("Response Body:", exc.response.status_code)
 
-        response = self.make_request(HTTPMethod.GET, site_id_url)
-
-        return response["id"]
-
-    def get_drive_id(self, site_id: str, document_library: str) -> str:
-        drive_id_url = build_url(
-            ClientEndpoints.DRIVE_ID,
-            graph_url=GRAPH_URL,
-            site_id=site_id
-        )
-
-        drives = self.make_request(HTTPMethod.GET, drive_id_url)["value"]
-
-        for drive in drives:
-            if drive["name"] == document_library:
-                return drive['id']
+        return self._unpack_response(response)
 
 
-        raise RuntimeError(
-            f"Document library '{document_library}' not found."
-        )
