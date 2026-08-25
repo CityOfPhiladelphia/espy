@@ -43,7 +43,11 @@ from graph_api_functions.client import GraphAPIClient
 client = GraphAPIClient.authenticate()
 ```
 
-## Serving Zensical Docs
+## Documentation
+Full documentation **[can be found here.](https://probable-adventure-nyjj26e.pages.github.io/)**
+
+Documentation is created using Zensical.
+
 In order to serve the zensical documentation locally, run
 
 ```
