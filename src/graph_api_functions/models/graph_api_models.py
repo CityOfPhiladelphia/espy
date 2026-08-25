@@ -8,14 +8,14 @@ SHARE_POINT_LIST_EXCLUDED_COLUMNS = [
     "Color Tag",
     "Compliance Asset Id",
     "ID",
-    "Content Type",
+    "Content type",
     "Modified",
     "Created",
     "Modified By",
     "_UIVersionString",
     "Attachments",
     "Edit",
-    "Type",
+    "type",
     "Item Child Count",
     "Folder Child Count",
     "Label setting",
@@ -37,7 +37,13 @@ class GraphAPILimitationError(Exception):
 # ========= Microsoft Column Classes ===========
 
 
-class SharePointListColumnType(BaseModel):
+class SharePointListColumntype(BaseModel):
+    """A parent class for Share Point List Columns. Converts attributes
+    named in Share Point's camel case to pythonic snake case.
+
+    Args:
+        BaseModel (Pydantic BaseModel): A Pydantic BaseModel class
+    """
     # Microsoft returns field names in camel case, so we need to
     # convert. This will allow accessing the field either by
     # snake case or camel case.
@@ -45,36 +51,77 @@ class SharePointListColumnType(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
 
-class BooleanColumn(SharePointListColumnType):
+class BooleanColumn(SharePointListColumntype):
+    """Boolean column type. Currently empty, per MS documentation.
+
+    Args:
+        SharePointListColumntype (Pydantic Model): Inherits the 
+        SharePointListColumntype class.
+    """
     ...
 
 
-class CalculatedColumn(SharePointListColumnType):
+class CalculatedColumn(SharePointListColumntype):
+    """Calculated column type.
+
+    Args:
+        SharePointListColumntype (Pydantic Model): Inherits the 
+        SharePointListColumntype class.
+    """
     format: str | None = Field(None)
     formula: str | None = Field(None)
     output_type: str | None = Field(None)
 
 
-class ChoiceColumn(SharePointListColumnType):
+class ChoiceColumn(SharePointListColumntype):
+    """Choice column type.
+
+    Args:
+        SharePointListColumntype (Pydantic Model): Inherits the 
+        SharePointListColumntype class.
+    """
     allow_text_entry: bool | None = Field(None)
     choices: list[str] | None = Field(None)
     display_as: str | None = Field(None)
 
 
-class ContentApprovalStatusColumn(SharePointListColumnType):
-    pass
+class ContentApprovalStatusColumn(SharePointListColumntype):
+    """Content Approval Status column type.
+
+    Args:
+        SharePointListColumntype (Pydantic Model): Inherits the 
+        SharePointListColumntype class.
+    """
 
 
-class CurrencyColumn(SharePointListColumnType):
+class CurrencyColumn(SharePointListColumntype):
+    """Currency column type.
+
+    Args:
+        SharePointListColumntype (Pydantic Model): Inherits the 
+        SharePointListColumntype class.
+    """
     locale: str | None = Field(None)
 
 
-class DateTimeColumn(SharePointListColumnType):
+class DateTimeColumn(SharePointListColumntype):
+    """Datetime column type.
+
+    Args:
+        SharePointListColumntype (Pydantic Model): Inherits the 
+        SharePointListColumntype class.
+    """
     display_as: str | None = Field(None)
     format: str | None = Field(None)
 
 
-class LookupColumn(SharePointListColumnType):
+class LookupColumn(SharePointListColumntype):
+    """Lookup column type.
+
+    Args:
+        SharePointListColumntype (Pydantic Model): Inherits the 
+        SharePointListColumntype class.
+    """
     allow_multiple_values: bool | None = Field(None)
     allow_unlimited_length: bool | None = Field(None)
     column_name: str | None = Field(None)
@@ -82,7 +129,13 @@ class LookupColumn(SharePointListColumnType):
     primary_lookup_column_id: str | None = Field(None)
 
 
-class NumberColumn(SharePointListColumnType):
+class NumberColumn(SharePointListColumntype):
+    """Number column type.
+
+    Args:
+        SharePointListColumntype (Pydantic Model): Inherits the 
+        SharePointListColumntype class.
+    """
     decimal_places: (
         Literal["automatic", "none", "one", "two", "three", "four", "five"]
         | None
@@ -92,18 +145,36 @@ class NumberColumn(SharePointListColumnType):
     minimum: float | None = Field(None)
 
 
-class PersonOrGroupColumn(SharePointListColumnType):
+class PersonOrGroupColumn(SharePointListColumntype):
+    """Person or Group column type.
+
+    Args:
+        SharePointListColumntype (Pydantic Model): Inherits the 
+        SharePointListColumntype class.
+    """
     allow_multiple_selection: bool | None = Field(None)
     choose_from_type: str | None = Field(None)
     display_as: str | None = Field(None)
 
 
-class TermColumn(SharePointListColumnType):
+class TermColumn(SharePointListColumntype):
+    """Term column type.
+
+    Args:
+        SharePointListColumntype (Pydantic Model): Inherits the 
+        SharePointListColumntype class.
+    """
     allow_multiple_values: bool | None = Field(None)
     show_fully_qualified_name: bool | None = Field(None)
 
 
-class TextColumn(SharePointListColumnType):
+class TextColumn(SharePointListColumntype):
+    """Text column type.
+
+    Args:
+        SharePointListColumnType (Pydantic Model): Inherits the 
+        SharePointListColumnType class.
+    """
     allow_multiple_lines: bool | None = Field(None)
     append_changes_to_existing_text: bool | None = Field(None)
     lines_for_editing: int | None = Field(None)
@@ -111,13 +182,35 @@ class TextColumn(SharePointListColumnType):
     text_type: str | None = Field(None)
 
 
-class ThumbnailColumn(SharePointListColumnType):
+class ThumbnailColumn(SharePointListColumntype):
+    """Thumbnail column type. Currently empty, per MS documentation.
+
+    Args:
+        SharePointListColumnType (Pydantic Model): Inherits the 
+        SharePointListColumnType class.
+    """
     ...
 
 
-class GeolocationColumn(SharePointListColumnType):
+class GeolocationColumn(SharePointListColumntype):
+    """Geolocation column type. Currently empty, per MS documentation.
+    The GraphAPI currently does not allow data of this type to be added
+    or edited with the Graph API.
+
+    Args:
+        SharePointListColumnType (Pydantic Model): Inherits the 
+        SharePointListColumnType class.
+    """
     ...
 
 
-class HyperlinkOrPictureColumn(SharePointListColumnType):
+class HyperlinkOrPictureColumn(SharePointListColumntype):
+    """Hyperlink or Picture column type. Currently empty, per MS documentation.
+    The GraphAPI currently does not allow data of this type to be added
+    or edited with the Graph API.
+
+    Args:
+        SharePointListColumnType (Pydantic Model): Inherits the 
+        SharePointListColumnType class.
+    """
     is_picture: bool | None = Field(None)
