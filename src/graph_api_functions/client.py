@@ -1,19 +1,22 @@
 # client.py
+from enum import StrEnum
+
 import citygeo_secrets as cgs
 import httpx
 from azure.identity import ClientSecretCredential
-from enum import StrEnum
 
 from graph_api_functions.constants import GRAPH_APP, SCOPE
-from graph_api_functions.models import HTTPMethod, UnsupportedMethodError
+from graph_api_functions.models.models import HTTPMethod, UnsupportedMethodError
+
 
 class ClientEndpoints(StrEnum):
     SITE_ID = "{graph_url}/sites/{hostname}:{site_path}"
 
     DRIVE_ID = "{graph_url}/drives/{site_id}"
 
+
 class GraphAPIClient:
-    #TODO: Function that gets id information from ClientEndpoints
+    # TODO: Function that gets id information from ClientEndpoints
     def __init__(self, credential: ClientSecretCredential):
         self.credential = credential
 
@@ -49,7 +52,7 @@ class GraphAPIClient:
 
         return {
             "Authorization": f"Bearer {token.token}",
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
         }
 
     def _execute_request(
@@ -124,7 +127,7 @@ class GraphAPIClient:
             dict: dictionary of the httpx response
         """
 
-        try: 
+        try:
             response = self._execute_request(
                 method=method, endpoint=endpoint, **kwargs
             )
@@ -134,5 +137,3 @@ class GraphAPIClient:
             print("Response Body:", exc.response.status_code)
 
         return self._unpack_response(response)
-
-

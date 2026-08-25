@@ -1,4 +1,3 @@
-
 import citygeo_secrets as cgs
 import httpx
 from azure.identity import ClientSecretCredential

@@ -3,44 +3,43 @@ from collections.abc import Iterator
 from enum import StrEnum
 from typing import Any
 
-from graph_api_functions.client import GraphAPIClient, ClientEndpoints
-#TODO: Make host name a variable, not a constant. Edit in optional config file?
-from graph_api_functions.constants import HOST_NAME, GRAPH_URL
-from graph_api_functions.graph_api_models import ( 
-    SHARE_POINT_LIST_EXCLUDED_COLUMNS
+from graph_api_functions.client import ClientEndpoints, GraphAPIClient
+
+# TODO: Make host name a variable, not a constant. Edit in optional config file?
+from graph_api_functions.constants import GRAPH_URL, HOST_NAME
+from graph_api_functions.models.graph_api_models import (
+    SHARE_POINT_LIST_EXCLUDED_COLUMNS,
 )
-from graph_api_functions.models import (
+from graph_api_functions.models.models import (
     GraphAPIResponse,
     HTTPMethod,
-    SharePointListRow,
     SharePointListColumn,
+    SharePointListRow,
 )
 from graph_api_functions.urls import build_url
 
-#TODO: Print warning that a list containing a hyperlink or location column
+# TODO: Print warning that a list containing a hyperlink or location column
 # Cannot be updated with the api
+
 
 class ListEndpoints(StrEnum):
     """
     An endpoint registry for all API operations made by the SharePointList
     class.
     """
-    LIST_ID = ("{graph_url}/sites/{site_id}/lists/{list_name}")
 
-    LIST_ROWS = ("{graph_url}/sites/"
-                 "{site_id}/lists/{list_id}/items?")
+    LIST_ID = "{graph_url}/sites/{site_id}/lists/{list_name}"
 
-    LIST_COLUMNS = ("{graph_url}/sites/"
-                    "{site_id}/lists/{list_id}/columns?")
+    LIST_ROWS = "{graph_url}/sites/{site_id}/lists/{list_id}/items?"
+
+    LIST_COLUMNS = "{graph_url}/sites/{site_id}/lists/{list_id}/columns?"
 
     GET_ROW = (
         "{graph_url}/sites/"
         "{site_id}/lists/{list_id}/items/{row_id}?$expand=fields"
     )
 
-    ADD_ROW = (
-        "{graph_url}/sites/{site_id}/lists/{list_id}/items"
-    )
+    ADD_ROW = "{graph_url}/sites/{site_id}/lists/{list_id}/items"
 
 
 class SharePointList:
@@ -48,7 +47,7 @@ class SharePointList:
         self.client = client
         self.site_id = site_id
         self.list_id = list_id
-        self._column_mapping = None
+        self._column_mapping: dict | None = None
 
     @classmethod
     def get_list(cls, site_path: str, list_name: str):
@@ -64,19 +63,19 @@ class SharePointList:
         client = GraphAPIClient.authenticate()
 
         site_id_url = build_url(
-              ClientEndpoints.SITE_ID, 
-              graph_url=GRAPH_URL, 
-              hostname=HOST_NAME, 
-              site_path=site_path
-              )
+            ClientEndpoints.SITE_ID,
+            graph_url=GRAPH_URL,
+            hostname=HOST_NAME,
+            site_path=site_path,
+        )
 
         site_id = client.make_request("GET", site_id_url)["id"]
 
         list_id_url = build_url(
-              ListEndpoints.LIST_ID,
-              graph_url=GRAPH_URL,
-              site_id=site_id,
-              list_name=list_name
+            ListEndpoints.LIST_ID,
+            graph_url=GRAPH_URL,
+            site_id=site_id,
+            list_name=list_name,
         )
 
         list_id = client.make_request("GET", list_id_url)["id"]
@@ -86,14 +85,14 @@ class SharePointList:
     def get_row(self, row_id: str) -> dict[str, Any]:
         """
         Get a single row from a list.
-        
+
         Args:
             row_id: The id of the row to return
 
         Returns:
             dict: A dictionary with row data
         """
-        
+
         row_url = build_url(
             ListEndpoints.GET_ROW,
             graph_url=GRAPH_URL,
@@ -119,12 +118,16 @@ class SharePointList:
 
         raw_columns_data = self.client.make_request(HTTPMethod.GET, columns_url)
 
-        response_envelope = GraphAPIResponse[SharePointListColumn]\
-           .model_validate(raw_columns_data)
+        response_envelope = GraphAPIResponse[
+            SharePointListColumn
+        ].model_validate(raw_columns_data)
 
-        filtered = [column for column in response_envelope.value
-                    if not column.read_only and 
-                    column.display_name not in SHARE_POINT_LIST_EXCLUDED_COLUMNS]
+        filtered = [
+            column
+            for column in response_envelope.value
+            if not column.read_only
+            and column.display_name not in SHARE_POINT_LIST_EXCLUDED_COLUMNS
+        ]
 
         return filtered
 
@@ -136,7 +139,7 @@ class SharePointList:
 
         if self._column_mapping:
             return self._column_mapping
-        
+
         column_mapping = {}
 
         columns = self.list_columns()
@@ -147,7 +150,6 @@ class SharePointList:
         self._column_mapping = column_mapping
 
         return column_mapping
-
 
     def _fetch_page(
         self, url: str | None, params
@@ -169,8 +171,8 @@ class SharePointList:
         next_link = build_url(
             ListEndpoints.LIST_ROWS,
             graph_url=GRAPH_URL,
-            site_id=self.site_id, 
-            list_id=self.list_id
+            site_id=self.site_id,
+            list_id=self.list_id,
         )
 
         params: dict | None = {"expand": "fields", "list": "fields"}
@@ -186,17 +188,18 @@ class SharePointList:
                 yield row.model_dump()
 
     def add_row(self, data: dict[str, Any]) -> dict[str, Any]:
-        add_row_url = build_url(ListEndpoints.ADD_ROW, 
-                                graph_url=GRAPH_URL,
-                                list_id=self.list_id,
-                                site_id=self.site_id)
+        add_row_url = build_url(
+            ListEndpoints.ADD_ROW,
+            graph_url=GRAPH_URL,
+            list_id=self.list_id,
+            site_id=self.site_id,
+        )
 
-        fields_payload = {
-            "fields": data
-        }
+        fields_payload = {"fields": data}
 
         response = self.client.make_request(
-            "POST", add_row_url, json=fields_payload)
+            "POST", add_row_url, json=fields_payload
+        )
 
         return response
 

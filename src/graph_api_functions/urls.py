@@ -1,20 +1,15 @@
-from graph_api_functions.client import GraphAPIClient, ClientEndpoints
-from graph_api_functions.constants import GRAPH_URL
-
-
 import string
-
-from graph_api_functions.models import HTTPMethod
 from enum import StrEnum
 
-#TODO: Add data typing to this that avoids circular import, maybe add a blank class or protocol
+
+# TODO: Add data typing to this that avoids circular import, maybe add a blank class or protocol
 def build_url(url: StrEnum, **kwargs) -> str:
     """
     Given a GraphAPI endpoint template, builds the actual URL to request
     against. Returns an error if keys are missing.
 
     Args:
-        url: ListEndpoints, A ListEndpoints enum object. 
+        url: ListEndpoints, A ListEndpoints enum object.
             Must be a valid endpoint, with placeholders.
         **kwargs: Key word arguments that fill out the templated values contained
         in url.
@@ -38,6 +33,7 @@ def build_url(url: StrEnum, **kwargs) -> str:
 
     # Return url with correct keyword arguments passed in
     return url.format(**kwargs)
+
 
 # class _UrlConstructor:
 #     """
@@ -76,4 +72,3 @@ def build_url(url: StrEnum, **kwargs) -> str:
 #         url = f"{GRAPH_URL}/sites/{site_id}/lists/{list_id}/items"
 
 #         return url
-

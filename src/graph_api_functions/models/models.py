@@ -1,15 +1,10 @@
 from enum import StrEnum
 from typing import Any, Protocol
 
-from pydantic import (
-    BaseModel,
-    ConfigDict,
-    DirectoryPath,
-    Field,
-    HttpUrl
-)
+from pydantic import BaseModel, ConfigDict, DirectoryPath, Field, HttpUrl
 
-import graph_api_functions.graph_api_models as cols
+import graph_api_functions.models.graph_api_models as cols
+
 
 ## Enums
 class HTTPMethod(StrEnum):
@@ -54,9 +49,11 @@ class GraphAPIResponse[T](BaseModel):
     value: list[T]
     model_config = ConfigDict(populate_by_name=True)
 
+
 ### Share Point List Data
 class SharePointListRow(BaseModel):
     fields: dict = Field(default_factory=dict)
+
 
 class SharePointListColumn(cols.SharePointListColumnType):
     description: str | None = Field(None)
@@ -77,7 +74,9 @@ class SharePointListColumn(cols.SharePointListColumnType):
     boolean: cols.BooleanColumn | None = Field(None)
     calculated: cols.CalculatedColumn | None = Field(None)
     choice: cols.ChoiceColumn | None = Field(None)
-    content_approval_status: cols.ContentApprovalStatusColumn | None = Field(None)
+    content_approval_status: cols.ContentApprovalStatusColumn | None = Field(
+        None
+    )
     currency: cols.CurrencyColumn | None = Field(None)
     date_time: cols.DateTimeColumn | None = Field(None)
     geolocation: cols.GeolocationColumn | None = Field(None)
@@ -88,4 +87,3 @@ class SharePointListColumn(cols.SharePointListColumnType):
     term: cols.TermColumn | None = Field(None)
     text: cols.TextColumn | None = Field(None)
     thumbnail: cols.ThumbnailColumn | None = Field(None)
-

@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from graph_api_functions.models import HTTPMethod, UnsupportedMethodError
+from graph_api_functions.models.models import HTTPMethod, UnsupportedMethodError
 
 
 def test_get_headers_constructs_valid_header_dict(configured_client):
