@@ -9,6 +9,8 @@ from pydantic import (
     HttpUrl
 )
 
+import graph_api_functions.graph_api_models as cols
+
 ## Enums
 class HTTPMethod(StrEnum):
     GET = "GET"
@@ -52,17 +54,38 @@ class GraphAPIResponse[T](BaseModel):
     value: list[T]
     model_config = ConfigDict(populate_by_name=True)
 
+### Share Point List Data
 class SharePointListRow(BaseModel):
     fields: dict = Field(default_factory=dict)
 
-class SharePointListColumn(BaseModel):
-    column_group: str = Field(alias="columnGroup")
+class SharePointListColumn(cols.SharePointListColumnType):
     description: str | None = Field(None)
-    display_name: str = Field(alias="displayName")
-    enforce_unique_values: bool = Field(alias="enforceUniqueValues")
+    display_name: str
+    enforce_unique_values: bool
     hidden: bool
     id: str
     indexed: bool
     name: str
-    readOnly: bool
+    read_only: bool
     required: bool
+
+    # Share Point List Columns may be one of fourteen types, modeled in
+    # list_column_definitions.py
+    # When parsing this, you can use the "exclude_unset" option
+    # in pydantic's model dump to exclude fields that are none
+
+    boolean: cols.BooleanColumn | None = Field(None)
+    calculated: cols.CalculatedColumn | None = Field(None)
+    choice: cols.ChoiceColumn | None = Field(None)
+    content_approval_status: cols.ContentApprovalStatusColumn | None = Field(None)
+    currency: cols.CurrencyColumn | None = Field(None)
+    date_time: cols.DateTimeColumn | None = Field(None)
+    geolocation: cols.GeolocationColumn | None = Field(None)
+    hyperlink_or_picture: cols.HyperlinkOrPictureColumn | None = Field(None)
+    lookup: cols.LookupColumn | None = Field(None)
+    number: cols.NumberColumn | None = Field(None)
+    person_or_group: cols.PersonOrGroupColumn | None = Field(None)
+    term: cols.TermColumn | None = Field(None)
+    text: cols.TextColumn | None = Field(None)
+    thumbnail: cols.ThumbnailColumn | None = Field(None)
+

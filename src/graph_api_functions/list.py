@@ -6,6 +6,9 @@ from typing import Any
 from graph_api_functions.client import GraphAPIClient, ClientEndpoints
 #TODO: Make host name a variable, not a constant. Edit in optional config file?
 from graph_api_functions.constants import HOST_NAME, GRAPH_URL
+from graph_api_functions.graph_api_models import ( 
+    SHARE_POINT_LIST_EXCLUDED_COLUMNS
+)
 from graph_api_functions.models import (
     GraphAPIResponse,
     HTTPMethod,
@@ -14,6 +17,8 @@ from graph_api_functions.models import (
 )
 from graph_api_functions.urls import build_url
 
+#TODO: Print warning that a list containing a hyperlink or location column
+# Cannot be updated with the api
 
 class ListEndpoints(StrEnum):
     """
@@ -104,7 +109,7 @@ class SharePointList:
 
         # return validated_row_data.model_dump()
 
-    def list_columns(self) -> list:
+    def list_columns(self) -> list[SharePointListColumn]:
         columns_url = build_url(
             ListEndpoints.LIST_COLUMNS,
             graph_url=GRAPH_URL,
@@ -117,7 +122,11 @@ class SharePointList:
         response_envelope = GraphAPIResponse[SharePointListColumn]\
            .model_validate(raw_columns_data)
 
-        return [column for column in response_envelope.model_dump()["value"]]
+        filtered = [column for column in response_envelope.value
+                    if not column.read_only and 
+                    column.display_name not in SHARE_POINT_LIST_EXCLUDED_COLUMNS]
+
+        return filtered
 
     def _get_column_mapping(self) -> dict[str, str]:
         """
@@ -125,15 +134,18 @@ class SharePointList:
         name to the column's real name in the graph API.
         """
 
+        if self._column_mapping:
+            return self._column_mapping
+        
         column_mapping = {}
 
         columns = self.list_columns()
 
         for column in columns:
-            column_mapping[column["display_name"]] = column["name"]
+            column_mapping[column.display_name] = column.name
 
         self._column_mapping = column_mapping
-        
+
         return column_mapping
 
 
@@ -174,12 +186,19 @@ class SharePointList:
                 yield row.model_dump()
 
     def add_row(self, data: dict[str, Any]) -> dict[str, Any]:
-        add_row_url = build_url(ListEndpoints.ADD_ROW, graph_url=GRAPH_URL)
+        add_row_url = build_url(ListEndpoints.ADD_ROW, 
+                                graph_url=GRAPH_URL,
+                                list_id=self.list_id,
+                                site_id=self.site_id)
+
+        fields_payload = {
+            "fields": data
+        }
 
         response = self.client.make_request(
-            "POST", add_row_url)
+            "POST", add_row_url, json=fields_payload)
 
-        print(response)
+        return response
 
     def edit_row(self, row_id: str, data: dict[str, Any]) -> dict[str, Any]: ...
 

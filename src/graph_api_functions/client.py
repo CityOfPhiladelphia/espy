@@ -49,7 +49,7 @@ class GraphAPIClient:
 
         return {
             "Authorization": f"Bearer {token.token}",
-            "Content-Type": "application/json",
+            "Content-Type": "application/json"
         }
 
     def _execute_request(
@@ -123,9 +123,15 @@ class GraphAPIClient:
         Returns:
             dict: dictionary of the httpx response
         """
-        response = self._execute_request(
-            method=method, endpoint=endpoint, **kwargs
-        )
+
+        try: 
+            response = self._execute_request(
+                method=method, endpoint=endpoint, **kwargs
+            )
+
+        except httpx.HTTPStatusError as exc:
+            print("Status:", exc.response.status_code)
+            print("Response Body:", exc.response.status_code)
 
         return self._unpack_response(response)
 
