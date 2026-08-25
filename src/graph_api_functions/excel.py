@@ -3,8 +3,7 @@ from typing import Any
 
 from graph_api_functions.client import GraphAPIClient
 from graph_api_functions.constants import GRAPH_URL
-from graph_api_functions.models import SharePointURL
-from graph_api_functions.urls import _URLResolver
+from graph_api_functions.models.models import SharePointURL
 
 
 class ExcelWorksheet:
@@ -25,7 +24,6 @@ class ExcelWorksheet:
         self.workbook_path = workbook_path
         self.worksheet_name = worksheet_name
 
-        self._resolver = _URLResolver(self.client)
         self._site_id = self._resolver.get_site_id(
             self.hostname, self.site_path
         )

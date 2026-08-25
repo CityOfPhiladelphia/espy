@@ -42,3 +42,12 @@ from graph_api_functions.client import GraphAPIClient
 
 client = GraphAPIClient.authenticate()
 ```
+
+## Serving Zensical Docs
+In order to serve the zensical documentation locally, run
+
+```
+uv run zensical serve
+```
+
+The docs will be served at ```http://localhost:3000/```.

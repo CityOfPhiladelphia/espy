@@ -1,8 +1,9 @@
 # client.py
+from enum import StrEnum
+
 import citygeo_secrets as cgs
 import httpx
 from azure.identity import ClientSecretCredential
-from enum import StrEnum
 
 from graph_api_functions.constants import GRAPH_APP, SCOPE, GRAPH_URL
 from graph_api_functions.models import HTTPMethod, UnsupportedMethodError
@@ -124,11 +125,11 @@ class GraphAPIClient:
         Returns:
             dict: dictionary of the httpx response
         """
-        response = self._execute_request(
-            method=method, endpoint=endpoint, **kwargs
-        )
 
-        return self._unpack_response(response)
+        try:
+            response = self._execute_request(
+                method=method, endpoint=endpoint, **kwargs
+            )
 
     def get_site_id(self, hostname:str, site_path:str)-> str:
         site_id_url = build_url(
