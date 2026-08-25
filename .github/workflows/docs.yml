@@ -5,10 +5,14 @@ on:
     branches:
       - master
       - main
+    paths:
+      'docs/**'
   pull_request:
     branches:
       - master
       - main
+    paths:
+      'docs/**'
   workflow_dispatch:
 
 permissions:
@@ -35,7 +39,7 @@ jobs:
         run: uv python install 3.12
 
       - name: Build documentation
-        run: uv run --with zensical --with mkdocstrings-python zensical build --clean
+        run: uv run --no-project --with zensical --with mkdocstrings-python zensical build --clean
 
       - name: Upload Pages Artifact
         if: github.event_name != 'pull_request'
