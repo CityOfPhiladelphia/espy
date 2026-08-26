@@ -74,7 +74,7 @@ class ExcelWorksheet:
     def setup(
         cls, 
         hostname:str, 
-        site_path:str, 
+        site_name:str, 
         document_library:str,
         workbook_path:str|None = None,
         worksheet_name:str|None=None,
@@ -83,7 +83,7 @@ class ExcelWorksheet:
 
         client = GraphAPIClient.authenticate()
 
-        site_id = client.get_site_id(hostname, site_path)
+        site_id = client.get_site_id(hostname, site_name)
         drive_id = client.get_drive_id(site_id, document_library)
 
         if workbook_path:
@@ -150,3 +150,21 @@ class ExcelWorksheet:
         json = { "password": password }
 
         self.client.make_request(HTTPMethod.POST, url, json=json)
+
+    def get_content(self, file_path:str):
+
+         content_url = build_url(ExcelEndpoints.GET_CONTENT,
+                                 graph_url=GRAPH_URL,
+                                 site_id=self.site_id,
+                                 drive_id=self.drive_id,
+                                 file_path=file_path
+         )
+
+         request = self.client.make_request(HTTPMethod.GET,
+                                            content_url, 
+                                            timeout=60, 
+                                            follow_redirects=True)
+
+         return request.content 
+        
+
