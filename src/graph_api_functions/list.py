@@ -98,6 +98,8 @@ class SharePointList:
 
         site_id = client.make_request("GET", site_id_url)["id"]
 
+        site_id = client.get_site_id()
+
         list_id_url = build_url(
             ListEndpoints.LIST_ID,
             graph_url=GRAPH_URL,

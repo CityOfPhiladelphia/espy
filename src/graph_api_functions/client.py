@@ -29,6 +29,7 @@ class GraphAPIClient:
 
     @classmethod
     def authenticate(cls):
+        # TODO: Change this to accept a dictionary of creds since people will have different graph apps 
         """Authenticate to SharePoint by generating the Client Secret
         credential."""
         creds = cgs.get_secrets(GRAPH_APP)[GRAPH_APP]
