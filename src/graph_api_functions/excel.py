@@ -2,7 +2,7 @@ from collections.abc import Iterator
 from enum import StrEnum
 from typing import Any
 
-from graph_api_functions.client import ClientEndpoints, GraphAPIClient
+from graph_api_functions.client import GraphAPIClient
 
 # TODO: Make host name a variable, not a constant. Edit in optional config file?
 from graph_api_functions.constants import GRAPH_URL, HOST_NAME
@@ -17,10 +17,6 @@ from graph_api_functions.models.models import (
 )
 from graph_api_functions.urls import build_url
 
-''' 
-upload_file 
-get_content
-'''
 
 class ExcelEndpoints(StrEnum):
     """An endpoint registry for all API operations made by the ExcelWorksheet
@@ -33,25 +29,20 @@ class ExcelEndpoints(StrEnum):
     WORKBOOK_ID = "{graph_url}/drives/{drive_id}/root:/{workbook_path}"
 
     PROTECT = (
-        "{graph_url}/drives/{drive_id}/items/{item_id}"
+        "{graph_url}/drives/{drive_id}/items/{workbook_id}"
         "/workbook/worksheets/{worksheet_name}/protection/protect"
     )
     
     UNPROTECT = (
-        "{graph_url}/drives/{drive_id}/items/{item_id}"
+        "{graph_url}/drives/{drive_id}/items/{workbook_id}"
         "/workbook/worksheets/{worksheet_name}/protection/unprotect"
     )
 
     ADD_ROW = (
         "{graph_url}/drives/{drive_id}"
-        "/items/{item_id}"
+        "/items/{workbook_id}"
         "/workbook/tables/{table_name}"
         "/rows/add"
-    )
-
-    UPLOAD_FILE = (
-        "{graph_url}/sites/{site_id}"
-        "/drive/root:/{dest_folder}/{fname}:/content"
     )
 
     GET_CONTENT = (
@@ -65,152 +56,41 @@ class ExcelWorksheet:
     def __init__(
         self,
         client: GraphAPIClient,
-        hostname: str,
-        site_path: str,
-        document_library: str,
-        workbook_path: str,
-        worksheet_name: str,
+        site_id: str,
+        drive_id: str, 
+        workbook_id: str|None,
     ):
 
-        self.client = client
-        self.hostname = hostname
-        self.site_path = site_path
-        self.document_library = document_library
-        self.workbook_path = workbook_path
-        self.worksheet_name = worksheet_name
-
-        self._site_id = self._resolver.get_site_id(
-            self.hostname, self.site_path
-        )
-        self._drive_id = self._resolver.get_drive_id(
-            self._site_id, self.document_library
-        )
-        self._workbook_id = self._resolver.get_workbook_id(
-            self._drive_id, self.workbook_path
-        )
-        self._worksheet_url = self._build_worksheet_url()
-
-    def _build_worksheet_url(self) -> SharePointURL:
-        worksheet_url = (
-            f"{GRAPH_URL}/drives/{self._drive_id}"
-            f"/items/{self._workbook_id}"
-            f"/workbook"
-            f"/worksheets/{self.worksheet_name}"
-        )
-
-        return SharePointURL(url=worksheet_url)
-
-    def get_row(self, row_id: str) -> dict[str, Any]: ...
-
-    def list_rows(self) -> list[dict[str, Any]]: ...
-
-    def add_row(self, data: dict[str, Any]) -> dict[str, Any]: ...
-
-    def edit_row(self, row_id: str, data: dict[str, Any]) -> dict[str, Any]: ...
-
-    def delete_row(self, row_id: str) -> bool: ...
-
-    def upsert_row(
-        self, key_col: str, data: dict[str, Any]
-    ) -> dict[str, Any]: ...
-
-    def toggle_lock(self, password: str) -> bool: ...
+        self.client         = client
+        self.site_id        = site_id
+        self.drive_id       = drive_id
+        self.workbook_id    = workbook_id
 
 
-# class ExcelWorkBook:
+    @classmethod
+    def setup(
+        cls, 
+        hostname:str, 
+        site_path:str, 
+        document_library:str,
+        workbook_path:str|None = None ):
 
-#     def __init__(self, client: GraphAPIClient, site_id: str, file_path: str):
-#         ...
+        client = GraphAPIClient.authenticate()
 
-#     def list_tables(self) -> list[str]:
-#         ...
+        site_id = client.get_site_id(hostname, site_path)
+        drive_id = client.get_drive_id(site_id, document_library)
 
-#     def get_table(self, table_name: str) -> ExcelWorksheet:
-#         ...
+        if workbook_path:
+            workbook_id_url = build_url(
+                ExcelEndpoints.WORKBOOK_ID,
+                graph_url=GRAPH_URL,
+                drive_id=drive_id, 
+                workbook_path=workbook_path
+            )
+            workbook_id = client.make_request(HTTPMethod.GET, workbook_id_url)["id"]
 
-#     def create_table(self, file_path: str, table_name: str) -> ExcelWorksheet:
-#         ...
+            return cls(client, site_id, drive_id, workbook_id)
+        else:
+            return cls(client, site_id, drive_id)
 
-
-#  def connect(self):
-#         '''
-#         Function to establish the necessary id's for a sharepoint resource.
-#         '''
-#         if self.site_id is not None:
-#             return
-
-#         self.site_id = self.get_site_id()
-
-#         if self.list_name:
-#             self.list_id = self.get_list_id()
-
-#         if self.document_library:
-#             self.drive_id = self.get_drive_id(self.site_id)
-
-#         if self.workbook_path is not None and self.table_name is not None and self.worksheet_name is not None:
-#             self.item_id = self.get_workbook_id(self.drive_id)
-
-#     def protect_worksheet(self, password: str):
-#         '''
-#         Turns on sheet protection for the specified worksheet
-
-#         Arguments:
-#         password - str that represents the sheet protection password
-#         '''
-#         if password is None:
-#             print("No password specified, not doing anything")
-#             return
-
-#         if self.worksheet_name is None:
-#             print("No worksheet has been specified. Doing nothing...")
-#             return
-
-#         print("Re-Protecting sheet...")
-#         url = (
-#             f"{GRAPH_URL}/drives/{self.drive_id}"
-#             f"/items/{self.item_id}"
-#             f"/workbook"
-#             f"/worksheets/{self.worksheet_name}"
-#             f"/protection/protect"
-#         )
-
-#         body = {
-#             "password": password
-#         }
-
-#         self._post(url, body)
-
-#         print("Protection re-enabled!!!")
-
-#     def unprotect_worksheet(self, password):
-#         '''
-#         Function that turns off protection for the worksheet.
-
-#         Arguments:
-#         password - str that represents the sheet protection password
-#         '''
-#         print("Unprotecting sheet...")
-
-#         if password is None:
-#             print("No password specified, not doing anything")
-#             return
-
-#         if self.worksheet_name is None:
-#             print("No worksheet has been specified. Doing nothing...")
-#             return
-
-#         url = (
-#             f"{GRAPH_URL}/drives/{self.drive_id}"
-#             f"/items/{self.item_id}"
-#             f"/workbook"
-#             f"/worksheets/{self.worksheet_name}"
-#             f"/protection/unprotect"
-#         )
-
-#         body = {
-#             "password": password
-#         }
-
-#         self._post(url, body)
-
-#         print("Unprotect successful!")
+        
