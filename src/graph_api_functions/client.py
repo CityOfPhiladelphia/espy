@@ -1,8 +1,9 @@
 # client.py
+from enum import StrEnum
+
 import citygeo_secrets as cgs
 import httpx
 from azure.identity import ClientSecretCredential
-from enum import StrEnum
 
 from graph_api_functions.constants import GRAPH_APP, SCOPE, GRAPH_URL
 from graph_api_functions.models.models import HTTPMethod, UnsupportedMethodError
@@ -11,9 +12,9 @@ from graph_api_functions.models.models import HTTPMethod
 
 
 class ClientEndpoints(StrEnum):
-    SITE_ID = "{graph_url}/sites/{hostname}:{site_path}"
+    SITE_ID = "{graph_url}/sites/{hostname}:/sites/{site_name}"
 
-    DRIVE_ID = "{graph_url}/drives/{site_id}"
+    DRIVE_ID = "{graph_url}/sites/{site_id}/drives"
 
 class GraphAPIClient:
     def __init__(self, credential: ClientSecretCredential):
@@ -29,6 +30,7 @@ class GraphAPIClient:
 
     @classmethod
     def authenticate(cls):
+        # TODO: Change this to accept a dictionary of creds since people will have different graph apps 
         """Authenticate to SharePoint by generating the Client Secret
         credential."""
         creds = cgs.get_secrets(GRAPH_APP)[GRAPH_APP]
@@ -90,25 +92,7 @@ class GraphAPIClient:
 
         return httpx_func(endpoint, headers=headers, **kwargs)
 
-    def _unpack_response(self, response: httpx.Response) -> dict:
-        """
-        Private method.
-
-        Unpacks an httpx response into a json object. Throws an error
-        if not successful.
-
-        Args:
-            response: the raw json of the httpx response.
-
-        Returns:
-            dict: the response as a dictionary.
-        """
-
-        response.raise_for_status()
-
-        return response.json()
-
-    def make_request(self, method: HTTPMethod, endpoint: str, **kwargs) -> dict:
+    def make_request(self, method: HTTPMethod, endpoint: str, **kwargs):
         """
         Public method.
 
@@ -128,17 +112,17 @@ class GraphAPIClient:
             method=method, endpoint=endpoint, **kwargs
         )
 
-        return self._unpack_response(response)
+        return response
 
-    def get_site_id(self, hostname:str, site_path:str)-> str:
+    def get_site_id(self, hostname:str, site_name:str)-> str:
         site_id_url = build_url(
                     ClientEndpoints.SITE_ID,
                     graph_url=GRAPH_URL,
                     hostname=hostname,
-                    site_path=site_path,
+                    site_name=site_name,
                 )
 
-        response = self.make_request(HTTPMethod.GET, site_id_url)
+        response = self.make_request(HTTPMethod.GET, site_id_url).json()
 
         return response["id"]
 
@@ -148,8 +132,7 @@ class GraphAPIClient:
             graph_url=GRAPH_URL,
             site_id=site_id
         )
-
-        drives = self.make_request(HTTPMethod.GET, drive_id_url)["value"]
+        drives = self.make_request(HTTPMethod.GET, drive_id_url).json()["value"]
 
         for drive in drives:
             if drive["name"] == document_library:
