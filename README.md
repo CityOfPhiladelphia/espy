@@ -1,6 +1,42 @@
 # graph_api_functions
 
-## Installation
+## Documentation
+Full documentation **[can be found here.](https://probable-adventure-nyjj26e.pages.github.io/)**
+
+Documentation is created using Zensical.
+
+In order to serve the zensical documentation locally, run
+
+```
+uv run zensical serve
+```
+
+The docs will be served at ```http://localhost:3000/```.
+
+## Getting Started
+To install this library to your project, run:
+
+```
+uv add git+https://github.com/CityOfPhiladelphia/graph_api_functions.git
+```
+
+### Usage Example
+```
+from graph_api_functions.list import SharePointList
+
+# Instantiate a SharePoint List Object
+sp_list = SharePointList.get_list("list_site_name", "list_name")
+
+# Create a row mapping data to column names in the list
+row_to_add = {"name": "Billy Penn", 
+              "address": "1234 Market St, Philadelphia, PA", 
+              "age": 250}
+
+
+response = sp_list.add_row(row_to_add)
+```
+
+## Development
 ### To install packages needed to run:
 ```
 uv sync
@@ -10,7 +46,7 @@ uv sync
 uv sync --dev
 ```
 
-## Adding dependencies
+### Adding dependencies
 Before you add a dependency, ask: do I need this to **only to develop** the tool,
 or is this needed to run the tool?
 
@@ -43,15 +79,4 @@ from graph_api_functions.client import GraphAPIClient
 client = GraphAPIClient.authenticate()
 ```
 
-## Documentation
-Full documentation **[can be found here.](https://probable-adventure-nyjj26e.pages.github.io/)**
 
-Documentation is created using Zensical.
-
-In order to serve the zensical documentation locally, run
-
-```
-uv run zensical serve
-```
-
-The docs will be served at ```http://localhost:3000/```.
