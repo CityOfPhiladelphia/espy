@@ -93,7 +93,7 @@ class ExcelWorksheet:
                 drive_id=drive_id, 
                 workbook_path=workbook_path
             )
-            workbook_id = client.make_request(HTTPMethod.GET, workbook_id_url)["id"]
+            workbook_id = client.make_request(HTTPMethod.GET, workbook_id_url).json()["id"]
 
             return cls(client, site_id, drive_id, workbook_id, worksheet_name, table_name)
         else:
@@ -114,20 +114,16 @@ class ExcelWorksheet:
         json = {
             "values": row
         }
-
         self.client.make_request(HTTPMethod.POST, add_row_url, json=json, timeout=60)
-        print("Data appended sucessfully!")
 
         self.toggle_protection(password, protect=True)
 
 
     def toggle_protection(self, password:str, protect:bool):
         if not password:
-            print("No password specified, not doing anything")
             return 
         
         if not self.worksheet_name:
-            print("No worksheet has been specified. Doing nothing...")
             return 
 
         if not protect:
