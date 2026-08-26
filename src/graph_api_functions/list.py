@@ -91,6 +91,8 @@ class SharePointList:
 
         site_id = client.get_site_id(HOST_NAME, site_path)
 
+        site_id = client.get_site_id()
+
         list_id_url = build_url(
             ListEndpoints.LIST_ID,
             graph_url=GRAPH_URL,
