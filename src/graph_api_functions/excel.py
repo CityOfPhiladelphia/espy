@@ -59,13 +59,16 @@ class ExcelWorksheet:
         site_id: str,
         drive_id: str, 
         workbook_id: str|None,
+        worksheet_name: str|None,
+        table_name: str|None,
     ):
 
         self.client         = client
         self.site_id        = site_id
         self.drive_id       = drive_id
         self.workbook_id    = workbook_id
-
+        self.worksheet_name = worksheet_name
+        self.table_name     = table_name
 
     @classmethod
     def setup(
@@ -73,7 +76,10 @@ class ExcelWorksheet:
         hostname:str, 
         site_path:str, 
         document_library:str,
-        workbook_path:str|None = None ):
+        workbook_path:str|None = None,
+        worksheet_name:str|None=None,
+        table_name:str|None=None
+        ):
 
         client = GraphAPIClient.authenticate()
 
@@ -89,8 +95,58 @@ class ExcelWorksheet:
             )
             workbook_id = client.make_request(HTTPMethod.GET, workbook_id_url)["id"]
 
-            return cls(client, site_id, drive_id, workbook_id)
+            return cls(client, site_id, drive_id, workbook_id, worksheet_name, table_name)
         else:
             return cls(client, site_id, drive_id)
 
+    def append_row(self, row:list, password=None):
+        # TODO: Consider append_rows for batching data 
+        self.toggle_protection(password, protect=False)
+
+        add_row_url = build_url(
+            ExcelEndpoints.ADD_ROW,
+            graph_url=GRAPH_URL,
+            drive_id=self.drive_id,
+            workbook_id=self.workbook_id,
+            table_name=self.table_name
+        )
+
+        json = {
+            "values": row
+        }
+
+        self.client.make_request(HTTPMethod.POST, add_row_url, json=json, timeout=60)
+        print("Data appended sucessfully!")
+
+        self.toggle_protection(password, protect=True)
+
+
+    def toggle_protection(self, password:str, protect:bool):
+        if not password:
+            print("No password specified, not doing anything")
+            return 
         
+        if not self.worksheet_name:
+            print("No worksheet has been specified. Doing nothing...")
+            return 
+
+        if not protect:
+            url = build_url(
+                        ExcelEndpoints.UNPROTECT,
+                        graph_url=GRAPH_URL,
+                        drive_id=self.drive_id,
+                        workbook_id=self.workbook_id,
+                        worksheet_name=self.worksheet_name
+                    )
+        else:
+            url = build_url(
+                        ExcelEndpoints.PROTECT,
+                        graph_url=GRAPH_URL,
+                        drive_id=self.drive_id,
+                        workbook_id=self.workbook_id,
+                        worksheet_name=self.worksheet_name
+                    )
+
+        json = { "password": password }
+
+        self.client.make_request(HTTPMethod.POST, url, json=json)
