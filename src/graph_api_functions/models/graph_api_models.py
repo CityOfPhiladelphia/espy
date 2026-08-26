@@ -55,8 +55,8 @@ class BooleanColumn(SharePointListColumnType):
     """Boolean column type. Currently empty, per MS documentation.
 
     Args:
-        SharePointListColumntype (Pydantic Model): Inherits the 
-        SharePointListColumntype class.
+        SharePointListColumnType (Pydantic Model): Inherits the \
+        SharePointListColumnType class.
     """
     ...
 
@@ -65,8 +65,8 @@ class CalculatedColumn(SharePointListColumnType):
     """Calculated column type.
 
     Args:
-        SharePointListColumntype (Pydantic Model): Inherits the 
-        SharePointListColumntype class.
+        SharePointListColumnType (Pydantic Model): Inherits the \
+        SharePointListColumnType class.
     """
     format: str | None = Field(None)
     formula: str | None = Field(None)
@@ -77,8 +77,8 @@ class ChoiceColumn(SharePointListColumnType):
     """Choice column type.
 
     Args:
-        SharePointListColumntype (Pydantic Model): Inherits the 
-        SharePointListColumntype class.
+        SharePointListColumnType (Pydantic Model): Inherits the \
+        SharePointListColumnType class.
     """
     allow_text_entry: bool | None = Field(None)
     choices: list[str] | None = Field(None)
@@ -89,8 +89,8 @@ class ContentApprovalStatusColumn(SharePointListColumnType):
     """Content Approval Status column type.
 
     Args:
-        SharePointListColumntype (Pydantic Model): Inherits the 
-        SharePointListColumntype class.
+        SharePointListColumnType (Pydantic Model): Inherits the \
+        SharePointListColumnType class.
     """
 
 
@@ -98,8 +98,8 @@ class CurrencyColumn(SharePointListColumnType):
     """Currency column type.
 
     Args:
-        SharePointListColumntype (Pydantic Model): Inherits the 
-        SharePointListColumntype class.
+        SharePointListColumnType (Pydantic Model): Inherits the \
+        SharePointListColumnType class.
     """
     locale: str | None = Field(None)
 
@@ -108,8 +108,8 @@ class DateTimeColumn(SharePointListColumnType):
     """Datetime column type.
 
     Args:
-        SharePointListColumntype (Pydantic Model): Inherits the 
-        SharePointListColumntype class.
+        SharePointListColumnType (Pydantic Model): Inherits the \
+        SharePointListColumnType class.
     """
     display_as: str | None = Field(None)
     format: str | None = Field(None)
@@ -119,8 +119,8 @@ class LookupColumn(SharePointListColumnType):
     """Lookup column type.
 
     Args:
-        SharePointListColumntype (Pydantic Model): Inherits the 
-        SharePointListColumntype class.
+        SharePointListColumnType (Pydantic Model): Inherits the \
+        SharePointListColumnType class.
     """
     allow_multiple_values: bool | None = Field(None)
     allow_unlimited_length: bool | None = Field(None)
@@ -133,8 +133,8 @@ class NumberColumn(SharePointListColumnType):
     """Number column type.
 
     Args:
-        SharePointListColumntype (Pydantic Model): Inherits the 
-        SharePointListColumntype class.
+        SharePointListColumnType (Pydantic Model): Inherits the \
+        SharePointListColumnType class.
     """
     decimal_places: (
         Literal["automatic", "none", "one", "two", "three", "four", "five"]
@@ -149,8 +149,8 @@ class PersonOrGroupColumn(SharePointListColumnType):
     """Person or Group column type.
 
     Args:
-        SharePointListColumntype (Pydantic Model): Inherits the 
-        SharePointListColumntype class.
+        SharePointListColumnType (Pydantic Model): Inherits the \
+        SharePointListColumnType class.
     """
     allow_multiple_selection: bool | None = Field(None)
     choose_from_type: str | None = Field(None)
@@ -161,8 +161,8 @@ class TermColumn(SharePointListColumnType):
     """Term column type.
 
     Args:
-        SharePointListColumntype (Pydantic Model): Inherits the 
-        SharePointListColumntype class.
+        SharePointListColumnType (Pydantic Model): Inherits the \
+        SharePointListColumnType class.
     """
     allow_multiple_values: bool | None = Field(None)
     show_fully_qualified_name: bool | None = Field(None)
@@ -172,7 +172,7 @@ class TextColumn(SharePointListColumnType):
     """Text column type.
 
     Args:
-        SharePointListColumnType (Pydantic Model): Inherits the 
+        SharePointListColumnType (Pydantic Model): Inherits the \
         SharePointListColumnType class.
     """
     allow_multiple_lines: bool | None = Field(None)
@@ -186,7 +186,7 @@ class ThumbnailColumn(SharePointListColumnType):
     """Thumbnail column type. Currently empty, per MS documentation.
 
     Args:
-        SharePointListColumnType (Pydantic Model): Inherits the 
+        SharePointListColumnType (Pydantic Model): Inherits the \
         SharePointListColumnType class.
     """
     ...
@@ -198,7 +198,7 @@ class GeolocationColumn(SharePointListColumnType):
     or edited with the Graph API.
 
     Args:
-        SharePointListColumnType (Pydantic Model): Inherits the 
+        SharePointListColumnType (Pydantic Model): Inherits the \
         SharePointListColumnType class.
     """
     ...
@@ -210,7 +210,7 @@ class HyperlinkOrPictureColumn(SharePointListColumnType):
     or edited with the Graph API.
 
     Args:
-        SharePointListColumnType (Pydantic Model): Inherits the 
+        SharePointListColumnType (Pydantic Model): Inherits the \
         SharePointListColumnType class.
     """
     is_picture: bool | None = Field(None)

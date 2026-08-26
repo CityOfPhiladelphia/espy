@@ -3,7 +3,7 @@ from collections.abc import Iterator
 from enum import StrEnum
 from typing import Any
 
-from graph_api_functions.client import ClientEndpoints, GraphAPIClient
+from graph_api_functions.client import GraphAPIClient
 
 # TODO: Make host name a variable, not a constant. Edit in optional config file?
 from graph_api_functions.constants import GRAPH_URL, HOST_NAME
@@ -59,7 +59,7 @@ class SharePointList:
     """
     def __init__(self, client: GraphAPIClient, site_id: str, list_id: str):
         """Initializes the SharePointList object with id information. Most
-        users will initialize the SharePointList object using the get_list()
+        users will initialize the SharePointList object using the setup()
         method.
 
         Args:
@@ -74,7 +74,7 @@ class SharePointList:
         self._column_mapping: dict | None = None
 
     @classmethod
-    def get_list(cls, site_path: str, list_name: str):
+    def setup(cls, site_path: str, list_name: str):
         """Authenticates and fetches the ids needed to create the SharePointList
         object.
 
@@ -83,20 +83,13 @@ class SharePointList:
             list_name (str): The name of the SharePoint list.
 
         Returns:
-            SharePointList: A SharePointList object, instantiated with client,
-            site_id, and list_id.
+            SharePointList: A SharePointList object, instantiated with client, \
+                site_id, and list_id.
         """
         # TODO: New method to get site and list ID
         client = GraphAPIClient.authenticate()
 
-        site_id_url = build_url(
-            ClientEndpoints.SITE_ID,
-            graph_url=GRAPH_URL,
-            hostname=HOST_NAME,
-            site_path=site_path,
-        )
-
-        site_id = client.make_request("GET", site_id_url)["id"]
+        site_id = client.get_site_id(HOST_NAME, site_path)
 
         list_id_url = build_url(
             ListEndpoints.LIST_ID,
@@ -129,11 +122,11 @@ class SharePointList:
         )
 
         raw_row_data = self.client.make_request(HTTPMethod.GET, row_url)
+    
+        validated_row_data = GraphAPIResponse\
+            .model_validate(raw_row_data)
 
-        return raw_row_data
-        # validated_row_data = SharePointListRow(raw_row_data)
-
-        # return validated_row_data.model_dump()
+        return validated_row_data.model_dump()
 
     def list_columns(self) -> list[SharePointListColumn]:
         """List the columns in a SharePoint list.

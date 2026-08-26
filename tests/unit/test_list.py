@@ -38,9 +38,18 @@ def mocked_single_page_data() -> dict:
 
     return mock_page_data
 
-
 @pytest.fixture
-def mocked_row_data() -> dict: ...
+def mocked_row_data() -> dict:
+    mock_row_data = {
+        "odata_context": "789",
+        "fields": {
+            "Title": "Test",
+            "name": "Billy Pen",
+            "address": "1234 Market Street"
+        }
+    }
+
+    return mock_row_data
 
 
 def test_fetch_page_returns_graph_api_response(
@@ -83,8 +92,6 @@ def test_list_page_yields_dict(
 
     record = next(result)
 
-    print(record)
-
     ## Assert that the iterator yields a dict
     assert isinstance(record, dict)
 
@@ -99,14 +106,17 @@ def test_list_page_yields_dict(
 
 def test_get_row_yields_dict(
     configured_test_list,
+    mocked_row_data,
     monkeypatch,
 ):
 
     mock_response = MagicMock()
-    mock_response.return_value = mocked_single_page_data
+    mock_response.return_value = mocked_row_data
 
     monkeypatch.setattr(
         "graph_api_functions.list.GraphAPIClient.make_request", mock_response
     )
 
     result = configured_test_list.get_row("1")
+
+    assert isinstance(result, dict)
