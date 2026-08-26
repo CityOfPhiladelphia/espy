@@ -1,9 +1,64 @@
-# excel.py
+from collections.abc import Iterator
+from enum import StrEnum
 from typing import Any
 
-from graph_api_functions.client import GraphAPIClient
-from graph_api_functions.constants import GRAPH_URL
-from graph_api_functions.models.models import SharePointURL
+from graph_api_functions.client import ClientEndpoints, GraphAPIClient
+
+# TODO: Make host name a variable, not a constant. Edit in optional config file?
+from graph_api_functions.constants import GRAPH_URL, HOST_NAME
+from graph_api_functions.models.graph_api_models import (
+    SHARE_POINT_LIST_EXCLUDED_COLUMNS,
+)
+from graph_api_functions.models.models import (
+    GraphAPIResponse,
+    HTTPMethod,
+    SharePointListColumn,
+    SharePointListRow,
+)
+from graph_api_functions.urls import build_url
+
+''' 
+upload_file 
+get_content
+'''
+
+class ExcelEndpoints(StrEnum):
+    """An endpoint registry for all API operations made by the ExcelWorksheet
+    class.
+
+    Args:
+        StrEnum (StrEnum): Inherits from the StrEnum class in the enum
+        library.
+    """
+    WORKBOOK_ID = "{graph_url}/drives/{drive_id}/root:/{workbook_path}"
+
+    PROTECT = (
+        "{graph_url}/drives/{drive_id}/items/{item_id}"
+        "/workbook/worksheets/{worksheet_name}/protection/protect"
+    )
+    
+    UNPROTECT = (
+        "{graph_url}/drives/{drive_id}/items/{item_id}"
+        "/workbook/worksheets/{worksheet_name}/protection/unprotect"
+    )
+
+    ADD_ROW = (
+        "{graph_url}/drives/{drive_id}"
+        "/items/{item_id}"
+        "/workbook/tables/{table_name}"
+        "/rows/add"
+    )
+
+    UPLOAD_FILE = (
+        "{graph_url}/sites/{site_id}"
+        "/drive/root:/{dest_folder}/{fname}:/content"
+    )
+
+    GET_CONTENT = (
+        "{graph_url}/sites/{site_id}"
+        "/drives/{drive_id}/root:/{file_path}:/content"
+    )
+
 
 
 class ExcelWorksheet:
