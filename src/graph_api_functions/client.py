@@ -1,12 +1,13 @@
 # client.py
+from enum import StrEnum
+
 import citygeo_secrets as cgs
 import httpx
 from azure.identity import ClientSecretCredential
-from enum import StrEnum
 
-from graph_api_functions.constants import GRAPH_APP, SCOPE, GRAPH_URL
-from graph_api_functions.urls import build_url
+from graph_api_functions.constants import GRAPH_APP, GRAPH_URL, SCOPE
 from graph_api_functions.models.models import HTTPMethod, UnsupportedMethodError
+from graph_api_functions.urls import build_url
 
 
 class ClientEndpoints(StrEnum):
@@ -89,23 +90,6 @@ class GraphAPIClient:
         headers = self._get_headers()
 
         return httpx_func(endpoint, headers=headers, **kwargs)
-
-    # def _unpack_response(self, response: httpx.Response) -> dict:
-    #     """
-    #     Private method.
-
-    #     Unpacks an httpx response into a json object. Throws an error
-    #     if not successful.
-
-    #     Args:
-    #         response: the raw json of the httpx response.
-
-    #     Returns:
-    #         dict: the response as a dictionary.
-    #     """
-
-
-    #     return response.json()
 
     def make_request(self, method: HTTPMethod, endpoint: str, **kwargs):
         """
