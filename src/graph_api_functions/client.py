@@ -11,7 +11,7 @@ from graph_api_functions.models import HTTPMethod
 
 
 class ClientEndpoints(StrEnum):
-    SITE_ID = "{graph_url}/sites/{hostname}:{site_path}"
+    SITE_ID = "{graph_url}/sites/{hostname}:/sites/{site_name}"
 
     DRIVE_ID = "{graph_url}/drives/{site_id}"
 
@@ -131,12 +131,12 @@ class GraphAPIClient:
 
         return self._unpack_response(response)
 
-    def get_site_id(self, hostname:str, site_path:str)-> str:
+    def get_site_id(self, hostname:str, site_name:str)-> str:
         site_id_url = build_url(
                     ClientEndpoints.SITE_ID,
                     graph_url=GRAPH_URL,
                     hostname=hostname,
-                    site_path=site_path,
+                    site_name=site_name,
                 )
 
         response = self.make_request(HTTPMethod.GET, site_id_url)
