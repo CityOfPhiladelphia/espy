@@ -7,7 +7,7 @@ Documentation is created using Zensical.
 
 In order to serve the zensical documentation locally, run
 
-```
+```bash
 uv run zensical serve
 ```
 
@@ -16,16 +16,16 @@ The docs will be served at ```http://localhost:3000/```.
 ## Getting Started
 To install this library to your project, run:
 
-```
+```bash
 uv add git+https://github.com/CityOfPhiladelphia/graph_api_functions.git
 ```
 
 ### Usage Example
-```
+```python
 from graph_api_functions.list import SharePointList
 
 # Instantiate a SharePoint List Object
-sp_list = SharePointList.get_list("list_site_name", "list_name")
+sp_list = SharePointList.setup("list_site_name", "list_name")
 
 # Create a row mapping data to column names in the list
 row_to_add = {"name": "Billy Penn", 
@@ -38,11 +38,11 @@ response = sp_list.add_row(row_to_add)
 
 ## Development
 ### To install packages needed to run:
-```
+```bash
 uv sync
 ```
 ### To install packages needed to develop this package:
-```
+```bash
 uv sync --dev
 ```
 
@@ -52,12 +52,12 @@ or is this needed to run the tool?
 
 If you only need the package for development (for example, linters like ruff, pytest, ipython, etc...), then please add the --dev flag when adding the dependency:
 
-```
+```bash
 uv add --dev <<package name>>
 ```
 
 If the dependency is truly needed for functionality, run:
-```
+```bash
 uv add <<package name>>
 ```
 
@@ -73,7 +73,7 @@ The GraphAPIClient contains a class method that handles authentication
 to the sharepoint API.
 
 
-```
+```bash
 from graph_api_functions.client import GraphAPIClient
 
 client = GraphAPIClient.authenticate()
