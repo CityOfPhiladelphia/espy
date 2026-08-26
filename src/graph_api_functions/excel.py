@@ -1,30 +1,14 @@
-from collections.abc import Iterator
 from enum import StrEnum
-from typing import Any
 
 from graph_api_functions.client import GraphAPIClient
-
-# TODO: Make host name a variable, not a constant. Edit in optional config file?
-from graph_api_functions.constants import GRAPH_URL, HOST_NAME
-from graph_api_functions.models.graph_api_models import (
-    SHARE_POINT_LIST_EXCLUDED_COLUMNS,
-)
-from graph_api_functions.models.models import (
-    GraphAPIResponse,
-    HTTPMethod,
-    SharePointListColumn,
-    SharePointListRow,
-)
+from graph_api_functions.constants import GRAPH_URL
+from graph_api_functions.models.models import HTTPMethod
 from graph_api_functions.urls import build_url
 
 
 class ExcelEndpoints(StrEnum):
-    """An endpoint registry for all API operations made by the ExcelWorksheet
-    class.
-
-    Args:
-        StrEnum (StrEnum): Inherits from the StrEnum class in the enum
-        library.
+    """
+    TODO: Make better documentation 
     """
     WORKBOOK_ID = "{graph_url}/drives/{drive_id}/root:/{workbook_path}"
 
@@ -99,6 +83,7 @@ class ExcelWorksheet:
         else:
             return cls(client, site_id, drive_id)
 
+
     def append_row(self, row:list, password=None):
         # TODO: Consider append_rows for batching data 
         self.toggle_protection(password, protect=False)
@@ -114,6 +99,7 @@ class ExcelWorksheet:
         json = {
             "values": row
         }
+        
         self.client.make_request(HTTPMethod.POST, add_row_url, json=json, timeout=60)
 
         self.toggle_protection(password, protect=True)
