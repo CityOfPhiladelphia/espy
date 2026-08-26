@@ -5,9 +5,9 @@ from azure.identity import ClientSecretCredential
 from enum import StrEnum
 
 from graph_api_functions.constants import GRAPH_APP, SCOPE, GRAPH_URL
-from graph_api_functions.models import HTTPMethod, UnsupportedMethodError
+from graph_api_functions.models.models import HTTPMethod, UnsupportedMethodError
 from graph_api_functions.urls import build_url
-from graph_api_functions.models import HTTPMethod
+from graph_api_functions.models.models import HTTPMethod
 
 
 class ClientEndpoints(StrEnum):

@@ -8,9 +8,6 @@ dependencies = [
     "azure-identity>=1.25.3",
     "citygeo-secrets",
     "httpx>=0.28.1",
-    "openpyxl>=3.1.5",
-    "psycopg2>=2.9.12",
-    "pydantic-extra-types>=2.11.1",
     "pydantic[email]>=2.13.4",
 ]
 
@@ -33,6 +30,7 @@ ignore_missing_imports = true
 
 [dependency-groups]
 dev = [
+    "fawltydeps>=0.20.0",
     "ipython>=9.16.1",
     "isort>=8.0.1",
     "mkdocstrings-python>=2.0.7",
@@ -40,7 +38,5 @@ dev = [
     "pip>=26.2.1",
     "pytest>=9.1.1",
     "ruff>=0.16.3",
-    "types-openpyxl>=3.1.5.20260807",
-    "types-psycopg2>=2.9.21.20260724",
     "zensical>=0.0.57",
 ]
