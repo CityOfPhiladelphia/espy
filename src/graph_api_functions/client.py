@@ -1,11 +1,12 @@
 # client.py
 from enum import StrEnum
+import os 
 
 import citygeo_secrets as cgs
 import httpx
 from azure.identity import ClientSecretCredential
 
-from graph_api_functions.constants import GRAPH_APP, SCOPE, GRAPH_URL
+from graph_api_functions.constants import GRAPH_APP, SCOPE, GRAPH_URL, HOST_NAME
 from graph_api_functions.models.models import HTTPMethod, UnsupportedMethodError
 from graph_api_functions.urls import build_url
 from graph_api_functions.models.models import HTTPMethod
@@ -15,6 +16,12 @@ class ClientEndpoints(StrEnum):
     SITE_ID = "{graph_url}/sites/{hostname}:/sites/{site_name}"
 
     DRIVE_ID = "{graph_url}/sites/{site_id}/drives"
+
+    UPLOAD_FILE = (
+            "{graph_url}/sites/{site_id}"
+            "/drive/root:/{dest_path}/{file_name}:/content"
+            )
+
 
 class GraphAPIClient:
     def __init__(self, credential: ClientSecretCredential):
@@ -144,3 +151,39 @@ class GraphAPIClient:
         raise RuntimeError(
             f"Document library '{document_library}' not found."
         )
+
+    def upload_local_file(self, site_name:str, local_path:str, dest_path:str) -> dict: 
+        """
+        Upload a file to a SharePoint Documents folder. 
+
+        Args:
+            site_name (str) : The name of the sharepoint site you want to upload a file to 
+            local_path (str): the exact local path where your file is 
+            dest_path (str): the path, relative to the Documents folder, where you want to save the file
+            
+            Example: Setting dest_path="FolderName"
+            will create a file found at Documents/FolderName/file.xlsx 
+            Setting dest_path to "" will save it at Documents/file.xslx 
+
+        Returns:
+            dict: response json
+        """
+
+        file_name = os.path.basename(local_path)
+
+        with open(local_path, "rb") as f:
+            file_data = f.read()
+
+        upload_url = build_url(
+                    ClientEndpoints.UPLOAD_FILE,
+                    graph_url=GRAPH_URL,
+                    site_id=self.get_site_id(hostname=HOST_NAME, site_name=site_name),
+                    dest_path=dest_path,
+                    file_name=file_name                    
+                )
+
+        response = self.make_request(HTTPMethod.PUT, 
+                                     upload_url,
+                                     data=file_data)
+
+        return response.json()
