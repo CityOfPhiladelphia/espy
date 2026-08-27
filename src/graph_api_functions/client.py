@@ -112,6 +112,8 @@ class GraphAPIClient:
             method=method, endpoint=endpoint, **kwargs
         )
 
+        response.raise_for_status()
+        
         return response
 
     def get_site_id(self, hostname:str, site_name:str)-> str:
