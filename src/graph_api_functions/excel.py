@@ -123,8 +123,23 @@ class ExcelWorksheet:
             return cls(client, site_id, drive_id)
 
 
-    def append_row(self, row:list, password=None):
-        # TODO: Consider append_rows for batching data 
+    def append_row(self, row:list, password:str|None=None):
+        """
+        Append a row of data to a specific table in a specific excel worksheet. 
+        For this function to work: 
+            a) Excel must contain a table object in it, which
+            must have been set when instantiating ExcelWorksheet. 
+            
+            b) The list you pass must have a value for each column of the table, or 
+            the operation will fail. 
+
+        Args:
+            row (list): The row you want to add, in list form. 
+                e.g. [[1,2,3]] would add a row with values 1, 2, and 3. 
+
+            password (str, optional): Password to pass to sheet protection to temporarily un/reprotect sheet
+                Defaults to None.
+        """
         self.toggle_protection(password, protect=False)
 
         add_row_url = build_url(
