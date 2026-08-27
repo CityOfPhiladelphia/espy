@@ -74,31 +74,21 @@ class SharePointList:
         self._column_mapping: dict | None = None
 
     @classmethod
-    def get_list(cls, site_path: str, list_name: str):
+    def get_list(cls, site_name: str, list_name: str):
         """Authenticates and fetches the ids needed to create the SharePointList
         object.
 
         Args:
-            site_path (str): The site path of the SharePoint list.
+            site_name (str): The site name of the SharePoint list.
             list_name (str): The name of the SharePoint list.
 
         Returns:
             SharePointList: A SharePointList object, instantiated with client,
             site_id, and list_id.
         """
-        # TODO: New method to get site and list ID
         client = GraphAPIClient.authenticate()
 
-        site_id_url = build_url(
-            ClientEndpoints.SITE_ID,
-            graph_url=GRAPH_URL,
-            hostname=HOST_NAME,
-            site_path=site_path,
-        )
-
-        site_id = client.make_request("GET", site_id_url)["id"]
-
-        site_id = client.get_site_id()
+        site_id = client.get_site_id(hostname=HOST_NAME, site_name=site_name)
 
         list_id_url = build_url(
             ListEndpoints.LIST_ID,
@@ -107,7 +97,7 @@ class SharePointList:
             list_name=list_name,
         )
 
-        list_id = client.make_request("GET", list_id_url)["id"]
+        list_id = client.make_request(HTTPMethod.GET, list_id_url)["id"]
 
         return cls(client, site_id, list_id)
 
