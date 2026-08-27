@@ -160,6 +160,13 @@ class ExcelWorksheet:
 
 
     def toggle_protection(self, password:str, protect:bool):
+        """
+        Turns on/off sheet protection in the excel worksheet. 
+
+        Args:
+            password (str): Password for sheet protection
+            protect (bool): Boolean representing if you want it on (True) or off (False) 
+        """
         if not password:
             return 
         
