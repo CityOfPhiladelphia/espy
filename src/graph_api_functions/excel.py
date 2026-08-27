@@ -123,8 +123,23 @@ class ExcelWorksheet:
             return cls(client, site_id, drive_id)
 
 
-    def append_row(self, row:list, password=None):
-        # TODO: Consider append_rows for batching data 
+    def append_row(self, row:list, password:str|None=None):
+        """
+        Append a row of data to a specific table in a specific excel worksheet. 
+        For this function to work: 
+            a) Excel must contain a table object in it, which
+            must have been set when instantiating ExcelWorksheet. 
+            
+            b) The list you pass must have a value for each column of the table, or 
+            the operation will fail. 
+
+        Args:
+            row (list): The row you want to add, in list form. 
+                e.g. [[1,2,3]] would add a row with values 1, 2, and 3. 
+
+            password (str, optional): Password to pass to sheet protection to temporarily un/reprotect sheet
+                Defaults to None.
+        """
         self.toggle_protection(password, protect=False)
 
         add_row_url = build_url(
@@ -145,6 +160,13 @@ class ExcelWorksheet:
 
 
     def toggle_protection(self, password:str, protect:bool):
+        """
+        Turns on/off sheet protection in the excel worksheet. 
+
+        Args:
+            password (str): Password for sheet protection
+            protect (bool): Boolean representing if you want it on (True) or off (False) 
+        """
         if not password:
             return 
         
@@ -172,20 +194,30 @@ class ExcelWorksheet:
 
         self.client.make_request(HTTPMethod.POST, url, json=json)
 
-    def get_content(self, file_path:str):
+    def get_content(self, file_path:str) -> bytes:
+        """
+        Get the raw bytes of the excel workbook specified by
+        file_path. 
 
-         content_url = build_url(ExcelEndpoints.GET_CONTENT,
+        Args:
+            file_path (str): The path of the file you want, relative to the
+            instantiated document library. 
+
+        Returns:
+            bytes: The raw bytes representing the excel file.
+        """
+        content_url = build_url(ExcelEndpoints.GET_CONTENT,
                                  graph_url=GRAPH_URL,
                                  site_id=self.site_id,
                                  drive_id=self.drive_id,
                                  file_path=file_path
          )
 
-         request = self.client.make_request(HTTPMethod.GET,
+        request = self.client.make_request(HTTPMethod.GET,
                                             content_url, 
                                             timeout=60, 
                                             follow_redirects=True)
 
-         return request.content 
+        return request.content 
         
 
