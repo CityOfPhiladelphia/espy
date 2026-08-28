@@ -228,19 +228,35 @@ class ExcelWorksheet:
         return request.content 
 
 
-    # def list_rows(self):
+    def list_rows(self) -> list[dict]:
+        """
+        Returns the rows of an excel table, represented as a list
+        of dictionaries. The the keys to the dictionary represent 
+        the column name and the value is the value of the column
 
-    #     list_rows_url = build_url(
-    #         ExcelEndpoints.LIST_ROWS,
-    #         graph_url=GRAPH_URL,
-    #         drive_id=self.drive_id,
-    #         workbook_id=self.workbook_id,
-    #         table_name=self.table_name
-    #     )
+        Returns:
+            list[dict]: The rows of an excel table. 
+        """
 
-    #     response = self.client.make_request(HTTPMethod.GET, list_rows_url)
+        column_names = self.list_columns()
 
-    #     return response 
+        list_rows_url = build_url(
+            ExcelEndpoints.LIST_ROWS,
+            graph_url=GRAPH_URL,
+            drive_id=self.drive_id,
+            workbook_id=self.workbook_id,
+            table_name=self.table_name
+        )
+        response = self.client.make_request(HTTPMethod.GET, list_rows_url).json()
+        items = response.get("value", [])
+
+        rows = [] 
+
+        for item in items: 
+            row = {key: item['values'][0][i] for i, key in enumerate(column_names)}
+            rows.append(row)  
+
+        return rows 
 
 
     def list_columns(self) -> list:
