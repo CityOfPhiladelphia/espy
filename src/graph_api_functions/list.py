@@ -90,8 +90,6 @@ class SharePointList:
 
         site_id = client.get_site_id(HOST_NAME, site_path)
 
-        site_id = client.get_site_id()
-
         list_id_url = build_url(
             ListEndpoints.LIST_ID,
             graph_url=GRAPH_URL,
@@ -99,7 +97,8 @@ class SharePointList:
             list_name=list_name,
         )
 
-        list_id = client.make_request(HTTPMethod.GET, list_id_url)["id"]
+        list_id = client.make_request(HTTPMethod.GET, list_id_url)\
+            .json()["id"]
 
         return cls(client, site_id, list_id)
 
@@ -122,7 +121,7 @@ class SharePointList:
             row_id=row_id,
         )
 
-        raw_row_data = self.client.make_request(HTTPMethod.GET, row_url)
+        raw_row_data = self.client.make_request(HTTPMethod.GET, row_url).json()
     
         validated_row_data = GraphAPIResponse\
             .model_validate(raw_row_data)
@@ -142,7 +141,8 @@ class SharePointList:
             list_id=self.list_id,
         )
 
-        raw_columns_data = self.client.make_request(HTTPMethod.GET, columns_url)
+        raw_columns_data = self.client.make_request(
+            HTTPMethod.GET, columns_url).json()
 
         response_envelope = GraphAPIResponse[
             SharePointListColumn
@@ -201,7 +201,8 @@ class SharePointList:
         if not url:
             return None
 
-        raw_data = self.client.make_request(HTTPMethod.GET, url, params=params)
+        raw_data = self.client.make_request(
+            HTTPMethod.GET, url, params=params).json()
 
         response_envelope = GraphAPIResponse[SharePointListRow].model_validate(
             raw_data
