@@ -73,9 +73,9 @@ class ExcelWorksheet:
         client: GraphAPIClient,
         site_id: str,
         drive_id: str, 
-        workbook_id: str|None,
-        worksheet_name: str|None,
-        table_name: str|None,
+        workbook_id: str|None=None,
+        worksheet_name: str|None=None,
+        table_name: str|None=None,
     ):
 
         self.client         = client
