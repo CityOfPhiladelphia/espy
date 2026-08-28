@@ -29,7 +29,7 @@ classDiagram
 
     class UrlConstructor {
         << Create >>
-        + site_url(hostname, site_path)$ url
+        + site_url(hostname, site_name)$ url
         + drive_url(site_id)$ url
         + workbook_url(drive_id, workbook_path)$ url
         + list_url(site_id, list_name)$ url
@@ -37,7 +37,7 @@ classDiagram
 
     class UrlResolver {
         << Create >>
-        + get_site_id(hostname, site_path)$ str
+        + get_site_id(hostname, site_name)$ str
         + get_drive_id(site_id, document_library)$ str
         + get_workbook_id(drive_id, workbook_path)$ str
         + get_list_id(site_id, list_name)$ str

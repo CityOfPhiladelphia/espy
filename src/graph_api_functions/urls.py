@@ -42,8 +42,8 @@ def build_url(url: StrEnum, **kwargs) -> str:
 #     """
 
 #     @staticmethod
-#     def site_id_url(hostname: str, site_path) -> str:
-#         url = f"{GRAPH_URL}/sites/{hostname}:{site_path}"
+#     def site_id_url(hostname: str, site_name) -> str:
+#         url = f"{GRAPH_URL}/sites/{hostname}:{site_name}"
 
 #         return url
 
