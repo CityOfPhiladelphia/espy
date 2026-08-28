@@ -83,10 +83,11 @@ class GraphAPIClient:
         """
         # Map selected method to HTTPX method
         func_map = {
-            "GET": httpx.get,
-            "POST": httpx.post,
-            "PUT": httpx.put,
-            "PATCH": httpx.patch,
+            "GET"   : httpx.get,
+            "POST"  : httpx.post,
+            "PUT"   : httpx.put,
+            "PATCH" : httpx.patch,
+            "DELETE": httpx.delete
         }
 
         try:

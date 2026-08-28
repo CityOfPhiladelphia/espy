@@ -130,7 +130,7 @@ class ExcelWorksheet:
             return cls(client, site_id, drive_id)
 
 
-    def append_row(self, row:list, password:str|None=None):
+    def add_rows(self, rows:list, password:str|None=None):
         """
         Append a row of data to a specific table in a specific excel worksheet. 
         For this function to work: 
@@ -158,7 +158,7 @@ class ExcelWorksheet:
         )
 
         json = {
-            "values": row
+            "values": rows
         }
         
         self.client.make_request(HTTPMethod.POST, add_row_url, json=json, timeout=60)

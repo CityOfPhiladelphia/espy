@@ -1,8 +1,6 @@
 import string
 from enum import StrEnum
 
-
-# TODO: Add data typing to this that avoids circular import, maybe add a blank class or protocol
 def build_url(url: StrEnum, **kwargs) -> str:
     """
     Given a GraphAPI endpoint template, builds the actual URL to request
@@ -18,7 +16,6 @@ def build_url(url: StrEnum, **kwargs) -> str:
         str, a formatted string
     """
 
-    # get all placeholder fields in the string
     fields = {
         field for _, field, _, _ in string.Formatter().parse(url) if field
     }
@@ -31,44 +28,4 @@ def build_url(url: StrEnum, **kwargs) -> str:
             f"The following fields are missing: {', '.join(missing_fields)}"
         )
 
-    # Return url with correct keyword arguments passed in
     return url.format(**kwargs)
-
-
-# class _UrlConstructor:
-#     """
-#     A class containing static methods to format URLs
-#     in the shape needed for the SharePoint API
-#     """
-
-#     @staticmethod
-#     def site_id_url(hostname: str, site_name) -> str:
-#         url = f"{GRAPH_URL}/sites/{hostname}:{site_name}"
-
-#         return url
-
-#     @staticmethod
-#     def drive_id_url(site_id: str) -> str:
-#         url = f"{GRAPH_URL}/drives/{site_id}"
-
-#         return url
-
-#     @staticmethod
-#     def workbook_id_url(drive_id: str, workbook_path: str) -> str:
-#         url = f"{GRAPH_URL}/drives/{drive_id}/root:/{workbook_path}"
-
-#         return url
-
-#     @staticmethod
-#     def list_id_url(site_id: str, list_name: str) -> str:
-
-#         url = f"{GRAPH_URL}/sites/{site_id}/lists/{list_name}"
-
-#         return url
-
-#     @staticmethod
-#     def list_url(site_id: str, list_id: str) -> str:
-
-#         url = f"{GRAPH_URL}/sites/{site_id}/lists/{list_id}/items"
-
-#         return url

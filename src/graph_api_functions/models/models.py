@@ -15,10 +15,11 @@ class HTTPMethod(StrEnum):
         StrEnum (StrEnum): Inherits the StrEnum parent class
         from the enum library
     """
-    GET = "GET"
-    POST = "POST"
-    PUT = "PUT"
-    PATCH = "PATCH"
+    GET    = "GET"
+    POST   = "POST"
+    PUT    = "PUT"
+    PATCH  = "PATCH"
+    DELETE = "DELETE"
 
 
 ## Errors
@@ -45,7 +46,7 @@ class TabularStorage(Protocol):
 
     def list_rows(self) -> list[dict[str, Any]]: ...
 
-    def add_row(self, data: dict[str, Any]) -> dict[str, Any]: ...
+    def add_rows(self, data: dict[str, Any]) -> dict[str, Any]: ...
 
     def edit_row(self, row_id: str, data: dict[str, Any]) -> dict[str, Any]: ...
 
