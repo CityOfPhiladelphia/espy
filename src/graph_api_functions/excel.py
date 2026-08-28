@@ -1,5 +1,7 @@
 from enum import StrEnum
 
+from httpx import Response 
+
 from graph_api_functions.client import GraphAPIClient
 from graph_api_functions.constants import GRAPH_URL
 from graph_api_functions.models.models import HTTPMethod
@@ -130,7 +132,7 @@ class ExcelWorksheet:
             return cls(client, site_id, drive_id)
 
 
-    def add_rows(self, rows:list, password:str|None=None):
+    def add_rows(self, rows:list, password:str|None=None) -> Response:
         """
         Append a row of data to a specific table in a specific excel worksheet. 
         For this function to work: 
@@ -146,6 +148,9 @@ class ExcelWorksheet:
 
             password (str, optional): Password to pass to sheet protection to temporarily un/reprotect sheet
                 Defaults to None.
+
+        Returns:
+            Response - httpx response 
         """
         self.toggle_protection(password, protect=False)
 
@@ -161,12 +166,17 @@ class ExcelWorksheet:
             "values": rows
         }
         
-        self.client.make_request(HTTPMethod.POST, add_row_url, json=json, timeout=60)
+        response = self.client.make_request(HTTPMethod.POST, 
+                                            add_row_url, 
+                                            json=json, 
+                                            timeout=60)
 
         self.toggle_protection(password, protect=True)
 
+        return response
 
-    def toggle_protection(self, password:str, protect:bool):
+
+    def toggle_protection(self, password:str, protect:bool) -> None:
         """
         Turns on/off sheet protection in the excel worksheet. 
 
