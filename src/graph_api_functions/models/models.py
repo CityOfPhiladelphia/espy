@@ -15,10 +15,11 @@ class HTTPMethod(StrEnum):
         StrEnum (StrEnum): Inherits the StrEnum parent class
         from the enum library
     """
-    GET = "GET"
-    POST = "POST"
-    PUT = "PUT"
-    PATCH = "PATCH"
+    GET    = "GET"
+    POST   = "POST"
+    PUT    = "PUT"
+    PATCH  = "PATCH"
+    DELETE = "DELETE"
 
 
 ## Errors
