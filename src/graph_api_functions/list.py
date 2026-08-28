@@ -17,6 +17,7 @@ from graph_api_functions.models.models import (
     SharePointListRow,
 )
 from graph_api_functions.urls import build_url
+from httpx import Response
 
 # TODO: Print warning that a list containing a hyperlink or location column
 # Cannot be updated with the api
@@ -239,7 +240,8 @@ class SharePointList:
             for row in response_envelope.value:
                 yield row.model_dump()
 
-    def add_row(self, data: dict[str, Any]) -> dict[str, Any]:
+    def add_row(self, data: dict[str, Any]) -> Response:
+        # TODO: Add functionality to make this add rows, adding one or more rows.
         """Add a row to a SharePoint list.
 
         Note: This method does not currently work for Lists with
