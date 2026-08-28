@@ -1,5 +1,7 @@
 from enum import StrEnum
 
+from httpx import Response
+
 from graph_api_functions.client import GraphAPIClient
 from graph_api_functions.constants import GRAPH_URL
 from graph_api_functions.models.models import HTTPMethod
@@ -129,8 +131,10 @@ class ExcelWorksheet:
         else:
             return cls(client, site_id, drive_id)
 
+    def get_row(self):
+        raise NotImplementedError("Method for excel be implemented in the future.")
 
-    def add_rows(self, rows:list, password:str|None=None):
+    def add_rows(self, rows:list, password:str|None=None) -> Response:
         """
         Append a row of data to a specific table in a specific excel worksheet. 
         For this function to work: 
