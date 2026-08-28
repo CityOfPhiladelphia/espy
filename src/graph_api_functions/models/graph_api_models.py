@@ -8,7 +8,7 @@ SHARE_POINT_LIST_EXCLUDED_COLUMNS = [
     "Color Tag",
     "Compliance Asset Id",
     "ID",
-    "Content type",
+    "Content Type",
     "Modified",
     "Created",
     "Modified By",
