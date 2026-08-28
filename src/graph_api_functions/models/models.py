@@ -67,7 +67,8 @@ class GraphAPIResponse[T](BaseModel):
     # OData metadata context link
     odata_context: str | None = Field(None, alias="@odata.context")
     next_link: str | None = Field(None, alias="@odata.nextLink")
-    value: list[T]
+    value: list[T] | None = Field(None)
+    fields: dict = Field(default_factory=dict)
     model_config = ConfigDict(populate_by_name=True)
 
 
@@ -86,8 +87,8 @@ class SharePointListColumn(cols.SharePointListColumnType):
     information about the column and validation rules assigned to the column.
 
     Args:
-        cols (SharePointListColumnType): Inherits from the 
-        SharePointListColumnType class, allowing for conversion between
+        cols (SharePointListColumnType): Inherits from the \
+        SharePointListColumnType class, allowing for conversion between \
         camel and snake case field names.
     """
     description: str | None = Field(None)

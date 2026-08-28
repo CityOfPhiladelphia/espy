@@ -7,7 +7,7 @@ from graph_api_functions.list import SharePointList
 
 ## Instantiate with .setup()
 ```python
-sp_list = SharePointList.setup("list_site_name", "list_name")
+sp_list = SharePointList.setup(site_name="list_site_name", list_name="list_name")
 ```
 
 ## List Columns

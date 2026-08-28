@@ -25,7 +25,7 @@ uv add git+https://github.com/CityOfPhiladelphia/graph_api_functions.git
 from graph_api_functions.list import SharePointList
 
 # Instantiate a SharePoint List Object
-sp_list = SharePointList.setup("list_site_name", "list_name")
+sp_list = SharePointList.setup(site_name="list_site_name", list_name="list_name")
 
 # Create a row mapping data to column names in the list
 row_to_add = {"name": "Billy Penn", 
