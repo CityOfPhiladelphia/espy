@@ -21,6 +21,11 @@ class ClientEndpoints(StrEnum):
             "/drive/root:/{dest_path}/{file_name}:/content"
             )
 
+    GET_CONTENT = (
+        "{graph_url}/sites/{site_id}"
+        "/drives/{drive_id}/root:/{file_path}:/content"
+    )
+
 
 class GraphAPIClient:
     def __init__(self, credential: ClientSecretCredential):
@@ -187,3 +192,29 @@ class GraphAPIClient:
                                      data=file_data)
 
         return response.json()
+
+    def get_content(self, file_path:str) -> bytes:
+        """
+        Get the raw bytes of the excel workbook specified by
+        file_path. 
+
+        Args:
+            file_path (str): The path of the file you want, relative to the
+            instantiated document library. 
+
+        Returns:
+            bytes: The raw bytes representing the excel file.
+        """
+        content_url = build_url(ClientEndpoints.GET_CONTENT,
+                                 graph_url=GRAPH_URL,
+                                 site_id=self.site_id,
+                                 drive_id=self.drive_id,
+                                 file_path=file_path
+         )
+
+        request = self.make_request(HTTPMethod.GET,
+                                            content_url, 
+                                            timeout=60, 
+                                            follow_redirects=True)
+
+        return request.content 

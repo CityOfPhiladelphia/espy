@@ -39,11 +39,6 @@ class ExcelEndpoints(StrEnum):
         "/workbook/tables/{table_name}/rows"
     )
 
-    GET_CONTENT = (
-        "{graph_url}/sites/{site_id}"
-        "/drives/{drive_id}/root:/{file_path}:/content"
-    )
-
     LIST_COLS = (
         "{graph_url}/drives/{drive_id}/items/{workbook_id}"
         "/workbook/tables/{table_name}/columns"
@@ -210,32 +205,6 @@ class ExcelWorksheet:
         json = { "password": password }
 
         self.client.make_request(HTTPMethod.POST, url, json=json)
-
-    def get_content(self, file_path:str) -> bytes:
-        """
-        Get the raw bytes of the excel workbook specified by
-        file_path. 
-
-        Args:
-            file_path (str): The path of the file you want, relative to the
-            instantiated document library. 
-
-        Returns:
-            bytes: The raw bytes representing the excel file.
-        """
-        content_url = build_url(ExcelEndpoints.GET_CONTENT,
-                                 graph_url=GRAPH_URL,
-                                 site_id=self.site_id,
-                                 drive_id=self.drive_id,
-                                 file_path=file_path
-         )
-
-        request = self.client.make_request(HTTPMethod.GET,
-                                            content_url, 
-                                            timeout=60, 
-                                            follow_redirects=True)
-
-        return request.content 
 
 
     def list_rows(self) -> list[dict]:
