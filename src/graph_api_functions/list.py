@@ -79,14 +79,13 @@ class SharePointList:
         object.
 
         Args:
-            site_path (str): The site path of the SharePoint list.
+            site_name (str): The site name of the SharePoint list.
             list_name (str): The name of the SharePoint list.
 
         Returns:
             SharePointList: A SharePointList object, instantiated with client, \
                 site_id, and list_id.
         """
-        # TODO: New method to get site and list ID
         client = GraphAPIClient.authenticate()
 
         site_id = client.get_site_id(HOST_NAME, site_path)
@@ -100,7 +99,7 @@ class SharePointList:
             list_name=list_name,
         )
 
-        list_id = client.make_request("GET", list_id_url)["id"]
+        list_id = client.make_request(HTTPMethod.GET, list_id_url)["id"]
 
         return cls(client, site_id, list_id)
 

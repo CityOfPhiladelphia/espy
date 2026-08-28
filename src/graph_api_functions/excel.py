@@ -8,7 +8,12 @@ from graph_api_functions.urls import build_url
 
 class ExcelEndpoints(StrEnum):
     """
-    TODO: Make better documentation 
+    Endpoint registry for all API operations made by the ExcelWorkbook
+    class.
+
+    Args:
+        StrEnum (StrEnum): Inherits from the StrEnum class in the enum
+        library.
     """
     WORKBOOK_ID = "{graph_url}/drives/{drive_id}/root:/{workbook_path}"
 
@@ -37,6 +42,25 @@ class ExcelEndpoints(StrEnum):
 
 
 class ExcelWorksheet:
+    """
+    Models a SharePoint Excel Workbook.
+
+    Provides functionality to access and add rows to a Sharepoint Excel file. 
+
+    Attributes:
+        client(GraphAPIClient): A GraphAPIClient instance, used to
+        make requests against the Graph API.
+
+        site_id (str)         : A string id for the SharePoint site the graph is on.
+
+        drive_id (str)        : A string identifier for a specfic sharepoint drive. 
+
+        workbook_id (str)     : A string identifier for a specfic excel workbook.
+
+        worksheet_name (str)  : String representing the name of a worksheet in Excel.
+
+        table_name (str)      : String representing the name of a table object in Excel. 
+    """
     def __init__(
         self,
         client: GraphAPIClient,
@@ -64,7 +88,22 @@ class ExcelWorksheet:
         worksheet_name:str|None=None,
         table_name:str|None=None
         ):
+        """
+        Sets up the ExcelWorkbook class. Creates a client and fetches
+        necessary ids to have ExcelWorkbook operate on. 
 
+        Args:
+            hostname        : Sharepoint hostname. i.e. "phila.sharepoint.com"
+            site_name       : The name of the sharepoint site. i.e. "ps360-metrics-share"
+            document_library: The name of the document library. i.e. "Documents"
+            workbook_path   : The path to the file you want to access 
+            relative to document_library. i.e. "Philly Stat - OIT/OIT_data.xlsx" 
+            worksheet_name  : The name of the worksheet you want to affect. i.e. "Metrics" 
+            table_name      : The name of the table object in the excel. i.e. "Table1" 
+
+        Returns:
+            ExcelWorkbook: An ExcelWorkboook object.
+        """
         client = GraphAPIClient.authenticate()
 
         site_id = client.get_site_id(hostname, site_name)
@@ -84,8 +123,23 @@ class ExcelWorksheet:
             return cls(client, site_id, drive_id)
 
 
-    def append_row(self, row:list, password=None):
-        # TODO: Consider append_rows for batching data 
+    def append_row(self, row:list, password:str|None=None):
+        """
+        Append a row of data to a specific table in a specific excel worksheet. 
+        For this function to work: 
+            a) Excel must contain a table object in it, which
+            must have been set when instantiating ExcelWorksheet. 
+            
+            b) The list you pass must have a value for each column of the table, or 
+            the operation will fail. 
+
+        Args:
+            row (list): The row you want to add, in list form. 
+                e.g. [[1,2,3]] would add a row with values 1, 2, and 3. 
+
+            password (str, optional): Password to pass to sheet protection to temporarily un/reprotect sheet
+                Defaults to None.
+        """
         self.toggle_protection(password, protect=False)
 
         add_row_url = build_url(
@@ -106,6 +160,13 @@ class ExcelWorksheet:
 
 
     def toggle_protection(self, password:str, protect:bool):
+        """
+        Turns on/off sheet protection in the excel worksheet. 
+
+        Args:
+            password (str): Password for sheet protection
+            protect (bool): Boolean representing if you want it on (True) or off (False) 
+        """
         if not password:
             return 
         
@@ -133,20 +194,30 @@ class ExcelWorksheet:
 
         self.client.make_request(HTTPMethod.POST, url, json=json)
 
-    def get_content(self, file_path:str):
+    def get_content(self, file_path:str) -> bytes:
+        """
+        Get the raw bytes of the excel workbook specified by
+        file_path. 
 
-         content_url = build_url(ExcelEndpoints.GET_CONTENT,
+        Args:
+            file_path (str): The path of the file you want, relative to the
+            instantiated document library. 
+
+        Returns:
+            bytes: The raw bytes representing the excel file.
+        """
+        content_url = build_url(ExcelEndpoints.GET_CONTENT,
                                  graph_url=GRAPH_URL,
                                  site_id=self.site_id,
                                  drive_id=self.drive_id,
                                  file_path=file_path
          )
 
-         request = self.client.make_request(HTTPMethod.GET,
+        request = self.client.make_request(HTTPMethod.GET,
                                             content_url, 
                                             timeout=60, 
                                             follow_redirects=True)
 
-         return request.content 
+        return request.content 
         
 
