@@ -28,10 +28,13 @@ class ExcelEndpoints(StrEnum):
     )
 
     ADD_ROW = (
-        "{graph_url}/drives/{drive_id}"
-        "/items/{workbook_id}"
-        "/workbook/tables/{table_name}"
-        "/rows/add"
+        "{graph_url}/drives/{drive_id}/items/{workbook_id}"
+        "/workbook/tables/{table_name}/rows/add"
+    )
+
+    LIST_ROWS = (
+        "{graph_url}/drives/{drive_id}/items/{workbook_id}"
+        "/workbook/tables/{table_name}/rows"
     )
 
     GET_CONTENT = (
@@ -39,8 +42,12 @@ class ExcelEndpoints(StrEnum):
         "/drives/{drive_id}/root:/{file_path}:/content"
     )
 
+    LIST_COLS = (
+        "{graph_url}/drives/{drive_id}/items/{workbook_id}"
+        "/workbook/tables/{table_name}/columns"
+    )
 
-
+    
 class ExcelWorksheet:
     """
     Models a SharePoint Excel Workbook.
@@ -219,5 +226,44 @@ class ExcelWorksheet:
                                             follow_redirects=True)
 
         return request.content 
-        
 
+
+    # def list_rows(self):
+
+    #     list_rows_url = build_url(
+    #         ExcelEndpoints.LIST_ROWS,
+    #         graph_url=GRAPH_URL,
+    #         drive_id=self.drive_id,
+    #         workbook_id=self.workbook_id,
+    #         table_name=self.table_name
+    #     )
+
+    #     response = self.client.make_request(HTTPMethod.GET, list_rows_url)
+
+    #     return response 
+
+
+    def list_columns(self) -> list:
+        """
+        Return a list of column names for a specific excel table.
+        Column names are returned in the order they appear in the table. 
+
+        Returns:
+            list: A list containing the column names
+        """
+
+        list_cols_url = build_url(
+            ExcelEndpoints.LIST_COLS,
+            graph_url=GRAPH_URL,
+            drive_id=self.drive_id,
+            workbook_id=self.workbook_id,
+            table_name=self.table_name
+        )
+
+        response = self.client.make_request(HTTPMethod.GET, list_cols_url).json()
+
+        values = response.get("value", [])
+
+        cols = [col['name'] for col in values]
+
+        return cols
