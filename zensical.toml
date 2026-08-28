@@ -16,7 +16,9 @@ docs_dir = "docs"
 nav = [
   { "Overview" = "index.md" },
   { "Usage" = ["usage/sharepoint_list.md",
-              "usage/sharepoint_excel.md"]},
+              "usage/sharepoint_excel.md",
+              "usage/sharepoint_client.md"
+              ]},
   { "Development Guide" = ["development/installation.md",
                           "development/development_guidelines.md"]},
   { "Library Reference" = ["reference/models/models.md",
