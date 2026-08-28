@@ -1,7 +1,8 @@
 # list.py
 from collections.abc import Iterator
 from enum import StrEnum
-from typing import Any
+from typing import Any, Type
+from pydantic import BaseModel, Field, create_model, ConfigDict
 
 from graph_api_functions.client import GraphAPIClient
 
@@ -17,6 +18,7 @@ from graph_api_functions.models.models import (
     SharePointListRow,
 )
 from graph_api_functions.urls import build_url
+from httpx import Response
 
 # TODO: Print warning that a list containing a hyperlink or location column
 # Cannot be updated with the api
@@ -166,21 +168,16 @@ class SharePointList:
             dict: A mapping of the user visible name to the real name in the
             graph API.
         """
-
         if self._column_mapping:
             return self._column_mapping
 
-        column_mapping = {}
-
         columns = self.list_columns()
 
-        for column in columns:
-            column_mapping[column.display_name] = column.name
+        self._column_mapping = { column.display_name : column.name 
+                                for column in columns}
 
-        self._column_mapping = column_mapping
-
-        return column_mapping
-
+        return self._column_mapping
+    
     def _fetch_page(
         self, url: str | None, params: dict
     ) -> GraphAPIResponse[SharePointListRow] | None:
@@ -239,7 +236,8 @@ class SharePointList:
             for row in response_envelope.value:
                 yield row.model_dump()
 
-    def add_row(self, data: dict[str, Any]) -> dict[str, Any]:
+    def add_row(self, data: dict[str, Any]) -> Response:
+        # TODO: Add functionality to make this add rows, adding one or more rows.
         """Add a row to a SharePoint list.
 
         Note: This method does not currently work for Lists with
@@ -260,7 +258,11 @@ class SharePointList:
             site_id=self.site_id,
         )
 
-        fields_payload = {"fields": data}
+        column_mapping = self._get_column_mapping()
+
+        # Map to the canonical names in the table
+        fields_payload = {"fields": {column_mapping.get(key, key): 
+                                     value for key, value in data.items() }}
 
         response = self.client.make_request(
             "POST", add_row_url, json=fields_payload
