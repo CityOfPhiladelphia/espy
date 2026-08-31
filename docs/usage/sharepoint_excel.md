@@ -66,6 +66,10 @@ Arguments:
 
 - **data** List[List]: Data you want to insert. _data_ must appear in the order to be inserted. Can load multiple rows at once. 
 
+Throws: 
+
+`MalformedRowError` if the number of values to insert is not the same as the number of columns in the table.
+
 For example, if you have three columns, col1, col2, col3, and set `data=[[6,12,36]]`, the table will look like: 
 
 | col1 | col2 |col3|
