@@ -227,25 +227,10 @@ class ExcelWorksheet:
         Returns:
             Response: HTTP Response
         """
-        rows = self.list_rows()
 
-        if not len(rows):
-            raise ValueError("Cannot delete from empty table!")
-        
-        if pk_col not in rows[0]:
-            raise KeyError(f"Key {pk_col} does not exist in table!")
-
-        del_index = None 
-        for index, row in enumerate(rows): 
-            if row[pk_col] == pk_val: 
-                del_index = index 
-                break
-
-        if del_index:
-            response = self.delete_row_at_index(del_index, password=password)
-        else:
-            raise PrimaryKeyValueNotFound(f"Could not find value: {pk_val} under the primary key column {pk_col}!")
-
+        del_index = self._find_index_of_pk(pk_col, pk_val)
+    
+        response = self.delete_row_at_index(del_index, password=password)
         
         return response
 
@@ -280,7 +265,20 @@ class ExcelWorksheet:
 
         return response
 
+    def _find_index_of_pk(self,  pk_col:str, pk_val:str|int) -> int:
+        rows = self.list_rows()
 
+        if not len(rows):
+            raise ValueError("Cannot delete from empty table!")
+        if pk_col not in rows[0]:
+            raise KeyError(f"Key {pk_col} does not exist in table!")
+
+        for index, row in enumerate(rows): 
+                    if row[pk_col] == pk_val: 
+                        return index 
+
+        raise PrimaryKeyValueNotFound(f"Could not find value: {pk_val} under the primary key column {pk_col}!")
+                
 
     def _check_rows(self, rows: list):
         num_cols = len(self.list_columns())
