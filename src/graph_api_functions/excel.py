@@ -70,7 +70,7 @@ class ExcelWorksheet:
         client: GraphAPIClient,
         site_id: str,
         drive_id: str, 
-        workbook_id: str|None=None,
+        workbook_id: str,
         worksheet_name: str|None=None,
         table_name: str|None=None,
     ):
@@ -88,7 +88,7 @@ class ExcelWorksheet:
         hostname:str, 
         site_name:str, 
         document_library:str,
-        workbook_path:str|None = None,
+        workbook_path:str,
         worksheet_name:str|None=None,
         table_name:str|None=None
         ):
@@ -113,18 +113,16 @@ class ExcelWorksheet:
         site_id = client.get_site_id(hostname, site_name)
         drive_id = client.get_drive_id(site_id, document_library)
 
-        if workbook_path:
-            workbook_id_url = build_url(
-                ExcelEndpoints.WORKBOOK_ID,
-                graph_url=GRAPH_URL,
-                drive_id=drive_id, 
-                workbook_path=workbook_path
-            )
-            workbook_id = client.make_request(HTTPMethod.GET, workbook_id_url).json()["id"]
+        workbook_id_url = build_url(
+            ExcelEndpoints.WORKBOOK_ID,
+            graph_url=GRAPH_URL,
+            drive_id=drive_id, 
+            workbook_path=workbook_path
+        )
+        workbook_id = client.make_request(HTTPMethod.GET, workbook_id_url).json()["id"]
 
-            return cls(client, site_id, drive_id, workbook_id, worksheet_name, table_name)
-        else:
-            return cls(client, site_id, drive_id)
+        return cls(client, site_id, drive_id, workbook_id, worksheet_name, table_name)
+
 
     def get_row(self):
         raise NotImplementedError("Method for excel be implemented in the future.")
