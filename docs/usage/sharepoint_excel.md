@@ -96,6 +96,28 @@ Arguments:
 excel.delete_row_at_index(index=3)
 ```
 
+### Delete Row by Primary Key Value 
+The function deletes a row based on a primary key value. 
+
+Arguments:
+
+- **pk_col** (str): The name of the primary key column
+- **pk_val** (str | int): The value we are looking to match on 
+- **password** (str, optional): The sheet protection password 
+
+Raises: 
+
+`KeyError`: Throws when key is not found as a column in the table. 
+
+`PrimaryKeyValueNotFound`: Thrown when the value to look for doesn't exist. 
+
+```python
+pk_col = "primary_key"
+pk_val = "n"
+
+resp = excel.delete_row_by_pk(pk_col=pk_col, pk_val=pk_val)
+```
+
 ### Update Row at an Index
 Updates an existing row in an excel table with values in _value_. The order of data in the list must mirror the order of columns in the table. Additionally, if you do not wish to update a particular cell value, pass `None` to it's position in the list. 
 
