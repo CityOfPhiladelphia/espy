@@ -96,6 +96,24 @@ Arguments:
 excel.delete_row(index=3)
 ```
 
+### Update Row 
+Updates an existing row in an excel table with values in _value_. The order of data in the list must mirror the order of columns in the table. Additionally, if you do not wish to update a particular cell value, pass `None` to it's position in the list. 
+
+Arguments:
+- **index** (int): Index you want to delete from, 0-based. 
+  - e.g. To update the 13th row of data, set `index=12`
+- **value** (list): List containing the data  to send in an update. Must be in the form of a nested list. e.g. `value=[[col1_update, None, col3_update]]`
+- **password** (str, optional): The sheet protection password 
+
+```python
+# Table has 3 columns: col1, col2, col3 
+
+update = [[None,1738,None]] # Update only col2 value 
+
+resp = excel.update_row(index=11, value=data)
+
+```
+
 ### Toggle Protection 
 Toggles protection for a specific worksheet on or off. 
 

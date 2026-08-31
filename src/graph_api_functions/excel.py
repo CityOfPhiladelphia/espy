@@ -40,6 +40,11 @@ class ExcelEndpoints(StrEnum):
         "/workbook/tables/{table_name}/rows/itemAt(index={index})"
     )
 
+    UPDATE_ROW = (
+        "{graph_url}/drives/{drive_id}/items/{workbook_id}"
+        "/workbook/tables/{table_name}/rows/itemAt(index={index})"
+    )
+
     LIST_ROWS = (
         "{graph_url}/drives/{drive_id}/items/{workbook_id}"
         "/workbook/tables/{table_name}/rows"
@@ -205,6 +210,38 @@ class ExcelWorksheet:
         self.toggle_protection(password, protect=True)
 
         return response
+
+    def update_row(self, index:int, value:list, password:str|None=None) -> Response:
+        """
+        Updates an existing row of an excel table. 
+
+        Arguments: 
+            index(int): The index of the row you want to update, 0-based. 
+            value(list): List containing the data to send to update 
+            password(str|None, optional): Sheet protection password 
+
+        Returns:
+            Response: The HTTP response. 
+        """
+        self.toggle_protection(password, protect=False)
+        update_row_url = build_url(
+            ExcelEndpoints.UPDATE_ROW,
+            graph_url=GRAPH_URL,
+            drive_id=self.drive_id,
+            workbook_id=self.workbook_id,
+            table_name=self.table_name,
+            index=index
+        )
+
+        json = {
+            "values": value
+        }
+
+        response = self.client.make_request(HTTPMethod.PATCH, update_row_url, json=json)
+        self.toggle_protection(password, protect=True)
+
+        return response
+
 
 
     def _check_rows(self, rows: list):
