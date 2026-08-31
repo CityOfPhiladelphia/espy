@@ -111,6 +111,8 @@ Raises:
 
 `PrimaryKeyValueNotFound`: Thrown when the value to look for doesn't exist. 
 
+`ValueError`: Thrown when trying to perform operation on empty table.
+
 ```python
 pk_col = "primary_key"
 pk_val = "n"
@@ -135,6 +137,34 @@ update = [[None,1738,None]] # Update only col2 value
 resp = excel.update_row_at_index(index=11, value=data)
 
 ```
+
+### Update Row by Primary Key Value 
+The function updates a row based on a primary key value. 
+
+Arguments:
+
+- **pk_col** (str): The name of the primary key column
+- **pk_val** (str | int): The value we are looking to match on 
+- **value** (list): List containing the data  to send in an update. Must be in the form of a nested list. e.g. `value=[[col1_update, None, col3_update]]`
+- **password** (str, optional): The sheet protection password 
+
+Raises: 
+
+`KeyError`: Throws when key is not found as a column in the table. 
+
+`PrimaryKeyValueNotFound`: Thrown when the value to look for doesn't exist. 
+
+`ValueError`: Thrown when trying to perform operation on empty table.
+
+```python
+data = [[None,None,1738]]
+
+pk_col = "primary_key"
+pk_val = "v"
+
+resp = excel.update_row_by_pk(pk_col=pk_col, pk_val=pk_val, value=data)
+```
+
 
 ### Toggle Protection 
 Toggles protection for a specific worksheet on or off. 

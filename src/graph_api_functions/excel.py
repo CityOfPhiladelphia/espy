@@ -20,16 +20,6 @@ class ExcelEndpoints(StrEnum):
     """
     WORKBOOK_ID = "{graph_url}/drives/{drive_id}/root:/{workbook_path}"
 
-    PROTECT = (
-        "{graph_url}/drives/{drive_id}/items/{workbook_id}"
-        "/workbook/worksheets/{worksheet_name}/protection/protect"
-    )
-    
-    UNPROTECT = (
-        "{graph_url}/drives/{drive_id}/items/{workbook_id}"
-        "/workbook/worksheets/{worksheet_name}/protection/unprotect"
-    )
-
     ADD_ROW = (
         "{graph_url}/drives/{drive_id}/items/{workbook_id}"
         "/workbook/tables/{table_name}/rows/add"
@@ -53,6 +43,16 @@ class ExcelEndpoints(StrEnum):
     LIST_COLS = (
         "{graph_url}/drives/{drive_id}/items/{workbook_id}"
         "/workbook/tables/{table_name}/columns"
+    )
+
+    PROTECT = (
+        "{graph_url}/drives/{drive_id}/items/{workbook_id}"
+        "/workbook/worksheets/{worksheet_name}/protection/protect"
+    )
+    
+    UNPROTECT = (
+        "{graph_url}/drives/{drive_id}/items/{workbook_id}"
+        "/workbook/worksheets/{worksheet_name}/protection/unprotect"
     )
 
     
@@ -134,10 +134,6 @@ class ExcelWorksheet:
 
         return cls(client, site_id, drive_id, workbook_id, worksheet_name, table_name)
 
-
-    def get_row(self):
-        raise NotImplementedError("Method for excel be implemented in the future.")
-
     def add_rows(self, rows:list, password:str|None=None) -> Response:
         """
         Append a row of data to a specific table in a specific excel worksheet. 
@@ -183,6 +179,58 @@ class ExcelWorksheet:
 
         return response
 
+    def delete_row_by_pk(self,pk_col:str, pk_val: str|int, password:str|None=None) -> Response:
+        """
+        Deletes a row based on a primart key column and value.
+
+        Args:
+            pk_col (str): The name of the primary key column 
+            pk_val (str | int): The value we are looking to match on 
+            password (str | None, optional):  Sheet protection password. Defaults to None.
+
+        Raises:
+            KeyError: Throws when key is not found as a column in the tbale 
+            PrimaryKeyValueNotFound: Thrown when the value to look for doesn't exist. 
+            ValueError: Thrown when trying to delete from empty table 
+
+        Returns:
+            Response: HTTP Response
+        """
+
+        del_index = self._find_index_of_pk(pk_col, pk_val)
+    
+        response = self.delete_row_at_index(del_index, password=password)
+        
+        return response
+
+    def update_row_by_pk(self, 
+                         pk_col:str, 
+                         pk_val:str|int, 
+                         value:list, 
+                         password:str|None=None) -> Response:
+        """
+        Update a row based on the primary key value. 
+
+        Args:
+            pk_col (str): Name of the primary key column 
+            pk_val (str | int): Value to match on for primary key 
+            value (list):  List containing the data to send to update 
+            password (str | None, optional): Sheet protection password  Defaults to None.
+
+        Raises:
+            KeyError: Throws when key is not found as a column in the tbale 
+            PrimaryKeyValueNotFound: Thrown when the value to look for doesn't exist. 
+            ValueError: Thrown when trying to delete from empty table 
+
+        Returns:
+            Response: The HTTP response. 
+        """
+
+        update_index = self._find_index_of_pk(pk_col, pk_val)
+
+        response = self.update_row_at_index(update_index, value, password)
+
+        return response
 
     def delete_row_at_index(self, index:int, password:str|None=None) -> Response:
         """
@@ -209,44 +257,6 @@ class ExcelWorksheet:
         response = self.client.make_request(HTTPMethod.DELETE, del_row_url)
         self.toggle_protection(password, protect=True)
 
-        return response
-
-    def delete_row_by_pk(self,pk_col:str, pk_val: str|int, password:str|None=None) -> Response:
-        """
-        Deletes a row based on a primart key column and value.
-
-        Args:
-            pk_col (str): The name of the primary key column 
-            pk_val (str | int): The value we are looking to match on 
-            password (str | None, optional):  Sheet protection password. Defaults to None.
-
-        Raises:
-            KeyError: Throws when key is not found as a column in the tbale 
-            PrimaryKeyValueNotFound: Thrown when the value to look for doesn't exist. 
-
-        Returns:
-            Response: HTTP Response
-        """
-        rows = self.list_rows()
-
-        if not len(rows):
-            raise ValueError("Cannot delete from empty table!")
-        
-        if pk_col not in rows[0]:
-            raise KeyError(f"Key {pk_col} does not exist in table!")
-
-        del_index = None 
-        for index, row in enumerate(rows): 
-            if row[pk_col] == pk_val: 
-                del_index = index 
-                break
-
-        if del_index:
-            response = self.delete_row_at_index(del_index, password=password)
-        else:
-            raise PrimaryKeyValueNotFound(f"Could not find value: {pk_val} under the primary key column {pk_col}!")
-
-        
         return response
 
     def update_row_at_index(self, index:int, value:list, password:str|None=None) -> Response:
@@ -279,52 +289,6 @@ class ExcelWorksheet:
         self.toggle_protection(password, protect=True)
 
         return response
-
-
-
-    def _check_rows(self, rows: list):
-        num_cols = len(self.list_columns())
-
-        for row in rows:
-            if len(row) != num_cols:
-                raise MalformedRowError(f"A row of data contains {len(row)} values, but requires exactly {num_cols} values.")
-
-
-    def toggle_protection(self, password:str, protect:bool) -> None:
-        """
-        Turns on/off sheet protection in the excel worksheet. 
-
-        Args:
-            password (str): Password for sheet protection
-            protect (bool): Boolean representing if you want it on (True) or off (False) 
-        """
-        if not password:
-            return 
-        
-        if not self.worksheet_name:
-            return 
-
-        if not protect:
-            url = build_url(
-                        ExcelEndpoints.UNPROTECT,
-                        graph_url=GRAPH_URL,
-                        drive_id=self.drive_id,
-                        workbook_id=self.workbook_id,
-                        worksheet_name=self.worksheet_name
-                    )
-        else:
-            url = build_url(
-                        ExcelEndpoints.PROTECT,
-                        graph_url=GRAPH_URL,
-                        drive_id=self.drive_id,
-                        workbook_id=self.workbook_id,
-                        worksheet_name=self.worksheet_name
-                    )
-
-        json = { "password": password }
-
-        self.client.make_request(HTTPMethod.POST, url, json=json)
-
 
     def list_rows(self) -> list[dict]:
         """
@@ -381,3 +345,88 @@ class ExcelWorksheet:
         cols = [col['name'] for col in values]
 
         return cols
+
+    def toggle_protection(self, password:str, protect:bool) -> None:
+        """
+        Turns on/off sheet protection in the excel worksheet. 
+
+        Args:
+            password (str): Password for sheet protection
+            protect (bool): Boolean representing if you want it on (True) or off (False) 
+        """
+        if not password:
+            return 
+        
+        if not self.worksheet_name:
+            return 
+
+        if not protect:
+            url = build_url(
+                        ExcelEndpoints.UNPROTECT,
+                        graph_url=GRAPH_URL,
+                        drive_id=self.drive_id,
+                        workbook_id=self.workbook_id,
+                        worksheet_name=self.worksheet_name
+                    )
+        else:
+            url = build_url(
+                        ExcelEndpoints.PROTECT,
+                        graph_url=GRAPH_URL,
+                        drive_id=self.drive_id,
+                        workbook_id=self.workbook_id,
+                        worksheet_name=self.worksheet_name
+                    )
+
+        json = { "password": password }
+
+        self.client.make_request(HTTPMethod.POST, url, json=json)
+
+    def _check_rows(self, rows: list) -> None:
+        """
+        Checks to make sure the shape of the incoming data matches the shape of the destination data. 
+
+        Args:
+            rows (list): The list of data to add
+
+        Raises:
+            MalformedRowError: Thrown when the number of items in the list does not equal the number 
+            of columns the table has. 
+        """
+        num_cols = len(self.list_columns())
+
+        for row in rows:
+            if len(row) != num_cols:
+                raise MalformedRowError(f"A row of data contains {len(row)} values, but requires exactly {num_cols} values.")
+
+
+    def _find_index_of_pk(self,  pk_col:str, pk_val:str|int) -> int:
+        """
+        Find the row index that contains `pk_val` under the `pk_col` column. 
+
+        Args:
+            pk_col (str): The name of the primary key column 
+            pk_val (str | int): The value you wish to match on 
+
+        Raises:
+            ValueError: Thrown when trying to udpate/delete from an empty table. 
+            KeyError: Thrown when pk_col does not exist in the table/ 
+            PrimaryKeyValueNotFound: Thrown when pk_val couldn't be found in the table. 
+
+        Returns:
+            int: The 0-based index of the row. 
+        """
+        rows = self.list_rows()
+
+        if not len(rows):
+            raise ValueError("Cannot delete/update from empty table!")
+        if pk_col not in rows[0]:
+            raise KeyError(f"Key {pk_col} does not exist in table!")
+
+        for index, row in enumerate(rows): 
+                    if row[pk_col] == pk_val: 
+                        return index 
+
+        raise PrimaryKeyValueNotFound(f"Could not find value: {pk_val} under the primary key column {pk_col}!")
+            
+    def get_row(self):
+        raise NotImplementedError("Method for excel be implemented in the future.")
