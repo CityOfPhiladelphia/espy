@@ -184,7 +184,7 @@ class ExcelWorksheet:
         return response
 
 
-    def delete_row(self, index:int, password:str|None=None) -> Response:
+    def delete_row_at_index(self, index:int, password:str|None=None) -> Response:
         """
         Deletes a row, specified by index, from an excel table. 
         Index is 0-based, so the first row in the table is set by 
@@ -211,7 +211,7 @@ class ExcelWorksheet:
 
         return response
 
-    def update_row(self, index:int, value:list, password:str|None=None) -> Response:
+    def update_row_at_index(self, index:int, value:list, password:str|None=None) -> Response:
         """
         Updates an existing row of an excel table. 
 
