@@ -33,6 +33,9 @@ SHARE_POINT_LIST_EXCLUDED_COLUMNS = [
 class GraphAPILimitationError(Exception):
     """Raised when the graph API does not provide this functionality."""
 
+class MalformedRowError(Exception):
+    """Raised when a row of data to insert is malformed."""
+
 
 # ========= Microsoft Column Classes ===========
 
