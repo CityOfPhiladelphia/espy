@@ -1,7 +1,6 @@
 # SharePoint Excel
 
 Class for interacting with Sharepoint Excel objects. Allows one to perform operations such as adding/viewing rows and columns of data and locking/unlocking sheet protection. 
-
 ## Import
 
 ```python
@@ -10,6 +9,7 @@ from src.graph_api_functions.excel import ExcelWorksheet
 
 ## Instantiate with .setup()
 There are 4 required arguments needed to setup an _ExcelWorksheet_ object. 
+
 | Argument | Note |Example|
 | ---         | ---   |---
 | **hostname**    | Sharepoint Host Name   | _phila.sharepoint.com_|

@@ -21,14 +21,20 @@ client = GraphAPIClient.authenticate()
 Upload a file to a SharePoint Documents folder.
 
 Arguments:
+
  - site_name (str) : The name of the sharepoint site you want to upload a file to 
  - local_path (str): the exact local path where your file is 
  - dest_path (str): the path, relative to the Documents folder, where you want to save the file
 
 Returns:
+
 - dict: The response json 
 
-For example: `dest_path="Folder Name"` will create a file at _Documents/Folder Name/file.xlsx_. `dest_path=""` will save it at _Documents/file.xlsx_
+For example: 
+
+`dest_path="Folder Name"` will create a file at _Documents/Folder Name/file.xlsx_. 
+
+`dest_path=""` will save it at _Documents/file.xlsx_
 
 ```python
 client.upload_local_file(site_name=site_name, 
@@ -40,9 +46,11 @@ client.upload_local_file(site_name=site_name,
 Get the raw bytes of the excel workbook specified by _file_path_
 
 Arguments: 
+
 - file_path (str): The path of the file you want, relative to the instantiated document library/ 
 
 Returns: 
+
 - bytes: Raw bytes representing the excel file. 
 
 ```python
