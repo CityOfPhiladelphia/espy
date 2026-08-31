@@ -221,7 +221,7 @@ class ExcelWorksheet:
             KeyError: Throws when key is not found as a column in the tbale 
             PrimaryKeyValueNotFound: Thrown when the value to look for doesn't exist. 
             ValueError: Thrown when trying to delete from empty table 
-            
+
         Returns:
             Response: The HTTP response. 
         """
@@ -290,7 +290,6 @@ class ExcelWorksheet:
 
         return response
 
-    
     def list_rows(self) -> list[dict]:
         """
         Returns the rows of an excel table, represented as a list
@@ -382,7 +381,17 @@ class ExcelWorksheet:
 
         self.client.make_request(HTTPMethod.POST, url, json=json)
 
-    def _check_rows(self, rows: list):
+    def _check_rows(self, rows: list) -> None:
+        """
+        Checks to make sure the shape of the incoming data matches the shape of the destination data. 
+
+        Args:
+            rows (list): The list of data to add
+
+        Raises:
+            MalformedRowError: Thrown when the number of items in the list does not equal the number 
+            of columns the table has. 
+        """
         num_cols = len(self.list_columns())
 
         for row in rows:
@@ -391,6 +400,21 @@ class ExcelWorksheet:
 
 
     def _find_index_of_pk(self,  pk_col:str, pk_val:str|int) -> int:
+        """
+        Find the row index that contains `pk_val` under the `pk_col` column. 
+
+        Args:
+            pk_col (str): The name of the primary key column 
+            pk_val (str | int): The value you wish to match on 
+
+        Raises:
+            ValueError: Thrown when trying to udpate/delete from an empty table. 
+            KeyError: Thrown when pk_col does not exist in the table/ 
+            PrimaryKeyValueNotFound: Thrown when pk_val couldn't be found in the table. 
+
+        Returns:
+            int: The 0-based index of the row. 
+        """
         rows = self.list_rows()
 
         if not len(rows):
