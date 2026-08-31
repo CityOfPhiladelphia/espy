@@ -191,6 +191,7 @@ class ExcelWorksheet:
         Raises:
             KeyError: Throws when key is not found as a column in the tbale 
             PrimaryKeyValueNotFound: Thrown when the value to look for doesn't exist. 
+            ValueError: Thrown when trying to delete from empty table 
 
         Returns:
             Response: HTTP Response
@@ -216,6 +217,11 @@ class ExcelWorksheet:
             value (list):  List containing the data to send to update 
             password (str | None, optional): Sheet protection password  Defaults to None.
 
+        Raises:
+            KeyError: Throws when key is not found as a column in the tbale 
+            PrimaryKeyValueNotFound: Thrown when the value to look for doesn't exist. 
+            ValueError: Thrown when trying to delete from empty table 
+            
         Returns:
             Response: The HTTP response. 
         """
@@ -388,7 +394,7 @@ class ExcelWorksheet:
         rows = self.list_rows()
 
         if not len(rows):
-            raise ValueError("Cannot delete from empty table!")
+            raise ValueError("Cannot delete/update from empty table!")
         if pk_col not in rows[0]:
             raise KeyError(f"Key {pk_col} does not exist in table!")
 
