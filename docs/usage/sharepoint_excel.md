@@ -64,7 +64,7 @@ The function appends a row(s) to the bottom of the excel worksheet.
 
 Arguments:
 
-- **data** List[List]: Data you want to insert. _data_ must appear in the order to be inserted. Can load multiple rows at once. 
+- **data** (List[List]): Data you want to insert. _data_ must appear in the order to be inserted. Can load multiple rows at once. 
 
 Throws: 
 
@@ -81,6 +81,19 @@ For example, if you have three columns, col1, col2, col3, and set `data=[[6,12,3
 ```python
 data = [[6,12,36], [1,2,3]]
 excel.add_rows(data)
+```
+
+### Delete Row 
+The function deletes a row at a specified index from the sheet. 
+
+Arguments:
+
+- **index** (int): Index you want to delete from, 0-based. 
+  - e.g. To delete the first row of data, set `index=0`
+- **password** (str, optional): The sheet protection password 
+
+```python
+excel.delete_row(index=3)
 ```
 
 ### Toggle Protection 
