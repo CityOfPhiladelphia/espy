@@ -35,6 +35,11 @@ class ExcelEndpoints(StrEnum):
         "/workbook/tables/{table_name}/rows/add"
     )
 
+    DELETE_ROW = (
+        "{graph_url}/drives/{drive_id}/items/{workbook_id}"
+        "/workbook/tables/{table_name}/rows/itemAt(index={index})"
+    )
+
     LIST_ROWS = (
         "{graph_url}/drives/{drive_id}/items/{workbook_id}"
         "/workbook/tables/{table_name}/rows"
@@ -172,6 +177,35 @@ class ExcelWorksheet:
         self.toggle_protection(password, protect=True)
 
         return response
+
+
+    def delete_row(self, index:int, password:str|None=None) -> Response:
+        """
+        Deletes a row, specified by index, from an excel table. 
+        Index is 0-based, so the first row in the table is set by 
+        index=0,
+
+        Args:
+            index (int): The row number you want to delete, 0-based.
+            password (str | None, optional): Sheet protection password. Defaults to None.
+
+        Returns:
+            Response: The HTTP response.
+        """
+        self.toggle_protection(password, protect=False)
+        del_row_url = build_url(
+            ExcelEndpoints.DELETE_ROW,
+            graph_url=GRAPH_URL,
+            drive_id=self.drive_id,
+            workbook_id=self.workbook_id,
+            table_name=self.table_name,
+            index=index
+        )
+        response = self.client.make_request(HTTPMethod.DELETE, del_row_url)
+        self.toggle_protection(password, protect=True)
+
+        return response
+
 
     def _check_rows(self, rows: list):
         num_cols = len(self.list_columns())
