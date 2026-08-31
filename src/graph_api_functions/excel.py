@@ -265,6 +265,30 @@ class ExcelWorksheet:
 
         return response
 
+    def update_row_by_pk(self, 
+                         pk_col:str, 
+                         pk_val:str|int, 
+                         value:list, 
+                         password:str|None=None) -> Response:
+        """
+        Update a row based on the primary key value. 
+
+        Args:
+            pk_col (str): Name of the primary key column 
+            pk_val (str | int): Value to match on for primary key 
+            value (list):  List containing the data to send to update 
+            password (str | None, optional): Sheet protection password  Defaults to None.
+
+        Returns:
+            Response: The HTTP response. 
+        """
+
+        update_index = self._find_index_of_pk(pk_col, pk_val)
+
+        response = self.update_row_at_index(update_index, value, password)
+
+        return response
+
     def _find_index_of_pk(self,  pk_col:str, pk_val:str|int) -> int:
         rows = self.list_rows()
 
