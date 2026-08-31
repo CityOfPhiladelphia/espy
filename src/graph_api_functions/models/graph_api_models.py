@@ -36,6 +36,8 @@ class GraphAPILimitationError(Exception):
 class MalformedRowError(Exception):
     """Raised when a row of data to insert is malformed."""
 
+class PrimaryKeyValueNotFound(Exception):
+    """Raised when searching for a value under the primary key, but it is not found"""
 
 # ========= Microsoft Column Classes ===========
 

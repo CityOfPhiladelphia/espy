@@ -83,7 +83,7 @@ data = [[6,12,36], [1,2,3]]
 excel.add_rows(data)
 ```
 
-### Delete Row 
+### Delete Row at an Index
 The function deletes a row at a specified index from the sheet. 
 
 Arguments:
@@ -93,10 +93,32 @@ Arguments:
 - **password** (str, optional): The sheet protection password 
 
 ```python
-excel.delete_row(index=3)
+excel.delete_row_at_index(index=3)
 ```
 
-### Update Row 
+### Delete Row by Primary Key Value 
+The function deletes a row based on a primary key value. 
+
+Arguments:
+
+- **pk_col** (str): The name of the primary key column
+- **pk_val** (str | int): The value we are looking to match on 
+- **password** (str, optional): The sheet protection password 
+
+Raises: 
+
+`KeyError`: Throws when key is not found as a column in the table. 
+
+`PrimaryKeyValueNotFound`: Thrown when the value to look for doesn't exist. 
+
+```python
+pk_col = "primary_key"
+pk_val = "n"
+
+resp = excel.delete_row_by_pk(pk_col=pk_col, pk_val=pk_val)
+```
+
+### Update Row at an Index
 Updates an existing row in an excel table with values in _value_. The order of data in the list must mirror the order of columns in the table. Additionally, if you do not wish to update a particular cell value, pass `None` to it's position in the list. 
 
 Arguments:
@@ -110,7 +132,7 @@ Arguments:
 
 update = [[None,1738,None]] # Update only col2 value 
 
-resp = excel.update_row(index=11, value=data)
+resp = excel.update_row_at_index(index=11, value=data)
 
 ```
 
