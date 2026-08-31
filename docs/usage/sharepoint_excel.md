@@ -1,4 +1,7 @@
 # SharePoint Excel
+
+Class for interacting with Sharepoint Excel objects. Allows one to perform operations such as adding/viewing rows and columns of data and locking/unlocking sheet protection. 
+
 ## Import
 
 ```python
