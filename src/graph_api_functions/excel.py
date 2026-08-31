@@ -5,7 +5,7 @@ from httpx import Response
 from graph_api_functions.client import GraphAPIClient
 from graph_api_functions.constants import GRAPH_URL
 from graph_api_functions.models.models import HTTPMethod
-from graph_api_functions.models.graph_api_models import MalformedRowError
+from graph_api_functions.models.graph_api_models import MalformedRowError, PrimaryKeyValueNotFound
 from graph_api_functions.urls import build_url
 
 
@@ -209,6 +209,41 @@ class ExcelWorksheet:
         response = self.client.make_request(HTTPMethod.DELETE, del_row_url)
         self.toggle_protection(password, protect=True)
 
+        return response
+
+    def delete_row_by_pk(self,pk_col:str, pk_val: str|int, password:str|None=None) -> Response:
+        """
+        Deletes a row based on a primart key column and value.
+
+        Args:
+            pk_col (str): The name of the primary key column 
+            pk_val (str | int): The value we are looking to match on 
+            password (str | None, optional):  Sheet protection password. Defaults to None.
+
+        Raises:
+            KeyError: Throws when key is not found as a column in the tbale 
+            PrimaryKeyValueNotFound: Thrown when the value to look for doesn't exist. 
+
+        Returns:
+            Response: HTTP Response
+        """
+        rows = self.list_rows()
+
+        del_index = None 
+        for index, row in enumerate(rows): 
+            if pk_col not in row:
+                raise KeyError(f"Key {pk_col} does not exist in table!")
+            
+            if row[pk_col] == pk_val: 
+                del_index = index 
+                break
+
+        if del_index:
+            response = self.delete_row_at_index(del_index, password=password)
+        else:
+            raise PrimaryKeyValueNotFound(f"Could not find value: {pk_val} under the primary key column {pk_col}!")
+
+        
         return response
 
     def update_row_at_index(self, index:int, value:list, password:str|None=None) -> Response:
