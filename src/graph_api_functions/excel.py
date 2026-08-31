@@ -5,6 +5,7 @@ from httpx import Response
 from graph_api_functions.client import GraphAPIClient
 from graph_api_functions.constants import GRAPH_URL
 from graph_api_functions.models.models import HTTPMethod
+from graph_api_functions.models.graph_api_models import MalformedRowError
 from graph_api_functions.urls import build_url
 
 
@@ -147,6 +148,8 @@ class ExcelWorksheet:
         Returns:
             Response - httpx response 
         """
+        self._check_rows(rows)
+
         self.toggle_protection(password, protect=False)
 
         add_row_url = build_url(
@@ -169,6 +172,13 @@ class ExcelWorksheet:
         self.toggle_protection(password, protect=True)
 
         return response
+
+    def _check_rows(self, rows: list):
+        num_cols = len(self.list_columns())
+
+        for row in rows:
+            if len(row) != num_cols:
+                raise MalformedRowError(f"A row of data contains {len(row)} values, but requires exactly {num_cols} values.")
 
 
     def toggle_protection(self, password:str, protect:bool) -> None:
