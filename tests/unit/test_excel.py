@@ -191,3 +191,23 @@ class TestUpdateRow:
                 worksheet.update_row_at_index(1, [[1]])
  
         mock_client.make_request.assert_not_called()
+
+
+class TestListCols:
+    def test_list_columns(self, worksheet, mock_client):
+        mock_client.make_request.return_value = make_response(
+            {"value": [{"name": "col1"}, {"name": "col2"}, {"name": "col3"}]}
+        )
+ 
+        cols = worksheet.list_columns()
+ 
+        assert cols == ["col1", "col2", "col3"]
+        args, kwargs = mock_client.make_request.call_args
+        assert args[0] == HTTPMethod.GET
+        assert "Table1/columns" in args[1]
+
+    def test_list_columns_no_cols(self, worksheet, mock_client):
+        mock_client.make_request.return_value = make_response({"value": []})
+ 
+        assert worksheet.list_columns() == []
+
