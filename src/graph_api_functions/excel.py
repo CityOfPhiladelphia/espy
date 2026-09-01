@@ -1,11 +1,14 @@
 from enum import StrEnum
 
-from httpx import Response 
+from httpx import Response
 
 from graph_api_functions.client import GraphAPIClient
 from graph_api_functions.constants import GRAPH_URL
+from graph_api_functions.models.graph_api_models import (
+    MalformedRowError,
+    PrimaryKeyValueNotFound,
+)
 from graph_api_functions.models.models import HTTPMethod
-from graph_api_functions.models.graph_api_models import MalformedRowError, PrimaryKeyValueNotFound
 from graph_api_functions.urls import build_url
 
 
@@ -225,6 +228,7 @@ class ExcelWorksheet:
         Returns:
             Response: The HTTP response. 
         """
+        self._check_rows(value)
 
         update_index = self._find_index_of_pk(pk_col, pk_val)
 
@@ -271,6 +275,8 @@ class ExcelWorksheet:
         Returns:
             Response: The HTTP response. 
         """
+        self._check_rows(value)
+
         self.toggle_protection(password, protect=False)
         update_row_url = build_url(
             ExcelEndpoints.UPDATE_ROW,
