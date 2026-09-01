@@ -17,6 +17,7 @@ from EsPy.models.models import (
 )
 from EsPy.urls import build_url
 from httpx import Response
+from typing import Any
 
 # TODO: Print warning that a list containing a hyperlink or location column
 # Cannot be updated with the api
