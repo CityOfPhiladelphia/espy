@@ -1,7 +1,9 @@
 name: Make New Release
 
 on:
-    push:
+    push: 
+        branches:
+            - main
         tags: 
             - 'v*'
     
