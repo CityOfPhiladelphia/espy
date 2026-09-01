@@ -2,14 +2,14 @@ from enum import StrEnum
 
 from httpx import Response
 
-from EsPy.client import GraphAPIClient
-from EsPy.constants import GRAPH_URL
-from EsPy.models.graph_api_models import (
+from espy.client import GraphAPIClient
+from espy.constants import GRAPH_URL
+from espy.models.graph_api_models import (
     MalformedRowError,
     PrimaryKeyValueNotFound,
 )
-from EsPy.models.models import HTTPMethod
-from EsPy.urls import build_url
+from espy.models.models import HTTPMethod
+from espy.urls import build_url
 
 
 class ExcelEndpoints(StrEnum):

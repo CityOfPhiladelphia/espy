@@ -5,9 +5,9 @@ import citygeo_secrets as cgs
 import httpx
 from azure.identity import ClientSecretCredential
 
-from EsPy.constants import GRAPH_APP, GRAPH_URL, HOST_NAME, SCOPE
-from EsPy.models.models import HTTPMethod, UnsupportedMethodError
-from EsPy.urls import build_url
+from espy.constants import GRAPH_APP, GRAPH_URL, HOST_NAME, SCOPE
+from espy.models.models import HTTPMethod, UnsupportedMethodError
+from espy.urls import build_url
 
 
 class ClientEndpoints(StrEnum):

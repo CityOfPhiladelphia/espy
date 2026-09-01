@@ -2,7 +2,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from EsPy.client import GraphAPIClient
+from espy.client import GraphAPIClient
 
 
 @pytest.fixture
