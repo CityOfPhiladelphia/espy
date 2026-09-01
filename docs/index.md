@@ -20,17 +20,17 @@ To install this library to your project, run:
 Include the tag for the latest version.
 
 ```bash
-uv add "git+https://github.com/CityOfPhiladelphia/EsPy.git" --tag v1.0.0
+uv add "git+https://github.com/CityOfPhiladelphia/espy.git" --tag v1.0.0
 ```
 
 ### Upgrading EsPy
 ```
-uv lock --upgrade-package EsPy && uv sync
+uv lock --upgrade-package espy && uv sync
 ```
 
 ### Usage Example
 ```python
-from EsPy.list import SharePointList
+from espy.list import SharePointList
 
 # Instantiate a SharePoint List Object
 sp_list = SharePointList.setup(site_name="list_site_name", list_name="list_name")

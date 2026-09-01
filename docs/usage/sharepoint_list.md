@@ -2,7 +2,7 @@
 
 ## Import
 ```python
-from EsPy.list import SharePointList
+from espy.list import SharePointList
 ```
 
 ## Instantiate with .setup()

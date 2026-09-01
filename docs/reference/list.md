@@ -1,2 +1,2 @@
 # The SharePoint List Class
-::: EsPy.list.SharePointList
+::: espy.list.SharePointList

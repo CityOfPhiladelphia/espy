@@ -10,7 +10,7 @@ uv sync --dev
 ```
 ### Check for Updates
 ```
-uv lock --upgrade-package EsPy && uv sync
+uv lock --upgrade-package espy && uv sync
 ```
 ## Adding Dependencies
 
