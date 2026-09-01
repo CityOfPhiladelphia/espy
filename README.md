@@ -20,6 +20,11 @@ To install this library to your project, run:
 uv add git+https://github.com/CityOfPhiladelphia/EsPy.git
 ```
 
+### Check for Updates
+```
+uv lock --upgrade-package EsPy && uv sync
+```
+
 ### Usage Example
 ```python
 from EsPy.list import SharePointList

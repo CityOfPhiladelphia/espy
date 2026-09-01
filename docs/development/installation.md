@@ -8,7 +8,10 @@ uv sync
 ```bash
 uv sync --dev
 ```
-
+### Check for Updates
+```
+uv lock --upgrade-package EsPy && uv sync
+```
 ## Adding Dependencies
 
 !!! warning 
