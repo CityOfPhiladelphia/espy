@@ -1,29 +1,34 @@
 # SharePoint Excel
 
-Class for interacting with Sharepoint Excel objects. Allows one to perform operations such as adding/viewing rows and columns of data and locking/unlocking sheet protection. 
+A Python class for interacting with Sharepoint Excel via `ExcelWorksheet` objects. 
+
+Supports retrieving, adding, deleting, and modifying rows in a SharePoint Excel file, as well as locking and unlocking sheet protection.
+
+---
+
 ## Import
 
 ```python
 from src.graph_api_functions.excel import ExcelWorksheet
 ```
 
-## Instantiate with .setup()
-There are 4 required arguments needed to setup an _ExcelWorksheet_ object. 
+## Setup
+Instantiate with `.setup()`. Four arguments are always required:
+ 
+| Argument | Description | Example |
+|---|---|---|
+| `hostname` | SharePoint host name | `phila.sharepoint.com` |
+| `site_name` | SharePoint site name | `ps360-metrics` |
+| `document_library` | Name of the document library | `Documents` |
+| `workbook_path` | Path of the Excel workbook | `"Philly Stat - OIT/OIT_data.xlsx"` |
 
-| Argument | Note |Example|
-| ---         | ---   |---
-| **hostname**    | Sharepoint Host Name   | _phila.sharepoint.com_|
-| **site_name**   | Sharepoint site name  | _ps360-metrics_|
-| **document_library**   | The name of the document library  | _Documents_|
-| **workbook_path**   | The path of the excel workbook  | _"Philly Stat - OIT/OIT_data.xlsx"_|
 
-
-There are 2 optional parameters to set, depending on what kind of functions you want to  run. 
-
-| Argument | Note |Example| Function to Run |
-| ---         | ---   |--- | ---|
-| **worksheet_name**    | The name of the workshee   | _Metrics_|_toggle_protection_|
-| **table_name**   | The name of the table  | _Table1_| _add_rows_, _list_rows_, and _list_columns_|
+Two additional arguments are optional, depending on which functions you plan to run:
+ 
+| Argument | Note | Example | Required for |
+|---|---|---|---|
+| `worksheet_name` | Name of the worksheet | `Metrics` | `toggle_protection` |
+| `table_name` | Name of the table | `Table1` | `add_rows`, `delete_row_by_pk`, `update_row_by_pk`, `list_rows`, `list_columns` |
 
 
 ```python
@@ -36,18 +41,22 @@ excel = ExcelWorksheet.setup(
     table_name=table_name
 )
 ```
+ 
+---
 
-## Functions
+## Viewing Data
+ 
+### List Columns
 
-### List Columns 
 Returns a list of column names for a specific excel table. Column names are returned in the order they appear in the table. 
 
 ```python
 columns = excel.list_columns()
 ```
 
-### List Rows 
-Returns the rows of an excel table, represented as a List[dict]. The keys to the dictionary represent the column name, and the value is the value of the column. 
+### List Rows
+ 
+Returns the rows of an Excel table as a `List[dict]`. Each dictionary's keys are column names, and the values are the corresponding cell values.
 
 ```python
 import pandas as pd 
@@ -59,126 +68,141 @@ df = pd.DataFrame(rows)
 df.head()
 ```
 
+---
+
+## Modifying Data
+ 
 ### Add Rows
-The function appends a row(s) to the bottom of the excel worksheet.
+ 
+Appends one or more rows to the bottom of the Excel worksheet.
+ 
+**Arguments**
+ 
+| Name | Type | Description |
+|---|---|---|
+| `data` | `List[List]` | Values to insert, in column order. Multiple rows can be loaded at once. |
+ 
+**Raises**
+ 
+- `MalformedRowError` — the number of values to insert doesn't match the number of columns in the table.
 
-Arguments:
-
-- **data** (List[List]): Data you want to insert. _data_ must appear in the order to be inserted. Can load multiple rows at once. 
-
-Throws: 
-
-`MalformedRowError` if the number of values to insert is not the same as the number of columns in the table.
-
-For example, if you have three columns, col1, col2, col3, and set `data=[[6,12,36]]`, the table will look like: 
-
-| col1 | col2 |col3|
-| --- | --- |---
-| ...    | ...   | ...|
-| 6    | 12   | 36|
-
-
+For example, given three columns `col1`, `col2`, `col3`, and `data=[[6, 12, 36]]`, the table becomes:
+ 
+| col1 | col2 | col3 |
+|---|---|---|
+| ... | ... | ... |
+| 6 | 12 | 36 |
+ 
 ```python
-data = [[6,12,36], [1,2,3]]
+data = [[6, 12, 36], [1, 2, 3]]
 excel.add_rows(data)
 ```
 
+### Delete Row by Primary Key Value
+ 
+Deletes a row based on a primary key value.
+ 
+**Arguments**
+ 
+| Name | Type | Description |
+|---|---|---|
+| `pk_col` | `str` | Name of the primary key column |
+| `pk_val` | `str \| int` | Value to match on |
+| `password` | `str`, optional | Sheet protection password |
+ 
+**Raises**
+ 
+- `KeyError` — the key isn't found as a column in the table.
+- `PrimaryKeyValueNotFound` — the value to look for doesn't exist.
+- `ValueError` — the operation is attempted on an empty table.
+```python
+pk_col = "primary_key"
+pk_val = "n"
+ 
+resp = excel.delete_row_by_pk(pk_col=pk_col, pk_val=pk_val)
+```
+
 ### Delete Row at an Index
-The function deletes a row at a specified index from the sheet. 
-
-Arguments:
-
-- **index** (int): Index you want to delete from, 0-based. 
-  - e.g. To delete the first row of data, set `index=0`
-- **password** (str, optional): The sheet protection password 
-
+ 
+Deletes a row at a specified index from the sheet.
+ 
+**Arguments**
+ 
+| Name | Type | Description |
+|---|---|---|
+| `index` | `int` | 0-based index of the row to delete (e.g. `index=0` deletes the first row of data) |
+| `password` | `str`, optional | Sheet protection password |
+ 
 ```python
 excel.delete_row_at_index(index=3)
 ```
 
-### Delete Row by Primary Key Value 
-The function deletes a row based on a primary key value. 
-
-Arguments:
-
-- **pk_col** (str): The name of the primary key column
-- **pk_val** (str | int): The value we are looking to match on 
-- **password** (str, optional): The sheet protection password 
-
-Raises: 
-
-`KeyError`: Throws when key is not found as a column in the table. 
-
-`PrimaryKeyValueNotFound`: Thrown when the value to look for doesn't exist. 
-
-`ValueError`: Thrown when trying to perform operation on empty table.
-
+### Update Row by Primary Key Value
+ 
+Updates a row based on a primary key value.
+ 
+**Arguments**
+ 
+| Name | Type | Description |
+|---|---|---|
+| `pk_col` | `str` | Name of the primary key column |
+| `pk_val` | `str \| int` | Value to match on |
+| `value` | `list` | Nested list of update data, e.g. `value=[[col1_update, None, col3_update]]` |
+| `password` | `str`, optional | Sheet protection password |
+ 
+**Raises**
+ 
+- `KeyError` — the key isn't found as a column in the table.
+- `PrimaryKeyValueNotFound` — the value to look for doesn't exist.
+- `ValueError` — the operation is attempted on an empty table.
 ```python
-pk_col = "primary_key"
-pk_val = "n"
-
-resp = excel.delete_row_by_pk(pk_col=pk_col, pk_val=pk_val)
-```
-
-### Update Row at an Index
-Updates an existing row in an excel table with values in _value_. The order of data in the list must mirror the order of columns in the table. Additionally, if you do not wish to update a particular cell value, pass `None` to it's position in the list. 
-
-Arguments:
-- **index** (int): Index you want to delete from, 0-based. 
-  - e.g. To update the 13th row of data, set `index=12`
-- **value** (list): List containing the data  to send in an update. Must be in the form of a nested list. e.g. `value=[[col1_update, None, col3_update]]`
-- **password** (str, optional): The sheet protection password 
-
-```python
-# Table has 3 columns: col1, col2, col3 
-
-update = [[None,1738,None]] # Update only col2 value 
-
-resp = excel.update_row_at_index(index=11, value=data)
-
-```
-
-### Update Row by Primary Key Value 
-The function updates a row based on a primary key value. 
-
-Arguments:
-
-- **pk_col** (str): The name of the primary key column
-- **pk_val** (str | int): The value we are looking to match on 
-- **value** (list): List containing the data  to send in an update. Must be in the form of a nested list. e.g. `value=[[col1_update, None, col3_update]]`
-- **password** (str, optional): The sheet protection password 
-
-Raises: 
-
-`KeyError`: Throws when key is not found as a column in the table. 
-
-`PrimaryKeyValueNotFound`: Thrown when the value to look for doesn't exist. 
-
-`ValueError`: Thrown when trying to perform operation on empty table.
-
-```python
-data = [[None,None,1738]]
-
+data = [[None, None, 1738]]
+ 
 pk_col = "primary_key"
 pk_val = "v"
-
+ 
 resp = excel.update_row_by_pk(pk_col=pk_col, pk_val=pk_val, value=data)
 ```
 
-
-### Toggle Protection 
-Toggles protection for a specific worksheet on or off. 
-
-Arguments:
-- **password** str: The sheet protection password. 
-- **protect** bool: Boolean to protect (True) or unprotect (False) 
-
+### Update Row at an Index
+ 
+Updates an existing row in an Excel table with the values in `value`. The order of values must mirror the order of columns in the table. To leave a particular cell unchanged, pass `None` in its position.
+ 
+**Arguments**
+ 
+| Name | Type | Description |
+|---|---|---|
+| `index` | `int` | 0-based index of the row to update (e.g. `index=12` updates the 13th row of data) |
+| `value` | `list` | Nested list of update data, e.g. `value=[[col1_update, None, col3_update]]` |
+| `password` | `str`, optional | Sheet protection password |
+ 
 ```python
-# Unprotect 
-password = '#######'
+# Table has 3 columns: col1, col2, col3
+update = [[None, 1738, None]]  # Update only col2 value
+ 
+resp = excel.update_row_at_index(index=11, value=data)
+```
+ 
+---
+ 
+## Miscellaneous
+ 
+### Toggle Protection
+ 
+Toggles protection for a specific worksheet on or off.
+ 
+**Arguments**
+ 
+| Name | Type | Description |
+|---|---|---|
+| `password` | `str` | Sheet protection password |
+| `protect` | `bool` | `True` to protect, `False` to unprotect |
+ 
+```python
+# Unprotect
+password = "#######"
 excel.toggle_protection(password=password, protect=False)
-...
+ 
 # Protect
 excel.toggle_protection(password=password, protect=True)
 ```
-
