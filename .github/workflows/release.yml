@@ -1,0 +1,53 @@
+name: Make New Release
+
+on:
+    push:
+        tags: 
+            - 'v*'
+    
+    workflow_dispatch:
+        inputs:
+            tag:
+                description: "Tag to release (e.g. v1.0.0)"
+                required: true
+    
+jobs:
+    verify-version:
+        runs-on: ubuntu-latest
+    
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v7
+
+            - name: Install uv
+              uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+              with:
+                enable-cache: false
+            
+            - name: Verify Tag Matches pyproject.toml Version
+              run: |
+                # Extract the static version string using uv
+                PROJECT_VERSION=$(uv version --short)
+                TAG_VERSION="${{ github.ref_name }}"
+
+                echo "Pushed Git Tag: $TAG_VERSION"
+                echo "pyproject.toml Version: $PROJECT_VERSION"
+                
+                # Strip the leading 'v' from the tag if it exists (e.g., v1.2.3 -> 1.2.3)
+                CLEAN_TAG="${TAG_VERSION#v}"
+
+                if [ "$CLEAN_TAG" != "$PROJECT_VERSION" ]; then
+                echo "Error: Git tag version ($TAG_VERSION) does not match pyproject.toml version ($PROJECT_VERSION)."
+                exit 1
+                fi
+
+                echo "Success: Git tag matches pyproject.toml package version."
+            
+                
+            - name: Create GitHub Release
+              uses: softprops/action-gh-release@v2
+              with:
+                generate_release_notes: true
+
+
+                    
