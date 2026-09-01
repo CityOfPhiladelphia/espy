@@ -211,3 +211,12 @@ class TestListCols:
  
         assert worksheet.list_columns() == []
 
+class TestCheckRows:
+    def test_valid_rows(self, worksheet):
+        with patch.object(worksheet, "list_columns", return_value=["col1", "col2"]):
+            worksheet._check_rows([[1, 2], [3, 4]])  
+ 
+    def test_malformed_row(self, worksheet):
+        with patch.object(worksheet, "list_columns", return_value=["col1", "col2"]), \
+        pytest.raises(MalformedRowError):
+            worksheet._check_rows([[1]])
