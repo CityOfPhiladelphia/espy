@@ -220,3 +220,26 @@ class TestCheckRows:
         with patch.object(worksheet, "list_columns", return_value=["col1", "col2"]), \
         pytest.raises(MalformedRowError):
             worksheet._check_rows([[1]])
+
+class TestFindIndexOfPk:
+    def test_finds_matching_index(self, worksheet):
+        rows = [{"pk": 1, "col2": "fwe"}, {"pk": 2, "col2": "dwed"}]
+        with patch.object(worksheet, "list_rows", return_value=rows):
+            assert worksheet._find_index_of_pk("pk", 2) == 1
+ 
+    def test_empty_table_raises_value_error(self, worksheet):
+        with patch.object(worksheet, "list_rows", return_value=[]):
+            with pytest.raises(ValueError):
+                worksheet._find_index_of_pk("pk", 1)
+ 
+    def test_pk_col_dne(self, worksheet):
+        rows = [{"pk": 1, "col2": "dwd"}]
+        with patch.object(worksheet, "list_rows", return_value=rows):
+            with pytest.raises(KeyError):
+                worksheet._find_index_of_pk("Nonexistent", 1)
+ 
+    def test_pk_val_dne(self, worksheet):
+        rows = [{"pk": 1}, {"pk": 2}]
+        with patch.object(worksheet, "list_rows", return_value=rows):
+            with pytest.raises(PrimaryKeyValueNotFound):
+                worksheet._find_index_of_pk("pk", 1238712)
