@@ -28,7 +28,7 @@ jobs:
               run: |
                 # Extract the static version string using uv
                 PROJECT_VERSION=$(uv version --short)
-                TAG_VERSION="${{ github.ref_name }}"
+                TAG_VERSION="${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}"
 
                 echo "Pushed Git Tag: $TAG_VERSION"
                 echo "pyproject.toml Version: $PROJECT_VERSION"
@@ -48,6 +48,8 @@ jobs:
               uses: softprops/action-gh-release@v2
               with:
                 generate_release_notes: true
+              env:
+                GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 
                     
