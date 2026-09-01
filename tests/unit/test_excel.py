@@ -21,7 +21,7 @@ def worksheet(mock_client): # Calls the above fixture
         drive_id="a drive",
         workbook_id="a workbook",
         worksheet_name="a name",
-        table_name="the table",
+        table_name="Table1",
     )
  
  
@@ -45,7 +45,7 @@ def make_response(json_data=None):
     return response
 
 
-
+### Testing the setup functions ### 
 class TestSetup:
     def test_setup_with_resolved_ids(self):
         # Set up a mock client 
@@ -92,3 +92,40 @@ class TestSetup:
  
         assert excel.worksheet_name is None
         assert excel.table_name is None
+
+
+### Testing the add row functions ### 
+class TestAddRows:
+    def test_add_rows_success(self, worksheet, mock_client):
+        with patch.object(worksheet, "list_columns", return_value=["col1", "col2"]), \
+        patch.object(worksheet, "toggle_protection") as mock_toggle:
+            mock_response = make_response()
+            mock_client.make_request.return_value = mock_response
+ 
+            rows = [[1, 2]]
+            response = worksheet.add_rows(rows, password="pw")
+ 
+        assert response is mock_response # Test that add rows returns what make_request returns 
+
+        # Check that toggle protection is called twice  
+        mock_toggle.assert_has_calls(
+            [call("pw", protect=False), call("pw", protect=True)]
+        )
+
+        # Check make request is called once
+        mock_client.make_request.assert_called_once()
+
+        # Check the arguments were passed correctly 
+        args, kwargs = mock_client.make_request.call_args
+        assert args[0] == HTTPMethod.POST
+        assert "Table1/rows/add" in args[1]
+        assert kwargs["json"] == {"values": rows}
+        assert kwargs["timeout"] == 60
+ 
+    def test_add_rows_malformed(self, worksheet, mock_client):
+        with patch.object(worksheet, "list_columns", return_value=["ID", "Name"]):
+            with pytest.raises(MalformedRowError):
+                worksheet.add_rows([[1, "Alice", "extra"]])
+
+        # Makle sure make request not called with garb rows 
+        mock_client.make_request.assert_not_called()
