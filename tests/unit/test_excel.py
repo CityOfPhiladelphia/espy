@@ -123,9 +123,45 @@ class TestAddRows:
         assert kwargs["timeout"] == 60
  
     def test_add_rows_malformed(self, worksheet, mock_client):
-        with patch.object(worksheet, "list_columns", return_value=["ID", "Name"]):
+        with patch.object(worksheet, "list_columns", return_value=["col1", "col2"]):
             with pytest.raises(MalformedRowError):
-                worksheet.add_rows([[1, "Alice", "extra"]])
+                worksheet.add_rows([[1, "Alice", "extradata"]])
 
         # Makle sure make request not called with garb rows 
         mock_client.make_request.assert_not_called()
+
+class TestDeleteRow:
+    def test_delete_row_at_index(self, worksheet, mock_client):
+        with patch.object(worksheet, "toggle_protection") as mock_toggle:
+            mock_response = make_response()
+            mock_client.make_request.return_value = mock_response
+ 
+            response = worksheet.delete_row_at_index(2, password="pw")
+ 
+        assert response is mock_response # again, make sure the make_request is returned 
+
+        # Make sure makes 2 calls to toggle 
+        mock_toggle.assert_has_calls(
+            [call("pw", protect=False), call("pw", protect=True)]
+        )
+
+        # Make sure arguments are good
+        args, kwargs = mock_client.make_request.call_args
+        assert args[0] == HTTPMethod.DELETE
+        assert "index=2" in args[1]
+
+    def test_delete_row_by_pk_delegates_to_index_delete(self, worksheet):
+        with patch.object(
+            worksheet, "_find_index_of_pk", return_value=3  # set return val 
+        ) as mock_find, \
+        patch.object(
+            worksheet, "delete_row_at_index", return_value="del"
+        ) as mock_delete:
+            result = worksheet.delete_row_by_pk("ID", 42, password="pw")
+ 
+        mock_find.assert_called_once_with("ID", 42)
+
+        # Ensure delete called with right index 
+        mock_delete.assert_called_once_with(3, password="pw")
+        
+        assert result == "del"
