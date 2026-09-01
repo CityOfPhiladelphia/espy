@@ -163,5 +163,31 @@ class TestDeleteRow:
 
         # Ensure delete called with right index 
         mock_delete.assert_called_once_with(3, password="pw")
-        
+
         assert result == "del"
+
+class TestUpdateRow:
+    def test_update_row_at_index(self, worksheet, mock_client):
+        with patch.object(
+            worksheet, "list_columns", return_value=["col1", "col2"]
+        ), patch.object(worksheet, "toggle_protection") as mock_toggle:
+            mock_response = make_response()
+            mock_client.make_request.return_value = mock_response
+ 
+            response = worksheet.update_row_at_index(1, [[1, 2]], password="pw")
+ 
+        assert response is mock_response
+        mock_toggle.assert_has_calls(
+            [call("pw", protect=False), call("pw", protect=True)]
+        )
+        args, kwargs = mock_client.make_request.call_args
+        assert args[0] == HTTPMethod.PATCH
+        assert "index=1" in args[1]
+        assert kwargs["json"] == {"values": [[1, 2]]}
+
+    def test_update_row_at_index_malformed(self, worksheet, mock_client):
+        with patch.object(worksheet, "list_columns", return_value=["col1", "col2"]):
+            with pytest.raises(MalformedRowError):
+                worksheet.update_row_at_index(1, [[1]])
+ 
+        mock_client.make_request.assert_not_called()
