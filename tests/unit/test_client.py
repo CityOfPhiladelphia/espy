@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from graph_api_functions.models.models import HTTPMethod, UnsupportedMethodError
+from EsPy.models.models import HTTPMethod, UnsupportedMethodError
 
 
 def test_get_headers_constructs_valid_header_dict(configured_client):
@@ -21,7 +21,7 @@ def test_execute_request_invokes_correct_function(
 ):
     mock_utility = MagicMock(return_value="Mocked Output")
 
-    monkeypatch.setattr("graph_api_functions.client.httpx.get", mock_utility)
+    monkeypatch.setattr("EsPy.client.httpx.get", mock_utility)
 
     response = configured_client._execute_request(HTTPMethod.GET, "Hello World")
 

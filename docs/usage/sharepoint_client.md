@@ -10,7 +10,7 @@ When used alone, it allows you to upload and download files to/from SharePoint.
 ## Import
  
 ```python
-from src.graph_api_functions.client import GraphAPIClient
+from src.EsPy.client import GraphAPIClient
 ```
  
 ## Setup

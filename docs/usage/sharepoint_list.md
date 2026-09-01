@@ -2,7 +2,7 @@
 
 ## Import
 ```python
-from graph_api_functions.list import SharePointList
+from EsPy.list import SharePointList
 ```
 
 ## Instantiate with .setup()

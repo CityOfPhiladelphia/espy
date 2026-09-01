@@ -4,8 +4,8 @@ from unittest.mock import MagicMock
 import pytest
 import httpx
 
-from graph_api_functions.list import SharePointList
-from graph_api_functions.models.models import GraphAPIResponse, SharePointListRow
+from EsPy.list import SharePointList
+from EsPy.models.models import GraphAPIResponse, SharePointListRow
 
 
 def mocked_response(fixture_dict: dict) -> httpx.Response:
@@ -72,7 +72,7 @@ def test_fetch_page_returns_graph_api_response(
     mock_get = mocked_get(mocked_single_page_data)
 
     monkeypatch.setattr(
-        "graph_api_functions.list.GraphAPIClient.make_request", mock_get
+        "EsPy.list.GraphAPIClient.make_request", mock_get
     )
 
     page_data = configured_test_list._fetch_page(
@@ -96,7 +96,7 @@ def test_list_page_yields_dict(
     ]
 
     monkeypatch.setattr(
-        "graph_api_functions.list.GraphAPIClient.make_request", mock_get
+        "EsPy.list.GraphAPIClient.make_request", mock_get
     )
 
     result = configured_test_list.list_rows()
@@ -127,7 +127,7 @@ def test_get_row_yields_dict(
     mock_get = mocked_get(mocked_row_data)
 
     monkeypatch.setattr(
-        "graph_api_functions.list.GraphAPIClient.make_request", mock_get
+        "EsPy.list.GraphAPIClient.make_request", mock_get
     )
 
     result = configured_test_list.get_row("1")

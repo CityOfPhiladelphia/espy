@@ -5,7 +5,7 @@ from typing import Any, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field
 
-import graph_api_functions.models.graph_api_models as cols
+import EsPy.models.graph_api_models as cols
 
 
 ## Enums

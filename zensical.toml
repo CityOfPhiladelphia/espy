@@ -1,13 +1,13 @@
 [project]
 site_url = "https://www.example.com/"
-site_name = "Graph API Functions"
+site_name = "EsPy"
 site_description = "A library to make using the Microsoft Graph API easier."
 site_author = "City of Philadelphia"
 
 copyright = "Copyright &copy; 2026 City of Philadelphia"
 
-repo_url = "https://github.com/CityOfPhiladelphia/graph_api_functions"
-repo_name = "CityOfPhiladelphia/graph_api_functions"
+repo_url = "https://github.com/CityOfPhiladelphia/EsPy"
+repo_name = "CityOfPhiladelphia/EsPy"
 edit_uri = "edit/main/docs/"
 
 dev_addr = "localhost:3000"

@@ -1,6 +1,6 @@
-# Graph API Functions
+# EsPy
 
-Graph API functions is a project to make using the Microsoft Graph API
+EsPy is a project to make using the Microsoft Graph API
 easier.
 
 !!! note
@@ -18,12 +18,12 @@ site name and file name.
 To install this library to your project, run:
 
 ```bash
-uv add git+https://github.com/CityOfPhiladelphia/graph_api_functions.git
+uv add git+https://github.com/CityOfPhiladelphia/EsPy.git
 ```
 
 ### Usage Example
 ```python
-from graph_api_functions.list import SharePointList
+from EsPy.list import SharePointList
 
 # Instantiate a SharePoint List Object
 sp_list = SharePointList.setup(site_name="list_site_name", list_name="list_name")
