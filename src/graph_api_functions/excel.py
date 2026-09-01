@@ -432,7 +432,7 @@ class ExcelWorksheet:
                     if row[pk_col] == pk_val: 
                         return index 
 
-        raise PrimaryKeyValueNotFound(f"Could not find value: {pk_val} under the primary key column {pk_col}!")
+        raise PrimaryKeyValueNotFound(f"Could not find value: '{pk_val}' under the primary key column {pk_col}!")
             
     def get_row(self):
         raise NotImplementedError("Method for excel be implemented in the future.")
