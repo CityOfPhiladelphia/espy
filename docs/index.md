@@ -17,8 +17,15 @@ site name and file name.
 
 To install this library to your project, run:
 
+Include the tag for the latest version.
+
 ```bash
-uv add git+https://github.com/CityOfPhiladelphia/EsPy.git
+uv add "git+https://github.com/CityOfPhiladelphia/EsPy.git" --tag v1.0.0
+```
+
+### Upgrading EsPy
+```
+uv lock --upgrade-package EsPy && uv sync
 ```
 
 ### Usage Example
