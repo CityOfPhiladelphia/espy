@@ -426,7 +426,7 @@ class ExcelWorksheet:
         if not len(rows):
             raise ValueError("Cannot delete/update from empty table!")
         if pk_col not in rows[0]:
-            raise KeyError(f"Key {pk_col} does not exist in table!")
+            raise KeyError(f"Key {pk_col} does not exist in table! Must be one of {list(rows[0].keys())}")
 
         for index, row in enumerate(rows): 
                     if row[pk_col] == pk_val: 
