@@ -87,12 +87,12 @@ Appends one or more rows to the bottom of the Excel worksheet.
 - `MalformedRowError` — the number of values to insert doesn't match the number of columns in the table.
 
 For example, given three columns `col1`, `col2`, `col3`, and `data=[[6, 12, 36]]`, the table becomes:
- 
+
 | col1 | col2 | col3 |
 |---|---|---|
 | ... | ... | ... |
 | 6 | 12 | 36 |
- 
+
 ```python
 data = [[6, 12, 36], [1, 2, 3]]
 excel.add_rows(data)
@@ -107,7 +107,7 @@ Deletes a row based on a primary key value.
 | Name | Type | Description |
 |---|---|---|
 | `pk_col` | `str` | Name of the primary key column |
-| `pk_val` | `str \| int` | Value to match on |
+| `pk_val` | `str | int` | Value to match on |
 | `password` | `str`, optional | Sheet protection password |
  
 **Raises**
