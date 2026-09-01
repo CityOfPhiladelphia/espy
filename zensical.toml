@@ -6,8 +6,8 @@ site_author = "City of Philadelphia"
 
 copyright = "Copyright &copy; 2026 City of Philadelphia"
 
-repo_url = "https://github.com/CityOfPhiladelphia/EsPy"
-repo_name = "CityOfPhiladelphia/EsPy"
+repo_url = "https://github.com/CityOfPhiladelphia/espy"
+repo_name = "CityOfPhiladelphia/espy"
 edit_uri = "edit/main/docs/"
 
 dev_addr = "localhost:3000"

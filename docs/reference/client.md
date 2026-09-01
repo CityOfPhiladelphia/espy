@@ -1,2 +1,2 @@
 # GraphAPIClient
-:::EsPy.client
+:::espy.client

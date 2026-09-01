@@ -9,7 +9,7 @@ Supports retrieving, adding, deleting, and modifying rows in a SharePoint Excel 
 ## Import
 
 ```python
-from src.EsPy.excel import ExcelWorksheet
+from src.espy.excel import ExcelWorksheet
 ```
 
 ## Setup
