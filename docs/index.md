@@ -3,6 +3,11 @@
 Graph API functions is a project to make using the Microsoft Graph API
 easier.
 
+!!! note
+
+    This library necessitates a `Graph App` being created and registered in Azure (Entra ID). Further this app needs to be provisioned to target sharepoint sites with read/write permissions. At the moment, the library is defaulting to using CityGeo's `Graph App`, which is provisioned for a handful of sharepoint sites. Future development will allow users to pass credentials for their own `Graph App`, but at the moment this will only work with CityGeo's `Graph App`.
+
+
 ## Core Features
 - **Clear Models**: Each type of file in SharePoint (Excel, List) has its own class.
 - **Easy Authentication**: Handles the authentication workflow. Just provide
@@ -31,8 +36,3 @@ row_to_add = {"name": "Billy Penn",
 
 response = sp_list.add_row(row_to_add)
 ```
-
-## Table of Contents
-- [Usage](./usage/)
-- [Development](./development/)
-- [Reference](./reference/)
