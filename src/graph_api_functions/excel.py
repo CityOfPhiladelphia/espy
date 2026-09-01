@@ -63,7 +63,7 @@ class ExcelWorksheet:
     """
     Models a SharePoint Excel Workbook.
 
-    Provides functionality to access and add rows to a Sharepoint Excel file. 
+    Provides functionality to access, add, modify, or delete rows in a Sharepoint Excel. 
 
     Attributes:
         client(GraphAPIClient): A GraphAPIClient instance, used to
