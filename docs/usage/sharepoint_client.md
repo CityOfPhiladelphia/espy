@@ -1,66 +1,81 @@
 # SharePoint Client
+ 
+A Python class representing a Graph API client. This class is used internally by the `ExcelWorksheet` and `SharepointList` classes to make requests on their behalf.
+ 
+When used alone, it allows you to upload and download files to/from SharePoint.
+ 
+---
 
-Class representing a GraphAPI client. This class is a part of the ExcelWorksheet and SharepointList classes and is responsible for making requests for them. 
 
-When used alone, allows you to upload/download files to sharepoint. 
 ## Import
-
+ 
 ```python
 from src.graph_api_functions.client import GraphAPIClient
 ```
-
-## Instantiate with .authenticate()
-
+ 
+## Setup
+ 
+Instantiate with `.authenticate()`. At the moment, the `GraphAPIClient` is instantiated with CityGeo's Graph App in Azure. Future development will allow a user to pass their own credentials for authentication.
+ 
 ```python
 client = GraphAPIClient.authenticate()
 ```
+ 
+---
 
 ## Functions
 
-### Upload a Local File 
-Upload a file to a SharePoint Documents folder.
-
-Arguments:
-
- - site_name (str) : The name of the sharepoint site you want to upload a file to 
- - local_path (str): the exact local path where your file is 
- - dest_path (str): the path, relative to the Documents folder, where you want to save the file
-
-Returns:
-
-- dict: The response json 
-
-For example: 
-
-`dest_path="Folder Name"` will create a file at _Documents/Folder Name/file.xlsx_. 
-
-`dest_path=""` will save it at _Documents/file.xlsx_
-
+### Upload a Local File
+ 
+Uploads a file to a SharePoint Documents folder.
+ 
+**Arguments**
+ 
+| Name | Type | Description |
+|---|---|---|
+| `site_name` | `str` | Name of the SharePoint site to upload the file to |
+| `local_path` | `str` | Exact local path where the file is located |
+| `dest_path` | `str` | Path, relative to the Documents folder, where the file should be saved |
+ 
+**Returns**
+ 
+| Type | Description |
+|---|---|
+| `dict` | The response JSON |
+ 
+For example:
+ 
+- `dest_path="Folder Name"` creates a file at `Documents/Folder Name/file.xlsx`
+- `dest_path=""` saves it at `Documents/file.xlsx`
 ```python
-client.upload_local_file(site_name=site_name, 
-                         local_path=local_path, 
-                         dest_path=dest_path)
+client.upload_local_file(site_name=site_name,
+                          local_path=local_path,
+                          dest_path=dest_path)
 ```
-
-### Download a File  
-Get the raw bytes of the excel workbook specified by _file_path_
-
-Arguments: 
-
-- file_path (str): The path of the file you want, relative to the instantiated document library/ 
-
-Returns: 
-
-- bytes: Raw bytes representing the excel file. 
-
+### Download a File
+ 
+Gets the raw bytes of the Excel workbook specified by `file_path`.
+ 
+**Arguments**
+ 
+| Name | Type | Description |
+|---|---|---|
+| `file_path` | `str` | Path of the file to retrieve, relative to the instantiated document library |
+ 
+**Returns**
+ 
+| Type | Description |
+|---|---|
+| `bytes` | Raw bytes representing the Excel file |
+ 
 ```python
-import pandas as pd 
+import pandas as pd
 from io import BytesIO
-
-workbook_path = 'etl_tools_test_workbook.xlsx'
+ 
+workbook_path = "etl_tools_test_workbook.xlsx"
 raw_bytes = client.get_content(file_path=workbook_path)
-
-# Can convert to dataframe easily 
+ 
+# Can convert to a dataframe easily
 buf = BytesIO(raw_bytes)
 df = pd.read_excel(buf)
 df.head()
