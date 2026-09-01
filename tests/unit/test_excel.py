@@ -2,12 +2,12 @@ from unittest.mock import MagicMock, call, patch
  
 import pytest
  
-from EsPy.excel import ExcelWorksheet
-from EsPy.models.graph_api_models import (
+from espy.excel import ExcelWorksheet
+from espy.models.graph_api_models import (
     MalformedRowError,
     PrimaryKeyValueNotFound,
 )
-from EsPy.models.models import HTTPMethod
+from espy.models.models import HTTPMethod
 
 @pytest.fixture
 def mock_client():
@@ -54,7 +54,7 @@ class TestSetup:
         mock_instance.get_drive_id.return_value = "test_drive"
         mock_instance.make_request.return_value = make_response({"id":"some_id"})
 
-        with patch("EsPy.excel.GraphAPIClient") as MockedClient: 
+        with patch("espy.excel.GraphAPIClient") as MockedClient: 
             MockedClient.authenticate.return_value = mock_instance
 
             excel = ExcelWorksheet.setup(
@@ -73,3 +73,22 @@ class TestSetup:
         assert excel.workbook_id == "some_id"
         assert excel.worksheet_name == "garbsheet"
         assert excel.table_name == "garbtable"
+
+    def test_setup_with_default_vals(self):
+        mock_instance = MagicMock()
+        mock_instance.get_site_id.return_value = "test_site"
+        mock_instance.get_drive_id.return_value = "test_drive"
+        mock_instance.make_request.return_value = make_response({"id":"some_id"})
+ 
+        with patch("espy.excel.GraphAPIClient") as MockedClient: 
+            MockedClient.authenticate.return_value = mock_instance
+ 
+            excel = ExcelWorksheet.setup(
+                hostname="contoso.sharepoint.com",
+                site_name="TeamSite",
+                document_library="Documents",
+                workbook_path="Reports/data.xlsx",
+            )
+ 
+        assert excel.worksheet_name is None
+        assert excel.table_name is None
