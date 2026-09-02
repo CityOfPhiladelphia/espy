@@ -296,20 +296,33 @@ class ExcelWorksheet:
 
         return response
 
-    def upsert_rows(self, pk_col:str, data:list, password:str|None=None):
+    def upsert_rows(self, pk_col:str, data:list, password:str|None=None) -> None:
         # TODO: change data to be more flexible i.e. df or something 
 
         # Extract the pk_col from the source data 
+        position, pk_vals_from_source = self._extract_pk_values(pk_col=pk_col)
 
-        # For each row in data, if its pk_col has values in the source, set to its own list (updates)
-        # For ones that dont, set to its own list (adds)  
+        add_lists, update_lists = [], []
 
+        for row in data: 
+            if row[position] in pk_vals_from_source:
+                update_lists.append(row)
+            else:
+                add_lists.append(row) 
 
+        print(f"Adding {len(add_lists)} rows to the data... ")
+        self.add_rows(add_lists, password)
+        print("Rows added sucessfully..")
 
-        pass
+        print(f"Updating {len(update_lists)} rows of data...")
+        for row in update_lists: 
+            self.update_row_by_pk(pk_col=pk_col, 
+                                  pk_val=row[position], 
+                                  value=[row], 
+                                  password=password)
+        print("Sucessfully update the rows")
 
-
-    def _extract_pk_values(self, pk_col: str) -> list:
+    def _extract_pk_values(self, pk_col: str) -> tuple[int, list]:
         list_cols_url = build_url(
             ExcelEndpoints.LIST_COLS,
             graph_url=GRAPH_URL,
@@ -321,9 +334,9 @@ class ExcelWorksheet:
         response = self.client.make_request(HTTPMethod.GET, list_cols_url).json()
         values = response.get("value", []) 
 
-        for row in values: 
+        for index, row in enumerate(values): 
             if row['name'] == pk_col:
-                return [val[0] for val in row['values'][1:]]
+                return (index, [val[0] for val in row['values'][1:]])
 
         raise KeyError(f"Key {pk_col} does not exist in table! Must be one of {[col['name'] for col in values]}")
 
@@ -382,7 +395,7 @@ class ExcelWorksheet:
 
         cols = [col['name'] for col in values]
 
-        return response
+        return cols
 
     def toggle_protection(self, password:str, protect:bool) -> None:
         """
