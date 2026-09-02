@@ -296,6 +296,38 @@ class ExcelWorksheet:
 
         return response
 
+    def upsert_rows(self, pk_col:str, data:list, password:str|None=None):
+        # TODO: change data to be more flexible i.e. df or something 
+
+        # Extract the pk_col from the source data 
+
+        # For each row in data, if its pk_col has values in the source, set to its own list (updates)
+        # For ones that dont, set to its own list (adds)  
+
+
+
+        pass
+
+
+    def _extract_pk_values(self, pk_col: str) -> list:
+        list_cols_url = build_url(
+            ExcelEndpoints.LIST_COLS,
+            graph_url=GRAPH_URL,
+            drive_id=self.drive_id,
+            workbook_id=self.workbook_id,
+            table_name=self.table_name
+        )
+
+        response = self.client.make_request(HTTPMethod.GET, list_cols_url).json()
+        values = response.get("value", []) 
+
+        for row in values: 
+            if row['name'] == pk_col:
+                return [val[0] for val in row['values'][1:]]
+
+        raise KeyError(f"Key {pk_col} does not exist in table! Must be one of {[col['name'] for col in values]}")
+
+
     def list_rows(self) -> list[dict]:
         """
         Returns the rows of an excel table, represented as a list
@@ -350,7 +382,7 @@ class ExcelWorksheet:
 
         cols = [col['name'] for col in values]
 
-        return cols
+        return response
 
     def toggle_protection(self, password:str, protect:bool) -> None:
         """
