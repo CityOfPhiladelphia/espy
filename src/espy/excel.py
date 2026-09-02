@@ -1,6 +1,7 @@
 from enum import StrEnum
 
 from httpx import Response
+import pandas as pd
 
 from espy.client import GraphAPIClient
 from espy.constants import GRAPH_URL
@@ -296,10 +297,8 @@ class ExcelWorksheet:
 
         return response
 
-    def upsert_rows(self, pk_col:str, data:list, password:str|None=None) -> None:
-        # TODO: change data to be more flexible i.e. df or something 
-
-        # Extract the pk_col from the source data 
+    def upsert_rows(self, pk_col:str, data:list|pd.DataFrame, password:str|None=None) -> None:
+ 
         position, pk_vals_from_source = self._extract_pk_values(pk_col=pk_col)
 
         add_lists, update_lists = [], []
@@ -310,9 +309,9 @@ class ExcelWorksheet:
             else:
                 add_lists.append(row) 
 
-        print(f"Adding {len(add_lists)} rows to the data... ")
+        print(f"Adding {len(add_lists)} rows to the data...")
         self.add_rows(add_lists, password)
-        print("Rows added sucessfully..")
+        print("Rows added sucessfully...")
 
         print(f"Updating {len(update_lists)} rows of data...")
         for row in update_lists: 
@@ -320,7 +319,7 @@ class ExcelWorksheet:
                                   pk_val=row[position], 
                                   value=[row], 
                                   password=password)
-        print("Sucessfully update the rows")
+        print("Sucessfully updated the rows")
 
     def _extract_pk_values(self, pk_col: str) -> tuple[int, list]:
         list_cols_url = build_url(
@@ -340,6 +339,30 @@ class ExcelWorksheet:
 
         raise KeyError(f"Key {pk_col} does not exist in table! Must be one of {[col['name'] for col in values]}")
 
+    def _transform_data(self, data:list|pd.DataFrame) -> list:
+
+        if isinstance(data, list) and len(data) == 0:
+            raise ValueError("Data is empty!")
+
+        cols = self.list_columns()
+        
+        if isinstance(data, pd.DataFrame):
+            dicts = data.to_dict(orient='records')
+            return [[row[col] for col in cols] for row in dicts]
+
+        if isinstance(data, list): 
+            first_entry = data[0]
+
+            if isinstance(first_entry, dict):
+                return [[row[col] for col in cols] for row in data]
+
+            if isinstance(first_entry, tuple):
+                return [list(tup) for tup in data]
+
+            if isinstance(first_entry, list):
+                return data 
+
+        raise TypeError(f"Unsupported data type: {type(data)}")
 
     def list_rows(self) -> list[dict]:
         """
