@@ -192,22 +192,28 @@ class GraphAPIClient:
 
         return response.json()
 
-    def get_content(self, file_path:str) -> bytes:
+    def get_content(self, hostname: str, site_name: str, document_library: str, file_path:str) -> bytes:
         """
         Get the raw bytes of the excel workbook specified by
         file_path. 
 
         Args:
+            hostname: Sharepoint host name 
+            site_name: Sharepoint site name 
+            document_library: The sharepoint document library. 
             file_path (str): The path of the file you want, relative to the
             instantiated document library. 
 
         Returns:
             bytes: The raw bytes representing the excel file.
         """
+        site_id  = self.get_site_id(hostname, site_name)
+        drive_id = self.get_drive_id(site_id, document_library)
+
         content_url = build_url(ClientEndpoints.GET_CONTENT,
                                  graph_url=GRAPH_URL,
-                                 site_id=self.site_id,
-                                 drive_id=self.drive_id,
+                                 site_id=site_id,
+                                 drive_id=drive_id,
                                  file_path=file_path
          )
 
