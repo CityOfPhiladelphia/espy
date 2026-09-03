@@ -298,12 +298,14 @@ class ExcelWorksheet:
         return response
 
     def upsert_rows(self, pk_col:str, data:list|pd.DataFrame, password:str|None=None) -> None:
- 
+        
+        trans_data = self._transform_data(data)
+
         position, pk_vals_from_source = self._extract_pk_values(pk_col=pk_col)
 
         add_lists, update_lists = [], []
 
-        for row in data: 
+        for row in trans_data: 
             if row[position] in pk_vals_from_source:
                 update_lists.append(row)
             else:
