@@ -323,17 +323,19 @@ class ExcelWorksheet:
             else:
                 add_lists.append(row) 
 
-        print(f"Adding {len(add_lists)} rows to the data...")
-        self.add_rows(add_lists, password)
-        print("Rows added sucessfully...")
+        if len(add_lists):
+            print(f"Adding {len(add_lists)} rows to the data...")
+            self.add_rows(add_lists, password)
+            print("Rows added sucessfully...")
 
-        print(f"Updating {len(update_lists)} rows of data...")
-        for row in update_lists: 
-            self.update_row_by_pk(pk_col=pk_col, 
-                                  pk_val=row[position], 
-                                  value=[row], 
-                                  password=password)
-        print("Sucessfully updated the rows")
+        if len(update_lists):
+            print(f"Updating {len(update_lists)} rows of data...")
+            for row in update_lists: 
+                self.update_row_by_pk(pk_col=pk_col, 
+                                    pk_val=row[position], 
+                                    value=[row], 
+                                    password=password)
+            print("Sucessfully updated the rows")
 
     def _extract_pk_values(self, pk_col: str) -> tuple[int, list]:
         """
