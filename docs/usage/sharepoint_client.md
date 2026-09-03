@@ -60,8 +60,11 @@ Gets the raw bytes of the Excel workbook specified by `file_path`.
  
 | Name | Type | Description |
 |---|---|---|
+| `hostname` | `str` | Sharepoint host name |
+| `site_name` | `str` |Sharepoint site name  |
+| `document_library` | `str` | The sharepoint document library.  |
 | `file_path` | `str` | Path of the file to retrieve, relative to the instantiated document library |
- 
+
 **Returns**
  
 | Type | Description |
