@@ -6,13 +6,13 @@ from espy.client import GraphAPIClient
 
 # TODO: Make host name a variable, not a constant. Edit in optional config file?
 from espy.constants import GRAPH_URL, HOST_NAME
-from espy.models.graph_api_models import (
+from espy.constants import (
     SHARE_POINT_LIST_EXCLUDED_COLUMNS,
 )
 from espy.models.models import (
+    SharePointListColumn,
     GraphAPIResponse,
     HTTPMethod,
-    SharePointListColumn,
     SharePointListRow,
 )
 from espy.urls import build_url
@@ -142,21 +142,27 @@ class SharePointList:
             list_id=self.list_id,
         )
 
-        raw_columns_data = self.client.make_request(
+        # Raw columns data will include hidden metadata columns that we want 
+        # to exclude, since they will break our data validation rules
+        # and are ultimately not useful. We filter those out here.
+        column_list = []
+
+        raw_response = self.client.make_request(
             HTTPMethod.GET, columns_url).json()
+        
+        response_envelope = GraphAPIResponse.model_validate(raw_response)
 
-        response_envelope = GraphAPIResponse[
-            SharePointListColumn
-        ].model_validate(raw_columns_data)
+        if not response_envelope.value:
+            raise ValueError("No columns to return.")
 
-        filtered = [
-            column
-            for column in response_envelope.value
-            if not column.read_only
-            and column.display_name not in SHARE_POINT_LIST_EXCLUDED_COLUMNS
-        ]
+        for column in response_envelope.value:
 
-        return filtered
+            if column['name'] not in SHARE_POINT_LIST_EXCLUDED_COLUMNS: 
+                column_list.append(
+                    SharePointListColumn.model_validate(column)
+                )
+
+        return column_list
 
     def _get_column_mapping(self) -> dict[str, str]:
         """
@@ -178,7 +184,7 @@ class SharePointList:
         return self._column_mapping
     
     def _fetch_page(
-        self, url: str | None, params: dict
+        self, url: str | None, params: dict | None
     ) -> GraphAPIResponse[SharePointListRow] | None:
         """A helper funtion to fetch a single page of rows 
         from a SharePoint List. Used by the list_rows method to paginate
@@ -232,7 +238,7 @@ class SharePointList:
 
             params = None
             next_link = response_envelope.next_link
-            for row in response_envelope.value:
+            for row in response_envelope.value: # pyright: ignore
                 yield row.model_dump()
 
     def add_row(self, data: dict[str, Any]) -> Response:
@@ -264,7 +270,7 @@ class SharePointList:
                                      value for key, value in data.items() }}
 
         response = self.client.make_request(
-            "POST", add_row_url, json=fields_payload
+            HTTPMethod.POST, add_row_url, json=fields_payload
         )
 
         return response
@@ -276,3 +282,12 @@ class SharePointList:
     def upsert_row(
         self, key_col: str, data: dict[str, Any]
     ) -> dict[str, Any]: ...
+
+
+if __name__ == "__main__":
+    site_name = "ps360-metrics-share"
+    list_name = "testing_lists"
+    sp_list = SharePointList.setup(site_name=site_name, list_name=list_name)
+    result = sp_list.list_columns()
+    for result in result:
+        print(result)

@@ -1,12 +1,12 @@
+# Models.py 
+
 from collections.abc import Iterator
 
 from enum import StrEnum
 from typing import Any, Protocol
 
-from pydantic import BaseModel, ConfigDict, Field
-
-import espy.models.graph_api_models as cols
-
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic.alias_generators import to_camel
 
 ## Enums
 class HTTPMethod(StrEnum):
@@ -87,7 +87,7 @@ class SharePointListRow(BaseModel):
     fields: dict = Field(default_factory=dict)
 
 
-class SharePointListColumn(cols.SharePointListColumnType):
+class SharePointListColumn(BaseModel):
     """A model representing a column of a SharePoint list. Contains
     information about the column and validation rules assigned to the column.
 
@@ -105,25 +105,39 @@ class SharePointListColumn(cols.SharePointListColumnType):
     name: str
     read_only: bool
     required: bool
+    type: str
+
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
     # Share Point List Columns may be one of fourteen types, modeled in
     # list_column_definitions.py
     # When parsing this, you can use the "exclude_unset" option
     # in pydantic's model dump to exclude fields that are none
 
-    boolean: cols.BooleanColumn | None = Field(None)
-    calculated: cols.CalculatedColumn | None = Field(None)
-    choice: cols.ChoiceColumn | None = Field(None)
-    content_approval_status: cols.ContentApprovalStatusColumn | None = Field(
-        None
-    )
-    currency: cols.CurrencyColumn | None = Field(None)
-    date_time: cols.DateTimeColumn | None = Field(None)
-    geolocation: cols.GeolocationColumn | None = Field(None)
-    hyperlink_or_picture: cols.HyperlinkOrPictureColumn | None = Field(None)
-    lookup: cols.LookupColumn | None = Field(None)
-    number: cols.NumberColumn | None = Field(None)
-    person_or_group: cols.PersonOrGroupColumn | None = Field(None)
-    term: cols.TermColumn | None = Field(None)
-    text: cols.TextColumn | None = Field(None)
-    thumbnail: cols.ThumbnailColumn | None = Field(None)
+    @model_validator(mode="before")
+    @classmethod
+    def transform_api_key_to_type(cls, data: dict) -> dict:
+        if not isinstance(data, dict):
+            raise ValueError("API response not in valid JSON format.")
+
+        api_types = {
+            "boolean", "calculated", "choice",
+            "contentApprovalStatus", "currency",
+            "dateTime", "geolocation", "hyperlinkOrPicture",
+            "lookup", "number", "personOrGroup",
+            "term", "text", "thumbnail"
+        }
+
+        for api_type in api_types:
+            if api_type in data:
+                data["type"] = api_type
+                return data
+
+            else:
+                # Some column types are not easily identifiable from the
+                # response returned from the SharePoint API, including
+                # location, which contains hidden sub columns
+                # and hyperlink
+                data["type"] = "untyped"
+
+        return data

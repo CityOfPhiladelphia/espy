@@ -1,35 +1,15 @@
+# graph_api_models.py
+
+## NOTE: These models are not currently used by the validation flow
+## but may be in the future, if we need more granular error handling
+## based on data types and constraints.
+
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
-SHARE_POINT_LIST_EXCLUDED_COLUMNS = [
-    "Title",
-    "Color Tag",
-    "Compliance Asset Id",
-    "ID",
-    "Content Type",
-    "Modified",
-    "Created",
-    "Modified By",
-    "_UIVersionString",
-    "Attachments",
-    "Edit",
-    "type",
-    "Item Child Count",
-    "Folder Child Count",
-    "Label setting",
-    "Retention label",
-    "Retention label Applied",
-    "Label applied by",
-    "Item is a Record",
-    "App Created By",
-    "App Modified By",
-]
-
 # ========= Custom errors ===========
-
-
 class GraphAPILimitationError(Exception):
     """Raised when the graph API does not provide this functionality."""
 
@@ -39,8 +19,7 @@ class MalformedRowError(Exception):
 class PrimaryKeyValueNotFound(Exception):
     """Raised when searching for a value under the primary key, but it is not found"""
 
-# ========= Microsoft Column Classes ===========
-
+# ========= SharePoint List Column Data Types ===========
 
 class SharePointListColumnType(BaseModel):
     """A parent class for Share Point List Columns. Converts attributes
@@ -54,8 +33,7 @@ class SharePointListColumnType(BaseModel):
     # snake case or camel case.
 
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
-
-
+   
 class BooleanColumn(SharePointListColumnType):
     """Boolean column type. Currently empty, per MS documentation.
 
