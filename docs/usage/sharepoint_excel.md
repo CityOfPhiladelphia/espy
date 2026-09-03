@@ -2,7 +2,7 @@
 
 A Python class for interacting with Sharepoint Excel via `ExcelWorksheet` objects. 
 
-Supports retrieving, adding, deleting, and modifying rows in a SharePoint Excel file, as well as locking and unlocking sheet protection.
+Supports retrieving, adding, deleting, modifying, and upserting rows in a SharePoint Excel file, as well as locking and unlocking sheet protection.
 
 ---
 
@@ -183,6 +183,36 @@ update = [[None, 1738, None]]  # Update only col2 value
 resp = excel.update_row_at_index(index=11, value=data)
 ```
  
+### Upsert Rows 
+ 
+Upserts incoming data into the table. Data can be formatted as a `list[list]`, `list[dict]`, `list[tuple]`, or `DataFrame`.
+For data that is a `list[list]` or a `list[tuple]`, data must be ordered in the same order of the columns. 
+For data that is a `DataFrame` or `list[dict]`, data can be ordered in anyway. 
+ 
+**Arguments**
+ 
+| Name | Type | Description |
+|---|---|---|
+| `pk_col` | `str` | Name of the primary key column |
+| `data` | `list | pd.DataFrame` | Data to upsert |
+| `password` | `str`, optional | Sheet protection password |
+ 
+**Raises**
+ 
+- `KeyError` — Raised when the primary key column does not exist in table .
+- `ValueError` — Raised when there is no data in data
+- `TypeError` — Raised when data is not in one of the acceptable formats.
+
+```python
+pk_col = "primary_key"
+
+data = [{"primary_key": "pk1", "fruit_name":"Apple", "weight": "900"},
+        {"primary_key": "pk2", "fruit_name":"Nana", "weight": "500"},
+        {"primary_key": "pk3", "fruit_name":"Kiwi", "weight": "432"}]
+
+excel.upsert_rows(pk_col=pk_col, data=tups)
+```
+
 ---
  
 ## Miscellaneous

@@ -1,6 +1,7 @@
 from enum import StrEnum
 
 from httpx import Response
+import pandas as pd
 
 from espy.client import GraphAPIClient
 from espy.constants import GRAPH_URL
@@ -295,6 +296,115 @@ class ExcelWorksheet:
         self.toggle_protection(password, protect=True)
 
         return response
+
+    def upsert_rows(self, pk_col:str, data:list|pd.DataFrame, password:str|None=None) -> None:
+        """
+        Upserts rows to an excel worksheet. 
+
+        Allowed formats of data are list[list], list[tuple], list[dict]
+        and panda's DataFrames. Values in the inner list and tuple must
+        appear in the order the columns are. Dataframes and dictionaries 
+        can appear in any order. 
+
+        Args:
+            pk_col (str): The name of the primary key column 
+            data (list | pd.DataFrame): Data to upsert 
+            password (str | None, optional): Sheet protection password. Defaults to None.
+        """
+        trans_data = self._transform_data(data)
+
+        position, pk_vals_from_source = self._extract_pk_values(pk_col=pk_col)
+
+        add_lists, update_lists = [], []
+
+        for row in trans_data: 
+            if row[position] in pk_vals_from_source:
+                update_lists.append(row)
+            else:
+                add_lists.append(row) 
+
+        if len(add_lists):
+            print(f"Adding {len(add_lists)} rows to the data...")
+            self.add_rows(add_lists, password)
+            print("Rows added sucessfully...")
+
+        if len(update_lists):
+            print(f"Updating {len(update_lists)} rows of data...")
+            for row in update_lists: 
+                self.update_row_by_pk(pk_col=pk_col, 
+                                    pk_val=row[position], 
+                                    value=[row], 
+                                    password=password)
+            print("Sucessfully updated the rows")
+
+    def _extract_pk_values(self, pk_col: str) -> tuple[int, list]:
+        """
+        Internal function for upsert_rows to list all the values under the primary key column 
+
+        Args:
+            pk_col (str): Name of the primary key column. 
+
+        Raises:
+            KeyError: Raised when the primary key column does not exist in table 
+
+        Returns:
+            tuple[int, list]: Tuple of the index of the primary key and its associated values.
+        """
+        list_cols_url = build_url(
+            ExcelEndpoints.LIST_COLS,
+            graph_url=GRAPH_URL,
+            drive_id=self.drive_id,
+            workbook_id=self.workbook_id,
+            table_name=self.table_name
+        )
+
+        response = self.client.make_request(HTTPMethod.GET, list_cols_url).json()
+        values = response.get("value", []) 
+
+        for index, row in enumerate(values): 
+            if row['name'] == pk_col:
+                return (index, [val[0] for val in row['values'][1:]])
+
+        raise KeyError(f"Key {pk_col} does not exist in table! Must be one of {[col['name'] for col in values]}")
+
+    def _transform_data(self, data:list|pd.DataFrame) -> list:
+        """
+        Internal function to transform incoming data into a format acceptable
+        for the GraphAPI (list[list])
+
+        Args:
+            data (list | pd.DataFrame): The incoming data to transform. 
+
+        Raises:
+            ValueError: Raised when there is no data in data
+            TypeError: Raised when data is not in one of the acceptable formats. 
+
+        Returns:
+            list: The formatted data.
+        """
+
+        if isinstance(data, list) and len(data) == 0:
+            raise ValueError("Data is empty!")
+
+        cols = self.list_columns()
+        
+        if isinstance(data, pd.DataFrame):
+            dicts = data.to_dict(orient='records')
+            return [[row[col] for col in cols] for row in dicts]
+
+        if isinstance(data, list): 
+            first_entry = data[0]
+
+            if isinstance(first_entry, dict):
+                return [[row[col] for col in cols] for row in data]
+
+            if isinstance(first_entry, tuple):
+                return [list(tup) for tup in data]
+
+            if isinstance(first_entry, list):
+                return data 
+
+        raise TypeError(f"Unsupported data type: {type(data)}")
 
     def list_rows(self) -> list[dict]:
         """
