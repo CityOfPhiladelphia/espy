@@ -298,7 +298,19 @@ class ExcelWorksheet:
         return response
 
     def upsert_rows(self, pk_col:str, data:list|pd.DataFrame, password:str|None=None) -> None:
-        
+        """
+        Upserts rows to an excel worksheet. 
+
+        Allowed formats of data are list[list], list[tuple], list[dict]
+        and panda's DataFrames. Values in the inner list and tuple must
+        appear in the order the columns are. Dataframes and dictionaries 
+        can appear in any order. 
+
+        Args:
+            pk_col (str): The name of the primary key column 
+            data (list | pd.DataFrame): Data to upsert 
+            password (str | None, optional): Sheet protection password. Defaults to None.
+        """
         trans_data = self._transform_data(data)
 
         position, pk_vals_from_source = self._extract_pk_values(pk_col=pk_col)
@@ -324,6 +336,18 @@ class ExcelWorksheet:
         print("Sucessfully updated the rows")
 
     def _extract_pk_values(self, pk_col: str) -> tuple[int, list]:
+        """
+        Internal function for upsert_rows to list all the values under the primary key column 
+
+        Args:
+            pk_col (str): Name of the primary key column. 
+
+        Raises:
+            KeyError: Raised when the primary key column does not exist in table 
+
+        Returns:
+            tuple[int, list]: Tuple of the index of the primary key and its associated values.
+        """
         list_cols_url = build_url(
             ExcelEndpoints.LIST_COLS,
             graph_url=GRAPH_URL,
@@ -342,6 +366,20 @@ class ExcelWorksheet:
         raise KeyError(f"Key {pk_col} does not exist in table! Must be one of {[col['name'] for col in values]}")
 
     def _transform_data(self, data:list|pd.DataFrame) -> list:
+        """
+        Internal function to transform incoming data into a format acceptable
+        for the GraphAPI (list[list])
+
+        Args:
+            data (list | pd.DataFrame): The incoming data to transform. 
+
+        Raises:
+            ValueError: Raised when there is no data in data
+            TypeError: Raised when data is not in one of the acceptable formats. 
+
+        Returns:
+            list: The formatted data.
+        """
 
         if isinstance(data, list) and len(data) == 0:
             raise ValueError("Data is empty!")
