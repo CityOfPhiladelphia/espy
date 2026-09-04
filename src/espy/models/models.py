@@ -1,11 +1,17 @@
 # Models.py 
 
 from collections.abc import Iterator
+from dataclasses import dataclass
 
-from enum import StrEnum
+from enum import StrEnum 
+from datetime import datetime
 from typing import Any, Protocol
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import (
+    BaseModel, ConfigDict, 
+    Field, model_validator
+    )
+
 from pydantic.alias_generators import to_camel
 
 ## Enums
@@ -39,7 +45,31 @@ class ColumnKind(StrEnum):
     TEXT = "text"
     THUMBNAIL = "thumbnail"
     UNTYPED = "untyped"
-    
+
+## Mappings
+@dataclass(frozen=True)
+class UnsupportedForWrite:
+    """Sentinel type indicating a column cannot be written to"""
+    pass
+
+COLUMN_KIND_PYTHON_TYPES = {
+    ColumnKind.BOOLEAN: (bool,),
+    ColumnKind.CALCULATED: (UnsupportedForWrite,),
+    ColumnKind.CHOICE: (str, list), # This is one where the choice column is actually helpful, as it might pull in valid values for us, but we can do this later
+    ColumnKind.CONTENT_APPROVAL_STATUS: (int,),
+    ColumnKind.CURRENCY: (float,),
+    ColumnKind.DATETIME: (datetime, str),
+    ColumnKind.GEOLOCATION: (UnsupportedForWrite,),
+    ColumnKind.HYPERLINK_OR_PICTURE: (UnsupportedForWrite,),
+    ColumnKind.LOOKUP: (int, str),
+    ColumnKind.NUMBER: (int, float),
+    ColumnKind.PERSON_OR_GROUP: (int, str),
+    ColumnKind.TERM: (str,),
+    ColumnKind.TEXT: (str,),
+    ColumnKind.THUMBNAIL: (UnsupportedForWrite,),
+    ColumnKind.UNTYPED: (UnsupportedForWrite, )
+}
+
 ## Errors
 class UnsupportedMethodError(BaseException):
     """Unsupported Method Error. Raised when
@@ -50,8 +80,21 @@ class UnsupportedMethodError(BaseException):
     """
     pass
 
+class InvalidIncomingRowError(BaseException):
+    pass
+
+class UnsupportedColumnForWriteError(BaseException):
+    """
+    Raised when a column type does not support write operations.
+
+    Args:
+    BaseException (BaseException): Inherited from the Base Exception class.
+    """
 
 ## API Input Classes
+
+### Validation for Data Coming from SharePoint API
+
 class TabularStorage(Protocol):
     """Protocol defining a contract for what methods any class representing
     a Tabular Storage object (e.g., the SharePointList class) must fulfill. 
@@ -145,3 +188,28 @@ class SharePointListColumn(BaseModel):
         # and hyperlink
         data["type"] = ColumnKind.UNTYPED
         return data
+
+### Validation for data coming from the user
+class IncomingField(BaseModel):
+    """Checks whether or not the type for an incoming field is a valid
+    type, given the type on the Microsoft List"""
+    field_name: str
+    field_value: Any
+    list_column_kind: ColumnKind
+
+    @model_validator(mode='after')
+    def check_incoming_data_type_is_valid(self):
+        valid_data_types = COLUMN_KIND_PYTHON_TYPES[self.list_column_kind]
+
+        if UnsupportedForWrite in valid_data_types:
+            raise ValueError(f"""Field name {self.field_name} has column type
+            that does not support write operations with the API: {
+                self.list_column_kind.value}
+            .""")
+
+        if not isinstance(self.field_value, valid_data_types):
+            raise ValueError(f"""Field name {self.field_name} has the wrong
+                    data type. Data type must be one of 
+                    {",".join(t.__name__ for t in valid_data_types)}""")
+
+        return self

@@ -5,7 +5,10 @@ import pytest
 import httpx
 
 from espy.list import SharePointList
-from espy.models.models import GraphAPIResponse
+from espy.models.models import (
+    GraphAPIResponse, ColumnKind, InvalidIncomingRowError,
+    COLUMN_KIND_PYTHON_TYPES
+    )
 
 
 def mocked_response(fixture_dict: dict) -> httpx.Response:
@@ -194,8 +197,11 @@ def test_add_row_breaks_with_bad_column_name(
 
     configured_test_list._get_column_mapping()
 
-    with pytest.raises(KeyError):
+    with pytest.raises(InvalidIncomingRowError):
         configured_test_list.add_row(data)
+
+def test_column_kind_enum_matches_type_mapping():
+    assert set(ColumnKind) == set(COLUMN_KIND_PYTHON_TYPES.keys())
 
 def test_add_row_breaks_with_bad_data_type(
         configured_test_list,

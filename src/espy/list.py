@@ -14,9 +14,13 @@ from espy.models.models import (
     GraphAPIResponse,
     HTTPMethod,
     SharePointListRow,
+    ColumnKind,
+    IncomingField,
+    InvalidIncomingRowError
 )
 from espy.urls import build_url
 from httpx import Response
+from pydantic import ValidationError
 from typing import Any
 
 # TODO: Print warning that a list containing a hyperlink or location column
@@ -73,6 +77,7 @@ class SharePointList:
         self.site_id = site_id
         self.list_id = list_id
         self._column_mapping: dict | None = None
+        self._column_types: dict | None = None 
 
     @classmethod
     def setup(cls, site_name: str, list_name: str):
@@ -164,7 +169,7 @@ class SharePointList:
 
         return column_list
 
-    def _get_column_mapping(self) -> dict[str, dict]:
+    def _get_column_mapping(self) -> dict[str, str]:
         """
         Gets a column mapping for the list mapping the column's user-visible
         name to the column's real name in the graph API.
@@ -178,20 +183,89 @@ class SharePointList:
 
         columns = self.list_columns()
 
-        self._column_mapping = { column['display_name'] : \
-                                { 'name': column['name'], 
-                                 'type': column['type'] } 
-                                for column in columns}
+        self._column_mapping = { column['display_name'] : column['name']
+                                for column in columns }
 
         return self._column_mapping
 
-    def _check_key_names_valid(self, data: dict[str, Any], column_mapping: dict) -> bool:
-        fields_not_in_list = data.keys() - column_mapping.keys()
+    def _get_column_types(self) -> dict[str, str]:
+        if self._column_types:
+            return self._column_types
 
-        if fields_not_in_list:
-            return True
-        return False 
+        columns = self.list_columns()
+
+        self._column_types = { column['display_name'] : column['type']
+                                for column in columns }
+
+        return self._column_types
+
+    def _check_incoming_field_name_valid(self, field_name: str, 
+                               column_mapping: dict[str, str]) -> None:
     
+        if field_name not in column_mapping:
+            raise KeyError(f"{field_name} is not in the SharePoint List")
+        
+
+    def _check_incoming_field_type_valid(self, field_name: str, 
+                                      field_value: Any, 
+                                      column_types: dict[str, str]) \
+                                        -> IncomingField:
+
+        list_column_kind = column_types[field_name]
+
+        validated_incoming_field = IncomingField(
+            field_name=field_name,
+            field_value=field_value,
+            list_column_kind=ColumnKind(list_column_kind)
+        )
+
+        return validated_incoming_field
+
+    def _validate_incoming_data(
+            self, input_data: dict[str, Any]
+            ) -> dict[str, IncomingField]:
+        
+        column_mapping = self._get_column_mapping()
+        column_types = self._get_column_types()
+
+        validated_fields = {}
+
+        invalid_column_names = []
+        invalid_data_types = []
+        compiled_errors = []
+
+        for field_name, field_value in input_data.items():
+            try:
+                self._check_incoming_field_name_valid(
+                    field_name, column_mapping
+                    )
+                validated_field = self._check_incoming_field_type_valid(
+                                    field_name, field_value, column_types
+                                )
+                
+                validated_fields[field_name] = validated_field
+
+            except KeyError:
+                invalid_column_names.append(field_name)
+
+            except ValidationError:
+                invalid_data_types.append(field_name)
+
+
+        if invalid_column_names or invalid_data_types:
+            if invalid_column_names:
+                compiled_errors.append(f"""The following incoming columns do
+                not exist in the SharePointList: 
+                {','.join(invalid_column_names)}""")
+
+            if invalid_data_types:
+                compiled_errors.append(f"""The following incoming columns
+                have the incorrect data type: {','.join(invalid_data_types)}""")
+
+            raise InvalidIncomingRowError(f"{'\n'.join(compiled_errors)}")
+
+        return validated_fields
+
     def _fetch_page(
         self, url: str | None, params: dict | None
     ) -> GraphAPIResponse[SharePointListRow] | None:
@@ -274,22 +348,16 @@ class SharePointList:
 
         # Map to the canonical names in the table
         # Make sure all keys are present in SharePointList
-        column_mapping = self._get_column_mapping()
-        fields_not_in_list = self._check_key_names_valid(data, column_mapping)
-
-        if fields_not_in_list:
-            raise KeyError(f"""The following fields are not 
-            in the SharePointList, and cannot be added: {fields_not_in_list}""")
-
         fields_payload = {}
-        fields = {}
+        fields_payload['fields'] = {}
 
-        for display_name, value in data.items():
-            canonical_name = column_mapping.get(display_name, {}).get('name')
-            if canonical_name:
-                fields[canonical_name] = value
-                
-        fields_payload['fields'] = fields
+        self._column_mapping = self._get_column_mapping()
+
+        validated_data = self._validate_incoming_data(data)
+
+        for display_name, column_data in validated_data.items():
+            canonical_name = self._column_mapping[display_name]
+            fields_payload['fields'][canonical_name] = column_data.field_value
 
         response = self.client.make_request(
             HTTPMethod.POST, add_row_url, json=fields_payload
