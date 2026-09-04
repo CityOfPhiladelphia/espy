@@ -129,7 +129,7 @@ class SharePointList:
 
         return validated_row_data.model_dump()
 
-    def list_columns(self) -> list[SharePointListColumn]:
+    def list_columns(self) -> list[dict]:
         """List the columns in a SharePoint list.
 
         Returns:
@@ -159,12 +159,12 @@ class SharePointList:
 
             if column['name'] not in SHARE_POINT_LIST_EXCLUDED_COLUMNS: 
                 column_list.append(
-                    SharePointListColumn.model_validate(column)
+                    SharePointListColumn.model_validate(column).model_dump()
                 )
 
         return column_list
 
-    def _get_column_mapping(self) -> dict[str, str]:
+    def _get_column_mapping(self) -> dict[str, dict]:
         """
         Gets a column mapping for the list mapping the column's user-visible
         name to the column's real name in the graph API.
@@ -178,10 +178,19 @@ class SharePointList:
 
         columns = self.list_columns()
 
-        self._column_mapping = { column.display_name : column.name 
+        self._column_mapping = { column['display_name'] : \
+                                { 'name': column['name'], 
+                                 'type': column['type'] } 
                                 for column in columns}
 
         return self._column_mapping
+
+    def _check_key_names_valid(self, data: dict[str, Any], column_mapping: dict) -> bool:
+        fields_not_in_list = data.keys() - column_mapping.keys()
+
+        if fields_not_in_list:
+            return True
+        return False 
     
     def _fetch_page(
         self, url: str | None, params: dict | None
@@ -263,11 +272,24 @@ class SharePointList:
             site_id=self.site_id,
         )
 
-        column_mapping = self._get_column_mapping()
-
         # Map to the canonical names in the table
-        fields_payload = {"fields": {column_mapping.get(key, key): 
-                                     value for key, value in data.items() }}
+        # Make sure all keys are present in SharePointList
+        column_mapping = self._get_column_mapping()
+        fields_not_in_list = self._check_key_names_valid(data, column_mapping)
+
+        if fields_not_in_list:
+            raise KeyError(f"""The following fields are not 
+            in the SharePointList, and cannot be added: {fields_not_in_list}""")
+
+        fields_payload = {}
+        fields = {}
+
+        for display_name, value in data.items():
+            canonical_name = column_mapping.get(display_name, {}).get('name')
+            if canonical_name:
+                fields[canonical_name] = value
+                
+        fields_payload['fields'] = fields
 
         response = self.client.make_request(
             HTTPMethod.POST, add_row_url, json=fields_payload
@@ -289,5 +311,4 @@ if __name__ == "__main__":
     list_name = "testing_lists"
     sp_list = SharePointList.setup(site_name=site_name, list_name=list_name)
     result = sp_list.list_columns()
-    for result in result:
-        print(result)
+    print(result)

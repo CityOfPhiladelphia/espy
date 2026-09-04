@@ -23,7 +23,23 @@ class HTTPMethod(StrEnum):
     PATCH  = "PATCH"
     DELETE = "DELETE"
 
-
+class ColumnKind(StrEnum):
+    BOOLEAN = "boolean"
+    CALCULATED = "calculated"
+    CHOICE = "choice"
+    CONTENT_APPROVAL_STATUS = "contentApprovalStatus"
+    CURRENCY = "currency"
+    DATETIME = "dateTime"
+    GEOLOCATION = "geolocation"
+    HYPERLINK_OR_PICTURE = "hyperlinkOrPicture"
+    LOOKUP = "lookup"
+    NUMBER = "number"
+    PERSON_OR_GROUP = "personOrGroup"
+    TERM = "term"
+    TEXT = "text"
+    THUMBNAIL = "thumbnail"
+    UNTYPED = "untyped"
+    
 ## Errors
 class UnsupportedMethodError(BaseException):
     """Unsupported Method Error. Raised when
@@ -90,11 +106,6 @@ class SharePointListRow(BaseModel):
 class SharePointListColumn(BaseModel):
     """A model representing a column of a SharePoint list. Contains
     information about the column and validation rules assigned to the column.
-
-    Args:
-        cols (SharePointListColumnType): Inherits from the \
-        SharePointListColumnType class, allowing for conversion between \
-        camel and snake case field names.
     """
     description: str | None = Field(None)
     display_name: str
@@ -105,7 +116,7 @@ class SharePointListColumn(BaseModel):
     name: str
     read_only: bool
     required: bool
-    type: str
+    type: ColumnKind
 
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
@@ -120,24 +131,17 @@ class SharePointListColumn(BaseModel):
         if not isinstance(data, dict):
             raise ValueError("API response not in valid JSON format.")
 
-        api_types = {
-            "boolean", "calculated", "choice",
-            "contentApprovalStatus", "currency",
-            "dateTime", "geolocation", "hyperlinkOrPicture",
-            "lookup", "number", "personOrGroup",
-            "term", "text", "thumbnail"
-        }
 
-        for api_type in api_types:
-            if api_type in data:
-                data["type"] = api_type
+        # Get the data type based on the name of the field in the
+        # incoming data 
+        for data_type in ColumnKind:
+            if data_type in data:
+                data["type"] = data_type
                 return data
 
-            else:
-                # Some column types are not easily identifiable from the
-                # response returned from the SharePoint API, including
-                # location, which contains hidden sub columns
-                # and hyperlink
-                data["type"] = "untyped"
-
+        # Some column types are not easily identifiable from the
+        # response returned from the SharePoint API, including
+        # location, which contains hidden sub columns
+        # and hyperlink
+        data["type"] = ColumnKind.UNTYPED
         return data
