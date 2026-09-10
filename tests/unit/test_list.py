@@ -92,7 +92,7 @@ def mocked_column_data() -> dict:
          'name': 'col_two',
          'read_only': False,
          'required': True,
-         'type': 'choice'},
+         'type': 'boolean'},
         ]
     }
 
@@ -217,5 +217,5 @@ def test_add_row_breaks_with_bad_data_type(
         "espy.list.SharePointList.list_columns", 
         mock_list_columns_func)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(InvalidIncomingRowError):
         configured_test_list.add_row(data)

@@ -127,13 +127,15 @@ class SharePointList:
             row_id=row_id,
         )
 
-        raw_row_data = self.client.make_request(HTTPMethod.GET, row_url).json()
+        raw_response = self.client.make_request(HTTPMethod.GET, row_url).json()
+        validated_response = GraphAPIResponse.model_validate(raw_response)
+        validated_row = validated_response.fields
+
+        return {
+            k: v for k, v in validated_row.items()
+            if k not in SHARE_POINT_LIST_EXCLUDED_COLUMNS
+            }
     
-        validated_row_data = GraphAPIResponse\
-            .model_validate(raw_row_data)
-
-        return validated_row_data.model_dump()
-
     def list_columns(self) -> list[dict]:
         """List the columns in a SharePoint list.
 
@@ -321,8 +323,15 @@ class SharePointList:
 
             params = None
             next_link = response_envelope.next_link
+
+            # Returns unnecessary extra column information, filter it out
             for row in response_envelope.value: # pyright: ignore
-                yield row.model_dump()
+                validated_row = row.model_dump().get('fields', {})
+                
+                yield {
+                    k: v for k, v in validated_row.items() 
+                    if k not in SHARE_POINT_LIST_EXCLUDED_COLUMNS
+                    }
 
     def add_row(self, data: dict[str, Any]) -> Response:
         # TODO: Add functionality to make this add rows, adding one or more rows.
