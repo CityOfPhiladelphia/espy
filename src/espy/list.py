@@ -336,11 +336,6 @@ class SharePointList:
         Returns:
             dict: A dictionary with row data
         """
-
-        _, canonical_to_display = self._get_column_mapping()
-
-        columns_to_include = canonical_to_display.keys()
-
         row_url = build_url(
             ListEndpoints.GET_ROW,
             graph_url=GRAPH_URL,
@@ -354,6 +349,10 @@ class SharePointList:
         validated_row = validated_response.fields
 
         formatted_row = self._format_outgoing_row(validated_row)
+
+        # Pass back row id to outgoing data to maintain consistency
+        # with output from the list_rows method
+        formatted_row['id'] = validated_response.id
 
         return formatted_row
 
@@ -386,6 +385,13 @@ class SharePointList:
                 validated_row = row.fields
 
                 formatted_row = self._format_outgoing_row(validated_row)
+
+                # Add 'id' field to outgoing formatted row
+                # Handle this separately for now, since the get single
+                # row method doesn't return id the same way as
+                # list all rows method
+                # TODO: See if there's a cleaner way to handle the id issue
+                formatted_row['id'] = validated_row['id']
                 
                 yield formatted_row
         
@@ -484,5 +490,6 @@ if __name__ == "__main__":
     site_name = "311-servicing-department-integrations"
     list_name = "PPR 311 Requests"
     sp_list = SharePointList.setup(site_name=site_name, list_name=list_name)
-    result = sp_list.get_row(111)
-    print(result)
+    for row in sp_list.list_rows():
+        print(row)
+        break

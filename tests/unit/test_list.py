@@ -116,10 +116,17 @@ def test_fetch_page_returns_graph_api_response(
 
 def test_list_page_yields_dict(
     configured_test_list,
+    mocked_column_data,
     mocked_page_data_with_next_link,
     mocked_single_page_data,
     monkeypatch,
-):
+):  
+
+    mock_list_columns_func = MagicMock()
+    mock_list_columns_func.return_value = mocked_column_data["value"]
+
+    monkeypatch.setattr("espy.list.SharePointList.list_columns", mock_list_columns_func)
+
     mock_get = mocked_request(mocked_single_page_data)
 
     mock_get.side_effect = [
@@ -152,9 +159,14 @@ def test_list_page_yields_dict(
 
 def test_get_row_yields_dict(
     configured_test_list,
+    mocked_column_data,
     mocked_row_data,
     monkeypatch,
 ):
+    mock_list_columns_func = MagicMock()
+    mock_list_columns_func.return_value = mocked_column_data["value"]
+
+    monkeypatch.setattr("espy.list.SharePointList.list_columns", mock_list_columns_func)
 
     mock_get = mocked_request(mocked_row_data)
 
