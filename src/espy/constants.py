@@ -6,15 +6,18 @@ GRAPH_APP = "AppReg: CityGeo-Databridge-Updates (All Fields)"
 HOST_NAME = "phila.sharepoint.com"
 
 SHARE_POINT_LIST_EXCLUDED_COLUMNS = [
+    "@odata.etag",
     "Title",
+    "ID",
     "LinkTitle",
     "_ColorTag",
     "ComplianceAssetId",
-    "ID",
     "ContentType",
     "Modified",
     "Created",
     "Author",
+    "AuthorLookupId",
+    "EditorLookupId",
     "Editor",
     "_UIVersionString",
     "Attachments",
@@ -30,5 +33,7 @@ SHARE_POINT_LIST_EXCLUDED_COLUMNS = [
     "_IsRecord",
     "Label setting",
     "AppAuthor",
-    "AppEditor"
+    "AppAuthorLookupId",
+    "AppEditor",
+    "AppEditorLookupId"
 ]
