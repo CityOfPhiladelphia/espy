@@ -195,8 +195,6 @@ def test_add_row_breaks_with_bad_column_name(
 
     monkeypatch.setattr("espy.list.SharePointList.list_columns", mock_list_columns_func)
 
-    configured_test_list._get_column_mapping()
-
     with pytest.raises(InvalidIncomingRowError):
         configured_test_list.add_row(data)
 
@@ -219,3 +217,50 @@ def test_add_row_breaks_with_bad_data_type(
 
     with pytest.raises(InvalidIncomingRowError):
         configured_test_list.add_row(data)
+
+def test_edit_row_breaks_with_bad_column_name(
+        configured_test_list,
+        mocked_column_data,
+        monkeypatch
+):  
+    data = {"col_three": "1234 Market St"}
+
+    mock_list_columns_func = MagicMock()
+    mock_list_columns_func.return_value = mocked_column_data["value"]
+
+    monkeypatch.setattr("espy.list.SharePointList.list_columns", mock_list_columns_func)
+
+    with pytest.raises(InvalidIncomingRowError):
+        configured_test_list.edit_row(1, data)
+
+def test_edit_row_breaks_with_bad_data_type(
+        configured_test_list,
+        mocked_column_data,
+        monkeypatch
+):
+    data = {"col_two": "True"}
+
+    mock_list_columns_func = MagicMock()
+    mock_list_columns_func.return_value = mocked_column_data["value"]
+
+    monkeypatch.setattr(
+        "espy.list.SharePointList.list_columns", 
+        mock_list_columns_func)
+
+    with pytest.raises(InvalidIncomingRowError):
+        configured_test_list.edit_row(1, data)
+
+def test_upsert_row_returns_error_when_key_col_not_present(
+        configured_test_list,
+        mocked_column_data,
+        monkeypatch
+):
+    data = {"col_three": "1234 Market St"}
+
+    mock_list_columns_func = MagicMock()
+    mock_list_columns_func.return_value = mocked_column_data["value"]
+
+    monkeypatch.setattr("espy.list.SharePointList.list_columns", mock_list_columns_func)
+
+    with pytest.raises(KeyError):
+        configured_test_list.upsert_row("col_four", data)

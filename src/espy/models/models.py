@@ -81,6 +81,9 @@ class UnsupportedMethodError(BaseException):
     pass
 
 class InvalidIncomingRowError(BaseException):
+    """Invalid Incoming Row Error. Raised when an incoming
+    row to the API (used in either an add, edit, or upsert method)
+    is incorrectly formatted."""
     pass
 
 class UnsupportedColumnForWriteError(BaseException):
@@ -103,7 +106,7 @@ class TabularStorage(Protocol):
         Protocol (Protocol): Inherits from the Protocol class in the typing
         module.
     """
-    def get_row(self, row_id: str) -> dict[str, Any]: ...
+    def get_row(self, row_id: str|int) -> dict[str, Any]: ...
 
     def list_rows(self) -> list[dict[str, Any]] | Iterator : ...
 
@@ -111,9 +114,9 @@ class TabularStorage(Protocol):
         
     def add_rows(self, data: dict[str, Any]) -> dict[str, Any]: ...
 
-    def edit_row(self, row_id: str, data: dict[str, Any]) -> dict[str, Any]: ...
+    def edit_row(self, row_id: str|int, data: dict[str, Any]) -> dict[str, Any]: ...
 
-    def delete_row(self, row_id: str) -> bool: ...
+    def delete_row(self, row_id: str|int) -> bool: ...
 
     def upsert_row(
         self, key_col: str, data: dict[str, Any]
@@ -134,6 +137,10 @@ class GraphAPIResponse[T](BaseModel):
     value: list[T] | None = Field(None)
     fields: dict = Field(default_factory=dict)
     model_config = ConfigDict(populate_by_name=True)
+    # Sometimes graph API response returns an ID (in the case of the 
+    # endpoint to get a single row, sometimes 
+    # it doesn't, e.g., in the case of getting all rows)
+    id: str | int | None = Field(None)
 
 
 ### Share Point List Data
