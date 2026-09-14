@@ -379,12 +379,12 @@ class SharePointList:
 
         return formatted_row
 
-    def get_row_by_pk(self, pk_col: str, value: Any) -> dict[str, Any]:
+    def get_row_by_pk(self, key_col: str, value: Any) -> dict[str, Any]:
         """
         Get a single row from a list by primary key.
 
         Args:
-            pk_col (str): The name of the primary key column to search on
+            key_col (str): The name of the primary key column to search on
             value (Any): The value of the priamry key column
 
         Returns:
@@ -392,7 +392,7 @@ class SharePointList:
         """
 
         display_to_canonical_column, _ = self._get_column_mapping()
-        canonical_field_name = display_to_canonical_column[pk_col]
+        canonical_field_name = display_to_canonical_column[key_col]
 
         row_url = build_url(
             ListEndpoints.GET_ROW_BY_PK,
@@ -481,7 +481,7 @@ class SharePointList:
 
         return response
 
-    def edit_row(self, pk_col: str, value: Any, 
+    def edit_row(self, key_col: str, value: Any, 
                        data: dict[str, Any]) -> Response:
         """Edit a row in a SharePoint list.
 
@@ -489,7 +489,7 @@ class SharePointList:
         a Location column, Person column, or Hyperlink or image column.
 
         Args:
-            pk_col (str): The name of the primary key column to search on.
+            key_col (str): The name of the primary key column to search on.
             value: The value of the primary key column to search on.
             data (dict[str, Any]): A dict of row data to edit. Keys in the dict
             must match the name of the name of the column in the SharePoint
@@ -500,17 +500,17 @@ class SharePointList:
         """
         # First, we need to check if the incoming column exists:
         display_to_canonical, _ = self._get_column_mapping()
-        self._check_incoming_field_name_valid(pk_col, display_to_canonical)
+        self._check_incoming_field_name_valid(key_col, display_to_canonical)
 
         # Then, we need to check if the index column is valid
         list_columns = self.list_columns()
-        self._check_incoming_field_is_pk(pk_col, list_columns)
+        self._check_incoming_field_is_pk(key_col, list_columns)
 
         # Then, we need to validate that the incoming data is valid
         self._validate_incoming_data(data)
 
         # Then, we need to get the id of the row to edit
-        returned_row = self.get_row_by_pk(pk_col, value)
+        returned_row = self.get_row_by_pk(key_col, value)
         row_id = returned_row['id']
 
         edit_row_url = build_url(
@@ -529,10 +529,10 @@ class SharePointList:
 
         return response
 
-    def delete_row(self, pk_col: str, value: Any) -> Response:
+    def delete_row(self, key_col: str, value: Any) -> Response:
         """Delete a row in a SharePoint list.
         Args:
-            pk_col (str): The name of the primary key column to search on.
+            key_col (str): The name of the primary key column to search on.
             value: The value of the primary key column to search on.
 
         Returns:
@@ -540,14 +540,14 @@ class SharePointList:
         """
         # First, we need to check if the incoming column exists:
         display_to_canonical, _ = self._get_column_mapping()
-        self._check_incoming_field_name_valid(pk_col, display_to_canonical)
+        self._check_incoming_field_name_valid(key_col, display_to_canonical)
 
         # Then, we need to check if the index column is valid
         list_columns = self.list_columns()
-        self._check_incoming_field_is_pk(pk_col, list_columns)
+        self._check_incoming_field_is_pk(key_col, list_columns)
 
         # Then, we need to get the id of the row to edit
-        returned_row = self.get_row_by_pk(pk_col, value)
+        returned_row = self.get_row_by_pk(key_col, value)
         row_id = returned_row['id']
     
         delete_row_url = build_url(
@@ -566,7 +566,16 @@ class SharePointList:
 
     def upsert_row(
         self, key_col: str, data: dict[str, Any]
-    ) -> dict[str, Any]: ...
+    ) -> dict[str, Any]:
+                # First, we need to check if the incoming column exists:
+        display_to_canonical, _ = self._get_column_mapping()
+        self._check_incoming_field_name_valid(key_col, display_to_canonical)
+
+        # Then, we need to check if the index column is valid
+        list_columns = self.list_columns()
+        self._check_incoming_field_is_pk(key_col, list_columns)
+
+        return {}
 
 
 if __name__ == "__main__":

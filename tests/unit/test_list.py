@@ -388,5 +388,5 @@ def test_upsert_row_returns_error_when_key_col_not_present(
 
     monkeypatch.setattr("espy.list.SharePointList.list_columns", mock_list_columns_func)
 
-    with pytest.raises(KeyError):
+    with pytest.raises(InvalidIncomingRowError):
         configured_test_list.upsert_row("col_four", data)
