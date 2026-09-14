@@ -188,7 +188,7 @@ def test_get_row_by_id_yields_dict(
 
     assert isinstance(result, dict)
 
-def test_get_row_by_pk_yields_dict(
+def test_get_row_yields_dict(
     configured_test_list,
     mocked_column_data,
     mocked_row_data,
@@ -205,10 +205,10 @@ def test_get_row_by_pk_yields_dict(
         "espy.list.GraphAPIClient.make_request", mock_get
     )
 
-    result = configured_test_list.get_row_by_pk("col_one", "123")
+    result = configured_test_list.get_row("col_one", "123")
     assert isinstance(result, dict)
 
-def test_get_row_by_pk_raises_key_error_when_column_not_present(
+def test_get_row_raises_key_error_when_column_not_present(
     configured_test_list,
     mocked_column_data,
     mocked_row_data,
@@ -226,9 +226,9 @@ def test_get_row_by_pk_raises_key_error_when_column_not_present(
     )
 
     with pytest.raises(KeyError):
-        configured_test_list.get_row_by_pk("col_three", "123")
+        configured_test_list.get_row("col_three", "123")
 
-def test_get_row_by_pk_raises_value_error_when_value_not_present(
+def test_get_row_raises_value_error_when_value_not_present(
     configured_test_list,
     mocked_column_data,
     monkeypatch,
@@ -245,7 +245,7 @@ def test_get_row_by_pk_raises_value_error_when_value_not_present(
     )
 
     with pytest.raises(ValueError):
-        configured_test_list.get_row_by_pk("col_one", "456")
+        configured_test_list.get_row("col_one", "456")
 
 def test_list_column_returns_list_of_dict(
         configured_test_list,

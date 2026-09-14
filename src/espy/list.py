@@ -379,7 +379,7 @@ class SharePointList:
 
         return formatted_row
 
-    def get_row_by_pk(self, key_col: str, value: Any) -> dict[str, Any]:
+    def get_row(self, key_col: str, value: Any) -> dict[str, Any]:
         """
         Get a single row from a list by primary key.
 
@@ -510,7 +510,7 @@ class SharePointList:
         self._validate_incoming_data(data)
 
         # Then, we need to get the id of the row to edit
-        returned_row = self.get_row_by_pk(key_col, value)
+        returned_row = self.get_row(key_col, value)
         row_id = returned_row['id']
 
         edit_row_url = build_url(
@@ -547,7 +547,7 @@ class SharePointList:
         self._check_incoming_field_is_pk(key_col, list_columns)
 
         # Then, we need to get the id of the row to edit
-        returned_row = self.get_row_by_pk(key_col, value)
+        returned_row = self.get_row(key_col, value)
         row_id = returned_row['id']
     
         delete_row_url = build_url(
@@ -584,4 +584,5 @@ if __name__ == "__main__":
     sp_list = SharePointList.setup(site_name=site_name, list_name=list_name)
 
     for row in sp_list.list_rows():
-        print(row)
+        if row.get('Comments'):
+            print(row)
