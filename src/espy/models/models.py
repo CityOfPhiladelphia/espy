@@ -2,17 +2,13 @@
 
 from collections.abc import Iterator
 from dataclasses import dataclass
-
-from enum import StrEnum 
 from datetime import datetime
+from enum import StrEnum
 from typing import Any, Protocol
 
-from pydantic import (
-    BaseModel, ConfigDict, 
-    Field, model_validator
-    )
-
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pydantic.alias_generators import to_camel
+
 
 ## Enums
 class HTTPMethod(StrEnum):
@@ -50,7 +46,6 @@ class ColumnKind(StrEnum):
 @dataclass(frozen=True)
 class UnsupportedForWrite:
     """Sentinel type indicating a column cannot be written to"""
-    pass
 
 
     # Incoming data may be None, we don't want to flag that as invalid data
@@ -81,13 +76,11 @@ class UnsupportedMethodError(BaseException):
     Args:
         BaseException (BaseException): Inherited from the Base Exception class.
     """
-    pass
 
 class InvalidIncomingRowError(BaseException):
     """Invalid Incoming Row Error. Raised when an incoming
     row to the API (used in either an add, edit, or upsert method)
     is incorrectly formatted."""
-    pass
 
 class UnsupportedColumnForWriteError(BaseException):
     """
@@ -182,7 +175,7 @@ class SharePointListColumn(BaseModel):
     @classmethod
     def transform_api_key_to_type(cls, data: dict) -> dict:
         if not isinstance(data, dict):
-            raise ValueError("API response not in valid JSON format.")
+            raise TypeError("API response not in valid JSON format.")
 
 
         # Get the data type based on the name of the field in the

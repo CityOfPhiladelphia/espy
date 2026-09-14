@@ -1,14 +1,16 @@
 from collections.abc import Iterator
 from unittest.mock import MagicMock
 
-import pytest
 import httpx
+import pytest
 
 from espy.list import SharePointList
 from espy.models.models import (
-    GraphAPIResponse, ColumnKind, InvalidIncomingRowError,
-    COLUMN_KIND_PYTHON_TYPES
-    )
+    COLUMN_KIND_PYTHON_TYPES,
+    ColumnKind,
+    GraphAPIResponse,
+    InvalidIncomingRowError,
+)
 
 
 def mocked_response(fixture_dict: dict) -> httpx.Response:

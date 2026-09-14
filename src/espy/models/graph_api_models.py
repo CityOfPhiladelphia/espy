@@ -9,6 +9,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
+
 # ========= Custom errors ===========
 class GraphAPILimitationError(Exception):
     """Raised when the graph API does not provide this functionality."""
@@ -41,7 +42,6 @@ class BooleanColumn(SharePointListColumnType):
         SharePointListColumnType (Pydantic Model): Inherits the \
         SharePointListColumnType class.
     """
-    ...
 
 
 class CalculatedColumn(SharePointListColumnType):
@@ -172,7 +172,6 @@ class ThumbnailColumn(SharePointListColumnType):
         SharePointListColumnType (Pydantic Model): Inherits the \
         SharePointListColumnType class.
     """
-    ...
 
 
 class GeolocationColumn(SharePointListColumnType):
@@ -184,7 +183,6 @@ class GeolocationColumn(SharePointListColumnType):
         SharePointListColumnType (Pydantic Model): Inherits the \
         SharePointListColumnType class.
     """
-    ...
 
 
 class HyperlinkOrPictureColumn(SharePointListColumnType):

@@ -1,6 +1,7 @@
 import string
 from enum import StrEnum
 
+
 def build_url(url: StrEnum, **kwargs) -> str:
     """
     Given a GraphAPI endpoint template, builds the actual URL to request
