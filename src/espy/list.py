@@ -183,7 +183,8 @@ class SharePointList:
                                     field_list: list[dict[str, Any]]) -> bool:
         for field in field_list:
             if field['display_name'] == field_name:
-                return field.get('indexed', False)
+                if field.get('indexed') == True:
+                    return True
 
         raise InvalidIncomingRowError(f"The specified field does not exist: {field_name}.")
             
@@ -543,7 +544,6 @@ class SharePointList:
 
         # Then, we need to check if the index column is valid
         list_columns = self.list_columns()
-        self._check_incoming_field_is_pk(pk_col, list_columns)
 
         # Then, we need to get the id of the row to edit
         returned_row = self.get_row_by_pk(pk_col, value)

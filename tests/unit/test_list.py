@@ -330,6 +330,52 @@ def test_edit_row_breaks_with_bad_data_type(
     with pytest.raises(InvalidIncomingRowError):
         configured_test_list.edit_row("col_one", "123456", data)
 
+def test_edit_row_breaks_with_non_index_col(
+        configured_test_list,
+        mocked_column_data,
+        monkeypatch
+):
+    data = {"col_two": "fdhfdfh"}
+
+    mock_list_columns_func = MagicMock()
+    mock_list_columns_func.return_value = mocked_column_data["value"]
+
+    monkeypatch.setattr(
+        "espy.list.SharePointList.list_columns", 
+        mock_list_columns_func)
+
+    with pytest.raises(InvalidIncomingRowError):
+        configured_test_list.edit_row("col_two", "123456", data)
+
+def test_delete_row_breaks_with_bad_column_name(
+        configured_test_list,
+        mocked_column_data,
+        monkeypatch
+):  
+
+    mock_list_columns_func = MagicMock()
+    mock_list_columns_func.return_value = mocked_column_data["value"]
+
+    monkeypatch.setattr("espy.list.SharePointList.list_columns", mock_list_columns_func)
+
+    with pytest.raises(InvalidIncomingRowError):
+        configured_test_list.delete_row("col_four", "123456")
+
+def test_delete_row_breaks_with_non_index_col(
+        configured_test_list,
+        mocked_column_data,
+        monkeypatch
+):
+    mock_list_columns_func = MagicMock()
+    mock_list_columns_func.return_value = mocked_column_data["value"]
+
+    monkeypatch.setattr(
+        "espy.list.SharePointList.list_columns", 
+        mock_list_columns_func)
+
+    with pytest.raises(InvalidIncomingRowError):
+        configured_test_list.delete_row("col_two", "123456")
+
 def test_upsert_row_returns_error_when_key_col_not_present(
         configured_test_list,
         mocked_column_data,
