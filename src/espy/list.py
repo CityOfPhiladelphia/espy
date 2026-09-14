@@ -1,27 +1,29 @@
 # list.py
 from collections.abc import Iterator
 from enum import StrEnum
+from typing import Any
+
+from httpx import Response
+from pydantic import ValidationError
 
 from espy.client import GraphAPIClient
 
 # TODO: Make host name a variable, not a constant. Edit in optional config file?
-from espy.constants import GRAPH_URL, HOST_NAME
 from espy.constants import (
+    GRAPH_URL,
+    HOST_NAME,
     SHARE_POINT_LIST_EXCLUDED_COLUMNS,
 )
 from espy.models.models import (
-    SharePointListColumn,
+    ColumnKind,
     GraphAPIResponse,
     HTTPMethod,
-    SharePointListRow,
-    ColumnKind,
     IncomingField,
-    InvalidIncomingRowError
+    InvalidIncomingRowError,
+    SharePointListColumn,
+    SharePointListRow,
 )
 from espy.urls import build_url
-from httpx import Response
-from pydantic import ValidationError
-from typing import Any
 
 # TODO: Print warning that a list containing a hyperlink or location column
 # Cannot be updated with the api
@@ -413,7 +415,7 @@ class SharePointList:
             formatted_row['id'] = validated_row['id']
             return formatted_row
 
-        raise ValueError
+        raise ValueError("Row not found.")
 
     def list_rows(self) -> Iterator[dict]:
         """List all rows in a SharePoint List.
@@ -526,19 +528,29 @@ class SharePointList:
 
         return response
 
-    def delete_row(self, row_id: str) -> Response:
+    def delete_row_by_pk(self, pk_col: str, value: Any) -> Response:
         """Delete a row in a SharePoint list.
-
         Args:
-            data (dict[str, Any]): A dict of row data to edit. Keys in the dict
-            must match the name of the name of the column in the SharePoint
-            list.
+            pk_col (str): The name of the primary key column to search on.
+            value: The value of the primary key column to search on.
 
         Returns:
             dict[str, Any]: A json response object from the API.
         """
+        # First, we need to check if the incoming column exists:
+        display_to_canonical, _ = self._get_column_mapping()
+        self._check_incoming_field_name_valid(pk_col, display_to_canonical)
+
+        # Then, we need to check if the index column is valid
+        list_columns = self.list_columns()
+        self._check_incoming_field_is_pk(pk_col, list_columns)
+
+        # Then, we need to get the id of the row to edit
+        returned_row = self.get_row_by_pk(pk_col, value)
+        row_id = returned_row['id']
+    
         delete_row_url = build_url(
-            ListEndpoints.ADD_ROW,
+            ListEndpoints.EDIT_ROW,
             graph_url=GRAPH_URL,
             list_id=self.list_id,
             site_id=self.site_id,
@@ -563,4 +575,3 @@ if __name__ == "__main__":
 
     for row in sp_list.list_rows():
         print(row)
-        break
