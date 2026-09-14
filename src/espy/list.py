@@ -544,6 +544,7 @@ class SharePointList:
 
         # Then, we need to check if the index column is valid
         list_columns = self.list_columns()
+        self._check_incoming_field_is_pk(pk_col, list_columns)
 
         # Then, we need to get the id of the row to edit
         returned_row = self.get_row_by_pk(pk_col, value)
