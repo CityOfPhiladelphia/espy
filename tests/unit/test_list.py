@@ -61,9 +61,17 @@ def mocked_row_data() -> dict:
         "odata_context": "789",
         "fields": {
             "Title": "Test",
-            "name": "Billy Penn",
-            "address": "1234 Market Street"
-        }
+            "col_one": "123456",
+            "col_two": "1234 Market Street"
+        },
+        "value": [{
+            "fields": {
+            "Title": "Test",
+            "col_one": "123456",
+            "col_two": "1234 Market Street",
+            "id": "123"
+            }
+        }]
     }
 
     return mock_row_data
@@ -157,7 +165,7 @@ def test_list_page_yields_dict(
         next(result)
 
 
-def test_get_row_yields_dict(
+def test_get_row_by_id_yields_dict(
     configured_test_list,
     mocked_column_data,
     mocked_row_data,
@@ -174,10 +182,68 @@ def test_get_row_yields_dict(
         "espy.list.GraphAPIClient.make_request", mock_get
     )
 
-    result = configured_test_list.get_row("1")
+    result = configured_test_list.get_row_by_id("1")
 
     assert isinstance(result, dict)
 
+def test_get_row_by_pk_yields_dict(
+    configured_test_list,
+    mocked_column_data,
+    mocked_row_data,
+    monkeypatch,
+):
+    mock_list_columns_func = MagicMock()
+    mock_list_columns_func.return_value = mocked_column_data["value"]
+
+    monkeypatch.setattr("espy.list.SharePointList.list_columns", mock_list_columns_func)
+
+    mock_get = mocked_request(mocked_row_data)
+
+    monkeypatch.setattr(
+        "espy.list.GraphAPIClient.make_request", mock_get
+    )
+
+    result = configured_test_list.get_row_by_pk("col_one", "123")
+    assert isinstance(result, dict)
+
+def test_get_row_by_pk_raises_key_error_when_column_not_present(
+    configured_test_list,
+    mocked_column_data,
+    mocked_row_data,
+    monkeypatch,
+):
+    mock_list_columns_func = MagicMock()
+    mock_list_columns_func.return_value = mocked_column_data["value"]
+
+    monkeypatch.setattr("espy.list.SharePointList.list_columns", mock_list_columns_func)
+
+    mock_get = mocked_request(mocked_row_data)
+
+    monkeypatch.setattr(
+        "espy.list.GraphAPIClient.make_request", mock_get
+    )
+
+    with pytest.raises(KeyError):
+        configured_test_list.get_row_by_pk("col_three", "123")
+
+def test_get_row_by_pk_raises_value_error_when_value_not_present(
+    configured_test_list,
+    mocked_column_data,
+    monkeypatch,
+):
+    mock_list_columns_func = MagicMock()
+    mock_list_columns_func.return_value = mocked_column_data["value"]
+
+    monkeypatch.setattr("espy.list.SharePointList.list_columns", mock_list_columns_func)
+
+    mock_get = mocked_request({"value": []})
+
+    monkeypatch.setattr(
+        "espy.list.GraphAPIClient.make_request", mock_get
+    )
+
+    with pytest.raises(ValueError):
+        configured_test_list.get_row_by_pk("col_one", "456")
 
 def test_list_column_returns_list_of_dict(
         configured_test_list,
@@ -230,7 +296,7 @@ def test_add_row_breaks_with_bad_data_type(
     with pytest.raises(InvalidIncomingRowError):
         configured_test_list.add_row(data)
 
-def test_edit_row_breaks_with_bad_column_name(
+def test_edit_row_by_pk_breaks_with_bad_column_name(
         configured_test_list,
         mocked_column_data,
         monkeypatch
@@ -243,14 +309,14 @@ def test_edit_row_breaks_with_bad_column_name(
     monkeypatch.setattr("espy.list.SharePointList.list_columns", mock_list_columns_func)
 
     with pytest.raises(InvalidIncomingRowError):
-        configured_test_list.edit_row(1, data)
+        configured_test_list.edit_row_by_pk("col_four", "123456", data)
 
-def test_edit_row_breaks_with_bad_data_type(
+def test_edit_row_by_pk_breaks_with_bad_data_type(
         configured_test_list,
         mocked_column_data,
         monkeypatch
 ):
-    data = {"col_two": "True"}
+    data = {"col_two": "fdhfdfh"}
 
     mock_list_columns_func = MagicMock()
     mock_list_columns_func.return_value = mocked_column_data["value"]
@@ -260,7 +326,7 @@ def test_edit_row_breaks_with_bad_data_type(
         mock_list_columns_func)
 
     with pytest.raises(InvalidIncomingRowError):
-        configured_test_list.edit_row(1, data)
+        configured_test_list.edit_row_by_pk("col_one", "123456", data)
 
 def test_upsert_row_returns_error_when_key_col_not_present(
         configured_test_list,

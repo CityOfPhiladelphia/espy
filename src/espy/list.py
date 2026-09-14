@@ -42,12 +42,20 @@ class ListEndpoints(StrEnum):
 
     LIST_COLUMNS = "{graph_url}/sites/{site_id}/lists/{list_id}/columns"
 
-    GET_ROW = (
+    GET_ROW_BY_ID = (
         "{graph_url}/sites/"
         "{site_id}/lists/{list_id}/items/{row_id}"
     )
 
+    GET_ROW_BY_PK = (
+        "{graph_url}/sites/"
+        "{site_id}/lists/{list_id}/items?"
+        "$expand=fields&$filter=fields/{column_name} eq {value}"
+        )
+
     ADD_ROW = "{graph_url}/sites/{site_id}/lists/{list_id}/items"
+
+    EDIT_ROW = "{graph_url}/sites/{site_id}/lists/{list_id}/items/{row_id}"
 
 
 class SharePointList:
@@ -76,6 +84,7 @@ class SharePointList:
         self.client = client
         self.site_id = site_id
         self.list_id = list_id
+        self._column_list: list[dict] | None = None
         self._display_to_canonical_column: dict | None = None
         self._canonical_to_display_column: dict | None = None
         self._column_types: dict | None = None 
@@ -124,7 +133,7 @@ class SharePointList:
                     )
 
         columns = self.list_columns()
-
+        
         self._display_to_canonical_column = { column['display_name'] : column['name']
                                 for column in columns }
 
@@ -150,7 +159,7 @@ class SharePointList:
                                column_mapping: dict[str, str]) -> None:
     
         if field_name not in column_mapping:
-            raise KeyError(f"{field_name} is not in the SharePoint List")
+            raise InvalidIncomingRowError(f"{field_name} is not in the SharePoint List")
         
 
     def _check_incoming_field_type_valid(self, field_name: str, 
@@ -167,6 +176,15 @@ class SharePointList:
         )
 
         return validated_incoming_field
+
+    def _check_incoming_field_is_pk(self, field_name: str, 
+                                    field_list: list[dict[str, Any]]) -> bool:
+        for field in field_list:
+            if field['display_name'] == field_name:
+                return field.get('indexed', False)
+
+        raise InvalidIncomingRowError(f"The specified field does not exist: {field_name}.")
+            
 
     def _validate_incoming_data(
             self, input_data: dict[str, Any]
@@ -297,6 +315,10 @@ class SharePointList:
         Returns:
             list[SharePointListColumn]: A list of SharePointColumn objects.
         """
+
+        if self._column_list:
+            return self._column_list
+
         columns_url = build_url(
             ListEndpoints.LIST_COLUMNS,
             graph_url=GRAPH_URL,
@@ -324,11 +346,12 @@ class SharePointList:
                     SharePointListColumn.model_validate(column).model_dump()
                 )
 
+        self._column_list = column_list
         return column_list
-
-    def get_row(self, row_id: int) -> dict[str, Any]:
+    
+    def get_row_by_id(self, row_id: int) -> dict[str, Any]:
         """
-        Get a single row from a list.
+        Get a single row from a list by list id.
 
         Args:
             row_id (str): The id of the row to return
@@ -337,24 +360,60 @@ class SharePointList:
             dict: A dictionary with row data
         """
         row_url = build_url(
-            ListEndpoints.GET_ROW,
+            ListEndpoints.GET_ROW_BY_ID,
             graph_url=GRAPH_URL,
             site_id=self.site_id,
             list_id=self.list_id,
-            row_id=row_id
+            row_id=row_id,
+            kwargs={"$select": "id"}
         )
 
         raw_response = self.client.make_request(HTTPMethod.GET, row_url).json()
-        validated_response = GraphAPIResponse.model_validate(raw_response)
+        validated_response = GraphAPIResponse[SharePointListRow].model_validate(raw_response)
         validated_row = validated_response.fields
 
         formatted_row = self._format_outgoing_row(validated_row)
 
-        # Pass back row id to outgoing data to maintain consistency
-        # with output from the list_rows method
-        formatted_row['id'] = validated_response.id
-
         return formatted_row
+
+    def get_row_by_pk(self, pk_col: str, value: Any) -> dict[str, Any]:
+        """
+        Get a single row from a list by primary key.
+
+        Args:
+            pk_col (str): The name of the primary key column to search on
+            value (Any): The value of the priamry key column
+
+        Returns:
+            dict: A dictionary with row data
+        """
+
+        display_to_canonical_column, _ = self._get_column_mapping()
+        canonical_field_name = display_to_canonical_column[pk_col]
+
+        row_url = build_url(
+            ListEndpoints.GET_ROW_BY_PK,
+            graph_url=GRAPH_URL,
+            site_id=self.site_id,
+            list_id=self.list_id,
+            column_name=canonical_field_name,
+            value=value,
+            kwargs={"$select": "id"}
+        )
+
+        raw_response = self.client.make_request(HTTPMethod.GET, row_url).json()
+        validated_response = GraphAPIResponse.model_validate(raw_response)
+
+        if validated_response.value:
+            validated_row = validated_response.value[0]['fields']
+            formatted_row = self._format_outgoing_row(validated_row)
+
+            # Add id back, since format outgoing row removes it
+            # TODO: Is there a cleaner way around this?
+            formatted_row['id'] = validated_row['id']
+            return formatted_row
+
+        raise ValueError
 
     def list_rows(self) -> Iterator[dict]:
         """List all rows in a SharePoint List.
@@ -386,12 +445,6 @@ class SharePointList:
 
                 formatted_row = self._format_outgoing_row(validated_row)
 
-                # Add 'id' field to outgoing formatted row
-                # Handle this separately for now, since the get single
-                # row method doesn't return id the same way as
-                # list all rows method
-                # TODO: See if there's a cleaner way to handle the id issue
-                formatted_row['id'] = validated_row['id']
                 
                 yield formatted_row
         
@@ -425,14 +478,16 @@ class SharePointList:
 
         return response
 
-    def edit_row(self, row_id: int, data: dict[str, Any]) -> Response:
+    def edit_row_by_pk(self, pk_col: str, value: Any, 
+                       data: dict[str, Any]) -> Response:
         """Edit a row in a SharePoint list.
 
         Note: This method does not currently work for Lists with
         a Location column, Person column, or Hyperlink or image column.
 
         Args:
-            row_id (int): The row_id of the row to be edited.
+            pk_col (str): The name of the primary key column to search on.
+            value: The value of the primary key column to search on.
             data (dict[str, Any]): A dict of row data to edit. Keys in the dict
             must match the name of the name of the column in the SharePoint
             list.
@@ -440,8 +495,23 @@ class SharePointList:
         Returns:
             dict[str, Any]: A json response object from the API.
         """
+        # First, we need to check if the incoming column exists:
+        display_to_canonical, _ = self._get_column_mapping()
+        self._check_incoming_field_name_valid(pk_col, display_to_canonical)
+
+        # Then, we need to check if the index column is valid
+        list_columns = self.list_columns()
+        self._check_incoming_field_is_pk(pk_col, list_columns)
+
+        # Then, we need to validate that the incoming data is valid
+        self._validate_incoming_data(data)
+
+        # Then, we need to get the id of the row to edit
+        returned_row = self.get_row_by_pk(pk_col, value)
+        row_id = returned_row['id']
+
         edit_row_url = build_url(
-            ListEndpoints.ADD_ROW,
+            ListEndpoints.EDIT_ROW,
             graph_url=GRAPH_URL,
             list_id=self.list_id,
             site_id=self.site_id,
@@ -490,6 +560,7 @@ if __name__ == "__main__":
     site_name = "311-servicing-department-integrations"
     list_name = "PPR 311 Requests"
     sp_list = SharePointList.setup(site_name=site_name, list_name=list_name)
+
     for row in sp_list.list_rows():
         print(row)
         break

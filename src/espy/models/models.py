@@ -52,18 +52,21 @@ class UnsupportedForWrite:
     """Sentinel type indicating a column cannot be written to"""
     pass
 
+
+    # Incoming data may be None, we don't want to flag that as invalid data
+    # type
 COLUMN_KIND_PYTHON_TYPES = {
     ColumnKind.BOOLEAN: (bool,),
     ColumnKind.CALCULATED: (UnsupportedForWrite,),
-    ColumnKind.CHOICE: (str, list), # This is one where the choice column is actually helpful, as it might pull in valid values for us, but we can do this later
+    ColumnKind.CHOICE: (str, list,), # This is one where the choice column is actually helpful, as it might pull in valid values for us, but we can do this later
     ColumnKind.CONTENT_APPROVAL_STATUS: (int,),
     ColumnKind.CURRENCY: (float,),
-    ColumnKind.DATETIME: (datetime, str),
+    ColumnKind.DATETIME: (datetime, str,),
     ColumnKind.GEOLOCATION: (UnsupportedForWrite,),
     ColumnKind.HYPERLINK_OR_PICTURE: (UnsupportedForWrite,),
-    ColumnKind.LOOKUP: (int, str),
-    ColumnKind.NUMBER: (int, float),
-    ColumnKind.PERSON_OR_GROUP: (int, str),
+    ColumnKind.LOOKUP: (int, str,),
+    ColumnKind.NUMBER: (int, float,),
+    ColumnKind.PERSON_OR_GROUP: (int, str,),
     ColumnKind.TERM: (str,),
     ColumnKind.TEXT: (str,),
     ColumnKind.THUMBNAIL: (UnsupportedForWrite,),
@@ -214,7 +217,9 @@ class IncomingField(BaseModel):
                 self.list_column_kind.value}
             .""")
 
-        if not isinstance(self.field_value, valid_data_types):
+        # Null values should not be flaggedc as a bad data type
+        if (not isinstance(self.field_value, valid_data_types)\
+                and self.field_value is not None):
             raise ValueError(f"""Field name {self.field_name} has the wrong
                     data type. Data type must be one of 
                     {",".join(t.__name__ for t in valid_data_types)}""")
