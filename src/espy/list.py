@@ -351,7 +351,7 @@ class SharePointList:
         self._column_list = column_list
         return column_list
     
-    def get_row_by_id(self, row_id: int) -> dict[str, Any]:
+    def _get_row_by_id(self, row_id: int) -> dict[str, Any]:
         """
         Get a single row from a list by list id.
 
@@ -480,7 +480,7 @@ class SharePointList:
 
         return response
 
-    def edit_row_by_pk(self, pk_col: str, value: Any, 
+    def edit_row(self, pk_col: str, value: Any, 
                        data: dict[str, Any]) -> Response:
         """Edit a row in a SharePoint list.
 
@@ -528,7 +528,7 @@ class SharePointList:
 
         return response
 
-    def delete_row_by_pk(self, pk_col: str, value: Any) -> Response:
+    def delete_row(self, pk_col: str, value: Any) -> Response:
         """Delete a row in a SharePoint list.
         Args:
             pk_col (str): The name of the primary key column to search on.

@@ -184,7 +184,7 @@ def test_get_row_by_id_yields_dict(
         "espy.list.GraphAPIClient.make_request", mock_get
     )
 
-    result = configured_test_list.get_row_by_id("1")
+    result = configured_test_list._get_row_by_id("1")
 
     assert isinstance(result, dict)
 
@@ -298,7 +298,7 @@ def test_add_row_breaks_with_bad_data_type(
     with pytest.raises(InvalidIncomingRowError):
         configured_test_list.add_row(data)
 
-def test_edit_row_by_pk_breaks_with_bad_column_name(
+def test_edit_row_breaks_with_bad_column_name(
         configured_test_list,
         mocked_column_data,
         monkeypatch
@@ -311,9 +311,9 @@ def test_edit_row_by_pk_breaks_with_bad_column_name(
     monkeypatch.setattr("espy.list.SharePointList.list_columns", mock_list_columns_func)
 
     with pytest.raises(InvalidIncomingRowError):
-        configured_test_list.edit_row_by_pk("col_four", "123456", data)
+        configured_test_list.edit_row("col_four", "123456", data)
 
-def test_edit_row_by_pk_breaks_with_bad_data_type(
+def test_edit_row_breaks_with_bad_data_type(
         configured_test_list,
         mocked_column_data,
         monkeypatch
@@ -328,7 +328,7 @@ def test_edit_row_by_pk_breaks_with_bad_data_type(
         mock_list_columns_func)
 
     with pytest.raises(InvalidIncomingRowError):
-        configured_test_list.edit_row_by_pk("col_one", "123456", data)
+        configured_test_list.edit_row("col_one", "123456", data)
 
 def test_upsert_row_returns_error_when_key_col_not_present(
         configured_test_list,
