@@ -123,7 +123,14 @@ class GraphAPIClient:
             method=method, endpoint=endpoint, **kwargs
         )
 
-        response.raise_for_status()
+        try:
+            response.raise_for_status()
+
+        except httpx.HTTPError as e:
+            error_msg = f"""{e} | Server Error Body: 
+            {response.json()}"""
+
+            raise httpx.HTTPError(error_msg) from e
         
         return response
 

@@ -1,13 +1,14 @@
 from unittest.mock import MagicMock, call, patch
- 
+
 import pytest
- 
+
 from espy.excel import ExcelWorksheet
 from espy.models.graph_api_models import (
     MalformedRowError,
     PrimaryKeyValueNotFound,
 )
 from espy.models.models import HTTPMethod
+
 
 @pytest.fixture
 def mock_client():
@@ -123,9 +124,9 @@ class TestAddRows:
         assert kwargs["timeout"] == 60
  
     def test_add_rows_malformed(self, worksheet, mock_client):
-        with patch.object(worksheet, "list_columns", return_value=["col1", "col2"]):
-            with pytest.raises(MalformedRowError):
-                worksheet.add_rows([[1, "Alice", "extradata"]])
+        with patch.object(worksheet, "list_columns", return_value=["col1", "col2"]), \
+            pytest.raises(MalformedRowError):
+            worksheet.add_rows([[1, "Alice", "extradata"]])
 
         # Makle sure make request not called with garb rows 
         mock_client.make_request.assert_not_called()
@@ -146,7 +147,7 @@ class TestDeleteRow:
         )
 
         # Make sure arguments are good
-        args, kwargs = mock_client.make_request.call_args
+        args, _ = mock_client.make_request.call_args
         assert args[0] == HTTPMethod.DELETE
         assert "index=2" in args[1]
 
@@ -186,9 +187,9 @@ class TestUpdateRow:
         assert kwargs["json"] == {"values": [[1, 2]]}
 
     def test_update_row_at_index_malformed(self, worksheet, mock_client):
-        with patch.object(worksheet, "list_columns", return_value=["col1", "col2"]):
-            with pytest.raises(MalformedRowError):
-                worksheet.update_row_at_index(1, [[1]])
+        with patch.object(worksheet, "list_columns", return_value=["col1", "col2"]), \
+            pytest.raises(MalformedRowError):
+            worksheet.update_row_at_index(1, [[1]])
  
         mock_client.make_request.assert_not_called()
 
@@ -202,7 +203,7 @@ class TestListCols:
         cols = worksheet.list_columns()
  
         assert cols == ["col1", "col2", "col3"]
-        args, kwargs = mock_client.make_request.call_args
+        args, _ = mock_client.make_request.call_args
         assert args[0] == HTTPMethod.GET
         assert "Table1/columns" in args[1]
 
@@ -228,18 +229,18 @@ class TestFindIndexOfPk:
             assert worksheet._find_index_of_pk("pk", 2) == 1
  
     def test_empty_table_raises_value_error(self, worksheet):
-        with patch.object(worksheet, "list_rows", return_value=[]):
-            with pytest.raises(ValueError):
+        with patch.object(worksheet, "list_rows", return_value=[]),\
+            pytest.raises(ValueError):
                 worksheet._find_index_of_pk("pk", 1)
  
     def test_pk_col_dne(self, worksheet):
         rows = [{"pk": 1, "col2": "dwd"}]
-        with patch.object(worksheet, "list_rows", return_value=rows):
-            with pytest.raises(KeyError):
+        with patch.object(worksheet, "list_rows", return_value=rows),\
+            pytest.raises(KeyError):
                 worksheet._find_index_of_pk("Nonexistent", 1)
  
     def test_pk_val_dne(self, worksheet):
         rows = [{"pk": 1}, {"pk": 2}]
-        with patch.object(worksheet, "list_rows", return_value=rows):
-            with pytest.raises(PrimaryKeyValueNotFound):
+        with patch.object(worksheet, "list_rows", return_value=rows),\
+            pytest.raises(PrimaryKeyValueNotFound):
                 worksheet._find_index_of_pk("pk", 1238712)
