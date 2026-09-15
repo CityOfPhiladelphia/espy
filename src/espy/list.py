@@ -19,6 +19,8 @@ from espy.models.models import (
     GraphAPIResponse,
     HTTPMethod,
     IncomingField,
+    IncomingBatch,
+    IncomingRequest,
     InvalidIncomingRowError,
     SharePointListColumn,
     SharePointListRow,
@@ -58,6 +60,8 @@ class ListEndpoints(StrEnum):
     ADD_ROW = "{graph_url}/sites/{site_id}/lists/{list_id}/items"
 
     EDIT_ROW = "{graph_url}/sites/{site_id}/lists/{list_id}/items/{row_id}"
+
+    SUBMIT_BATCH = "https://graph.microsoft.com/v1.0/$batch"
 
 
 class SharePointList:
@@ -234,9 +238,16 @@ class SharePointList:
 
         return validated_fields
 
-    def _format_payload_for_api(self, data: dict[str, Any]) -> dict[str, dict]:
+    def _batch_list(self, data: list, size: int = 20) -> Iterator:
+        """Yield successive batches of up to 20 items from a list. 
+        SharePoint Graph API can only handle 20 requests at a time."""
+
+        for i in range(0, len(data), size):
+            yield data[i : i + size]
+
+    def _format_row_for_api(self, data: dict[str, Any]) -> SharePointListRow:
         """
-        Formats an incoming payload to be sent to the API. Validates incoming
+        Formats an incoming row to be sent to the API. Validates incoming
         data and maps the user-facing field names to the canonical API names.
         
         Args:
@@ -248,8 +259,7 @@ class SharePointList:
         """
         # Map to the canonical names in the table
         # Make sure all keys are present in SharePointList
-        fields_payload = {}
-        fields_payload['fields'] = {}
+        fields_payload = SharePointListRow()
 
         display_to_canonical, _ = self._get_column_mapping()
 
@@ -257,7 +267,7 @@ class SharePointList:
 
         for display_name, column_data in validated_data.items():
             canonical_name = display_to_canonical[display_name]
-            fields_payload['fields'][canonical_name] = column_data.field_value
+            fields_payload.fields[canonical_name] = column_data.field_value
 
         return fields_payload
 
@@ -451,20 +461,19 @@ class SharePointList:
                 
                 yield formatted_row
         
-    def add_row(self, data: dict[str, Any]) -> Response:
-        # TODO: Add functionality to make this add rows, adding one or more rows.
+    def add_rows(self, data: list[dict[str, Any]]) -> list[Response]:
         """Add a row to a SharePoint list.
 
         Note: This method does not currently work for Lists with
         a Location column, Person column, or Hyperlink or image column.
 
         Args:
-            data (dict[str, Any]): A dict of row data to add. Keys in the dict
-            must match the name of the name of the column in the SharePoint
+            data (list[dict[str, Any]]): A list of dicts of row data to add. 
+            Keys in the dicts  must match the name of the name of the column in the SharePoint
             list.
 
         Returns:
-            dict[str, Any]: A json response object from the API.
+            list[Response] -> A list of response objects from the API.
         """
         add_row_url = build_url(
             ListEndpoints.ADD_ROW,
@@ -472,14 +481,36 @@ class SharePointList:
             list_id=self.list_id,
             site_id=self.site_id,
         )
+        all_responses = []
 
-        fields_payload = self._format_payload_for_api(data)
+        for batch in self._batch_list(data):
+            compiled_requests = []
 
-        response = self.client.make_request(
-            HTTPMethod.POST, add_row_url, json=fields_payload
-        )
+            # For each row to add, we need to construct a
+            # separate request to make.
+            for req_id, raw_row in enumerate(batch):
+                formatted_row = self._format_row_for_api(raw_row)
+                formatted_request = IncomingRequest(
+                    id=str(req_id),
+                    method=HTTPMethod.POST,
+                    url=add_row_url,
+                    body=formatted_row
+                )
 
-        return response
+                compiled_requests.append(formatted_request)
+
+            payload = IncomingBatch(requests=compiled_requests)
+
+            response = self.client.make_request(
+                HTTPMethod.POST,
+                ListEndpoints.SUBMIT_BATCH,
+                json=payload.model_dump()  
+            )
+
+            response.raise_for_status()
+            all_responses.extend(response.json().get("responses", []))
+
+        return all_responses
 
     def edit_row(self, key_col: str, value: Any, 
                        data: dict[str, Any]) -> Response:
@@ -521,7 +552,7 @@ class SharePointList:
             row_id=row_id
         )
 
-        fields_payload = self._format_payload_for_api(data)
+        fields_payload = self._format_row_for_api(data)
 
         response = self.client.make_request(
             HTTPMethod.PATCH, edit_row_url, json=fields_payload
