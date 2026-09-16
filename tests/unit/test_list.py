@@ -263,12 +263,12 @@ def test_list_column_returns_list_of_dict(
     assert isinstance(result, list)
     assert isinstance(result[0], dict)
 
-def test_add_row_breaks_with_bad_column_name(
+def test_add_rows_breaks_with_bad_column_name(
         configured_test_list,
         mocked_column_data,
         monkeypatch
 ):  
-    data = {"col_three": "1234 Market St"}
+    data = [{"col_three": "1234 Market St"}]
 
     mock_list_columns_func = MagicMock()
     mock_list_columns_func.return_value = mocked_column_data["value"]
@@ -276,17 +276,17 @@ def test_add_row_breaks_with_bad_column_name(
     monkeypatch.setattr("espy.list.SharePointList.list_columns", mock_list_columns_func)
 
     with pytest.raises(InvalidIncomingRowError):
-        configured_test_list.add_row(data)
+        configured_test_list.add_rows(data)
 
 def test_column_kind_enum_matches_type_mapping():
     assert set(ColumnKind) == set(COLUMN_KIND_PYTHON_TYPES.keys())
 
-def test_add_row_breaks_with_bad_data_type(
+def test_add_rows_breaks_with_bad_data_type(
         configured_test_list,
         mocked_column_data,
         monkeypatch
 ):
-    data = {"col_two": "True"}
+    data = [{"col_two": "True"}]
 
     mock_list_columns_func = MagicMock()
     mock_list_columns_func.return_value = mocked_column_data["value"]
@@ -296,7 +296,7 @@ def test_add_row_breaks_with_bad_data_type(
         mock_list_columns_func)
 
     with pytest.raises(InvalidIncomingRowError):
-        configured_test_list.add_row(data)
+        configured_test_list.add_rows(data)
 
 def test_edit_row_breaks_with_bad_column_name(
         configured_test_list,

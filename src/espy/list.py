@@ -21,6 +21,8 @@ from espy.models.models import (
     IncomingField,
     IncomingBatch,
     IncomingRequest,
+    BatchFailure,
+    BatchResult,
     InvalidIncomingRowError,
     SharePointListColumn,
     SharePointListRow,
@@ -57,7 +59,7 @@ class ListEndpoints(StrEnum):
         "$expand=fields&$filter=fields/{column_name} eq {value}"
         )
 
-    ADD_ROW = "{graph_url}/sites/{site_id}/lists/{list_id}/items"
+    ADD_ROW = "/sites/{site_id}/lists/{list_id}/items"
 
     EDIT_ROW = "{graph_url}/sites/{site_id}/lists/{list_id}/items/{row_id}"
 
@@ -461,7 +463,7 @@ class SharePointList:
                 
                 yield formatted_row
         
-    def add_rows(self, data: list[dict[str, Any]]) -> list[Response]:
+    def add_rows(self, data: list[dict[str, Any]]) -> BatchResult:
         """Add a row to a SharePoint list.
 
         Note: This method does not currently work for Lists with
@@ -477,41 +479,60 @@ class SharePointList:
         """
         add_row_url = build_url(
             ListEndpoints.ADD_ROW,
-            graph_url=GRAPH_URL,
             list_id=self.list_id,
             site_id=self.site_id,
         )
-        all_responses = []
+
+        result = BatchResult()
 
         for batch in self._batch_list(data):
-            compiled_requests = []
-
             # For each row to add, we need to construct a
             # separate request to make.
-            for req_id, raw_row in enumerate(batch):
-                formatted_row = self._format_row_for_api(raw_row)
-                formatted_request = IncomingRequest(
-                    id=str(req_id),
+            compiled_requests = [
+                IncomingRequest(
+                    id=str(idx),
                     method=HTTPMethod.POST,
                     url=add_row_url,
-                    body=formatted_row
+                    body=self._format_row_for_api(raw_row),
                 )
-
-                compiled_requests.append(formatted_request)
+                for idx, raw_row in enumerate(batch)
+            ]
 
             payload = IncomingBatch(requests=compiled_requests)
 
             response = self.client.make_request(
                 HTTPMethod.POST,
                 ListEndpoints.SUBMIT_BATCH,
-                json=payload.model_dump()  
+                json=payload.model_dump()
             )
 
             response.raise_for_status()
-            all_responses.extend(response.json().get("responses", []))
 
-        return all_responses
+            # Parse individual item outcomes within the batch envelope
+            batch_responses = response.json().get("responses", [])
+            for item in batch_responses:
+                req_idx = int(item.get("id"))
+                status = item.get("status", 500)
+                body = item.get("body", {})
 
+                # Mark which responses succeeded and which didn't,
+                # return ids of each
+                if 200 <= status < 300:
+                    result.created_ids.append(str(body.get("id")))
+
+                else:
+                    err_msg = body.get("error", {}).get("message", "Unknown error")
+                    result.failures.append(
+                        BatchFailure(
+                            index=req_idx,
+                            status_code=status,
+                            error_message=err_msg,
+                            row_data=batch[req_idx]
+                        )
+                    )
+
+        return result 
+    
     def edit_row(self, key_col: str, value: Any, 
                        data: dict[str, Any]) -> Response:
         """Edit a row in a SharePoint list.
@@ -615,5 +636,5 @@ if __name__ == "__main__":
     sp_list = SharePointList.setup(site_name=site_name, list_name=list_name)
 
     for row in sp_list.list_rows():
-        if row.get('Comments'):
-            print(row)
+        print(row)
+        break

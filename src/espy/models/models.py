@@ -1,12 +1,12 @@
 # Models.py 
 
 from collections.abc import Iterator
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
-from typing import Any, Protocol
+from typing import Any, Dict, Protocol
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
 from pydantic.alias_generators import to_camel
 
 
@@ -92,8 +92,6 @@ class UnsupportedColumnForWriteError(BaseException):
 
 ## API Input Classes
 
-### Validation for Data Coming from SharePoint API
-
 class TabularStorage(Protocol):
     """Protocol defining a contract for what methods any class representing
     a Tabular Storage object (e.g., the SharePointList class) must fulfill. 
@@ -120,6 +118,7 @@ class TabularStorage(Protocol):
 
 
 ## API Response Classes
+### Validation for Data Coming from SharePoint API
 class GraphAPIResponse[T](BaseModel):
     """A model representing the data envelope given back by the Microsoft
     Graph API. Data is wrapped in an envelope containing pagination data
@@ -193,6 +192,31 @@ class SharePointListColumn(BaseModel):
         return data
 
 ### Validation for data coming from the user
+class IncomingRequest(BaseModel):
+    """Formats an incoming request from the user. Passed to IncomingBatch
+    to collect batches of requests together to speed up bulk calls
+    to the API."""
+    id: str
+    method: str
+    url: str
+    headers: Dict[str, str] = Field(
+        default_factory=lambda: {"Content-Type": "application/json"}
+    )
+    body: SharePointListRow
+
+class IncomingBatch(BaseModel):
+    """Formats an incoming batch from the user. Used for batch operations
+    against the API. Batches can be of size no more than 20."""
+
+    requests: list[IncomingRequest]
+
+    @model_validator(mode='after')
+    def check_list_length_ok(self):
+        if len(self.requests) > 20:
+            raise ValueError(f"""Only 20 requests can be made to the API at a time.""")
+
+        return self
+        
 class IncomingField(BaseModel):
     """Checks whether or not the type for an incoming field is a valid
     type, given the type on the Microsoft List"""
@@ -218,3 +242,23 @@ class IncomingField(BaseModel):
                     {",".join(t.__name__ for t in valid_data_types)}""")
 
         return self
+
+
+### Batch Result Dataclasses
+class BatchFailure(BaseModel):
+    index: int
+    status_code: int
+    error_message: str
+    row_data: dict[str, Any]
+
+class BatchResult(BaseModel):
+    created_ids: list[str] = field(default_factory=list)
+    failures: list[BatchFailure] = field(default_factory=list)
+
+    @computed_field
+    def has_errors(self) -> bool:
+        return len(self.failures) > 0
+
+    @computed_field
+    def total_processed(self) -> int:
+        return len(self.created_ids) + len(self.failures)
