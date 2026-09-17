@@ -9,7 +9,7 @@ Supports retrieving, adding, deleting, modifying, and upserting rows in a ShareP
 ## Import
 
 ```python
-from src.espy.excel import ExcelWorksheet
+from espy.excel import ExcelWorksheet
 ```
 
 ## Setup
@@ -115,6 +115,10 @@ Deletes a row based on a primary key value.
 - `KeyError` — the key isn't found as a column in the table.
 - `PrimaryKeyValueNotFound` — the value to look for doesn't exist.
 - `ValueError` — the operation is attempted on an empty table.
+
+!!! warning 
+    Use very carefully! Deleted data cannot be recovered!
+
 ```python
 pk_col = "primary_key"
 pk_val = "n"
@@ -133,6 +137,9 @@ Deletes a row at a specified index from the sheet.
 | `index` | `int` | 0-based index of the row to delete (e.g. `index=0` deletes the first row of data) |
 | `password` | `str`, optional | Sheet protection password |
  
+!!! warning 
+    Use very carefully! Deleted data cannot be recovered!
+
 ```python
 excel.delete_row_at_index(index=3)
 ```
