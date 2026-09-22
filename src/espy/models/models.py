@@ -120,6 +120,10 @@ class TabularStorage(Protocol):
 ## API Response Classes
 ### Validation for Data Coming from SharePoint API
 class ErrorResult(BaseModel):
+    error: ErrorContents
+
+class ErrorContents(BaseModel):
+    code: str
     message: str
 
 class GraphAPIResponse[T](BaseModel):
@@ -150,7 +154,7 @@ class BatchResponse(BaseModel):
     id: str
     status: int
     headers: dict
-    body: BatchResponseBody
+    body: BatchResponseBody | ErrorResult | SharePointListRow
 
 class BatchResponseBody(BaseModel):
     value: list[SharePointListRow]
@@ -218,7 +222,7 @@ class IncomingRequest(BaseModel):
     headers: Dict[str, str] = Field(
         default_factory=lambda: {"Content-Type": "application/json"}
     )
-    body: dict | None = None
+    body: SharePointListRow | None = None
 
 class IncomingBatch(BaseModel):
     """Formats an incoming batch from the user. Used for batch operations

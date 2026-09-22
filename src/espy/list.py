@@ -1,10 +1,11 @@
 # list.py
 from collections.abc import Iterator
-from enum import StrEnum, Enum
+from enum import StrEnum
 from typing import Any
 
 from httpx import Response
 from pydantic import ValidationError
+from requests.exceptions import HTTPError
 
 from espy.client import GraphAPIClient
 
@@ -23,6 +24,8 @@ from espy.models.models import (
     IncomingRequest,
     Batch,
     BatchResult,
+    BatchResponseBody,
+    ErrorResult,
     InvalidIncomingRowError,
     SharePointListColumn,
     SharePointListRow,
@@ -109,7 +112,7 @@ class SharePointList:
 
     @cached_property
     def column_types(self) -> dict[str, str]:
-        return {column.name: column.type
+        return {column.display_name: column.type
                 for column in self._columns }
         
     @classmethod
@@ -168,7 +171,7 @@ class SharePointList:
                 if field.indexed == True:
                     return True
 
-        raise InvalidIncomingRowError(f"The specified field does not exist: {field_name}.")
+        raise InvalidIncomingRowError(f"The specified field is not a primary key: {field_name}.")
             
 
     def _validate_incoming_data(
@@ -330,7 +333,7 @@ class SharePointList:
         return column_list
     
     def _build_url_and_body_from_method(self, method: HTTPMethod, item: Any,
-                                         **kwargs) -> tuple[str, dict | None]:
+                                         **kwargs) -> tuple[str, SharePointListRow | None]:
         """
         Creates a correctly formatted url to the API based on the HTTP method.
         Args:
@@ -398,8 +401,15 @@ class SharePointList:
 
         request_batch = []
         for idx, item in enumerate(batch):
+
+            if method == HTTPMethod.POST:
+                formatted_item = self._format_incoming_row(item)
+
+            else:
+                formatted_item = item 
+
             url, body = self._build_url_and_body_from_method(
-                method, item, **kwargs
+                method, formatted_item, **kwargs
             )
 
             request_batch.append(
@@ -429,17 +439,29 @@ class SharePointList:
         
         """
         batch_result = BatchResult()
-
+        
         batch_responses = Batch.model_validate(batch_response.json())
 
         for response in batch_responses.responses:
-            for row in response.body.value:
-                batch_result.responses.append(row)
+            response_body = response.body
 
+            if isinstance(response_body, ErrorResult):
+                raise HTTPError(f"{response_body.error.code}: {response_body.error.message}")
+
+            elif isinstance(response_body, BatchResponseBody):
+                for row in response_body.value:
+                    batch_result.responses.append(row)
+
+            elif isinstance(response_body, SharePointListRow):
+                batch_result.responses.append(response_body)
+
+            else:
+                raise ValueError("Data returned by API in unparseable format.")
+            
         return batch_result
 
     def get_rows(self, key_col: str, values: list[Any])\
-         -> Iterator[SharePointListRow]:
+         -> Iterator[dict[str, Any]]:
         """
         Get rows by primary key.
 
@@ -483,7 +505,9 @@ class SharePointList:
                 )
 
             for response in batch_response.responses:
-                yield response
+                validated_response = response.fields
+                formatted_row = self._format_outgoing_row(validated_response)
+                yield formatted_row
 
 
     def list_rows(self) -> Iterator[dict[str, Any]]:
@@ -513,13 +537,10 @@ class SharePointList:
             # Returns unnecessary extra column information, filter it out
             for row in response_envelope.value: # pyright: ignore
                 validated_row = row['fields']
-
                 formatted_row = self._format_outgoing_row(validated_row)
-
-                
                 yield formatted_row
         
-    def add_rows(self, data: list[dict[str, Any]]) -> Iterator[GraphAPIResponse]:
+    def add_rows(self, data: list[dict[str, Any]]) -> Iterator[dict[str, Any]]:
         """Add a row to a SharePoint list.
 
         Note: This method does not currently work for Lists with
@@ -533,26 +554,12 @@ class SharePointList:
         Returns:
             list[Response] -> A list of response objects from the API.
         """
-        add_row_url = build_url(
-            ListEndpoint.ADD_ROW,
-            list_id=self.list_id,
-            site_id=self.site_id,
-        )
-
         for batch in self._batch_list(data):
             # For each row to add, we need to construct a
             # separate request to make.
-            compiled_requests = [
-                IncomingRequest(
-                    id=str(idx),
-                    method=HTTPMethod.POST,
-                    url=add_row_url,
-                    body=self._format_incoming_row(raw_row),
-                )
-                for idx, raw_row in enumerate(batch)
-            ]
-
-            payload = IncomingBatch(requests=compiled_requests)
+            payload = self._create_request_batch(
+                HTTPMethod.POST, batch
+            )
 
             response = self.client.make_request(
                 HTTPMethod.POST,
@@ -561,13 +568,12 @@ class SharePointList:
             )
 
             response.raise_for_status()
-
-            # Parse individual item outcomes within the batch envelope
-
             batch_response = self._parse_batch_request_response(response)
 
             for response in batch_response.responses:
-                yield response
+                validated_response = response.fields
+                formatted_row = self._format_outgoing_row(validated_response)
+                yield formatted_row
     
     # def edit_row(self, key_col: str, value: Any, 
     #                    data: dict[str, Any]) -> Response:
@@ -662,13 +668,3 @@ class SharePointList:
     #     self._check_incoming_field_is_pk(key_col, list_columns)
 
     #     return {}
-
-
-if __name__ == "__main__":
-    site_name = "311-servicing-department-integrations"
-    list_name = "PPR 311 Requests"
-    sp_list = SharePointList.setup(site_name=site_name, list_name=list_name)
-
-    for row in sp_list.list_rows():
-        print(row)
-        break
