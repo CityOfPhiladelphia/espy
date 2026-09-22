@@ -119,6 +119,9 @@ class TabularStorage(Protocol):
 
 ## API Response Classes
 ### Validation for Data Coming from SharePoint API
+class ErrorResult(BaseModel):
+    message: str
+
 class GraphAPIResponse[T](BaseModel):
     """A model representing the data envelope given back by the Microsoft
     Graph API. Data is wrapped in an envelope containing pagination data
@@ -130,13 +133,27 @@ class GraphAPIResponse[T](BaseModel):
     odata_context: str | None = Field(None, alias="@odata.context")
     next_link: str | None = Field(None, alias="@odata.nextLink")
     value: list[T] | None = Field(None)
-    fields: dict = Field(default_factory=dict)
+    fields: SharePointListRow | None = Field(None)
+    error: ErrorResult | None = None
+    status_code: int | None = None
     model_config = ConfigDict(populate_by_name=True)
+
     # Sometimes graph API response returns an ID (in the case of the 
     # endpoint to get a single row, sometimes 
     # it doesn't, e.g., in the case of getting all rows)
     id: str | int | None = Field(None)
 
+class Batch(BaseModel):
+    responses: list[BatchResponse]
+    
+class BatchResponse(BaseModel):
+    id: str
+    status: int
+    headers: dict
+    body: BatchResponseBody
+
+class BatchResponseBody(BaseModel):
+    value: list[SharePointListRow]
 
 ### Share Point List Data
 class SharePointListRow(BaseModel):
@@ -146,7 +163,6 @@ class SharePointListRow(BaseModel):
         BaseModel (BaseModel): Inherits from Pydantic's BaseModel class.
     """
     fields: dict = Field(default_factory=dict)
-
 
 class SharePointListColumn(BaseModel):
     """A model representing a column of a SharePoint list. Contains
@@ -202,7 +218,7 @@ class IncomingRequest(BaseModel):
     headers: Dict[str, str] = Field(
         default_factory=lambda: {"Content-Type": "application/json"}
     )
-    body: SharePointListRow
+    body: dict | None = None
 
 class IncomingBatch(BaseModel):
     """Formats an incoming batch from the user. Used for batch operations
@@ -245,20 +261,13 @@ class IncomingField(BaseModel):
 
 
 ### Batch Result Dataclasses
-class BatchFailure(BaseModel):
-    index: int
-    status_code: int
-    error_message: str
-    row_data: dict[str, Any]
-
 class BatchResult(BaseModel):
-    created_ids: list[str] = field(default_factory=list)
-    failures: list[BatchFailure] = field(default_factory=list)
+    responses: list[SharePointListRow] = field(default_factory=list)
 
-    @computed_field
-    def has_errors(self) -> bool:
-        return len(self.failures) > 0
+    def merge_with(self, other):
+        """Merges lists from another instance into this one (In-place)."""
 
-    @computed_field
-    def total_processed(self) -> int:
-        return len(self.created_ids) + len(self.failures)
+        if not isinstance(other, BatchResult):
+            raise ValueError("Both objects must be a BatchResult in order to merge.")
+
+        self.responses.extend(other.responses)

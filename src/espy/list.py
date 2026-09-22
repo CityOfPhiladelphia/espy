@@ -1,6 +1,6 @@
 # list.py
 from collections.abc import Iterator
-from enum import StrEnum
+from enum import StrEnum, Enum
 from typing import Any
 
 from httpx import Response
@@ -21,19 +21,20 @@ from espy.models.models import (
     IncomingField,
     IncomingBatch,
     IncomingRequest,
-    BatchFailure,
+    Batch,
     BatchResult,
     InvalidIncomingRowError,
     SharePointListColumn,
     SharePointListRow,
 )
 from espy.urls import build_url
+from functools import cached_property
 
 # TODO: Print warning that a list containing a hyperlink or location column
 # Cannot be updated with the api
 
 
-class ListEndpoints(StrEnum):
+class ListEndpoint(StrEnum):
     """An endpoint registry for all API operations made by the SharePointList
     class.
 
@@ -54,17 +55,15 @@ class ListEndpoints(StrEnum):
     )
 
     GET_ROW_BY_PK = (
-        "{graph_url}/sites/"
-        "{site_id}/lists/{list_id}/items?"
+        "sites/{site_id}/lists/{list_id}/items?"
         "$expand=fields&$filter=fields/{column_name} eq {value}"
         )
 
     ADD_ROW = "/sites/{site_id}/lists/{list_id}/items"
 
-    EDIT_ROW = "{graph_url}/sites/{site_id}/lists/{list_id}/items/{row_id}"
+    EDIT_OR_DELETE_ROW = "/sites/{site_id}/lists/{list_id}/items/{row_id}"
 
     SUBMIT_BATCH = "https://graph.microsoft.com/v1.0/$batch"
-
 
 class SharePointList:
     """Models a SharePoint List.
@@ -92,11 +91,27 @@ class SharePointList:
         self.client = client
         self.site_id = site_id
         self.list_id = list_id
-        self._column_list: list[dict] | None = None
-        self._display_to_canonical_column: dict | None = None
-        self._canonical_to_display_column: dict | None = None
-        self._column_types: dict | None = None 
 
+    # Column data
+    @cached_property
+    def _columns(self) -> list[SharePointListColumn]:
+        return self.list_columns()
+
+    @cached_property
+    def display_to_canonical(self) -> dict[str, str]:
+        return { column.display_name : column.name
+                            for column in self._columns }
+
+    @cached_property
+    def canonical_to_display(self) -> dict[str, str]:
+        return { column.name : column.display_name
+                for column in self._columns }
+
+    @cached_property
+    def column_types(self) -> dict[str, str]:
+        return {column.name: column.type
+                for column in self._columns }
+        
     @classmethod
     def setup(cls, site_name: str, list_name: str):
         """Authenticates and fetches the ids needed to create the SharePointList
@@ -115,7 +130,7 @@ class SharePointList:
         site_id = client.get_site_id(HOST_NAME, site_name)
 
         list_id_url = build_url(
-            ListEndpoints.LIST_ID,
+            ListEndpoint.LIST_ID,
             graph_url=GRAPH_URL,
             site_id=site_id,
             list_name=list_name,
@@ -126,48 +141,10 @@ class SharePointList:
 
         return cls(client, site_id, list_id)
 
-    def _get_column_mapping(self) -> tuple[dict[str, str], dict[str, str]]:
-        """
-        Gets a column mapping for the list mapping the column's user-visible
-        name to the column's real name in the graph API.
-
-        Returns:
-            tuple[dict]: A mapping of the user visible name to the real name in the
-            graph API, and a mapping of the real name to the user visible name.
-        """
-        if self._display_to_canonical_column and self._canonical_to_display_column:
-            return (self._display_to_canonical_column, 
-                    self._canonical_to_display_column
-                    )
-
-        columns = self.list_columns()
-        
-        self._display_to_canonical_column = { column['display_name'] : column['name']
-                                for column in columns }
-
-        self._canonical_to_display_column = { column['name'] : column['display_name']
-                                             for column in columns }
-
-        return (self._display_to_canonical_column, 
-                self._canonical_to_display_column
-                )
-
-    def _get_column_types(self) -> dict[str, str]:
-        if self._column_types:
-            return self._column_types
-
-        columns = self.list_columns()
-
-        self._column_types = { column['display_name'] : column['type']
-                                for column in columns }
-
-        return self._column_types
-
-    def _check_incoming_field_name_valid(self, field_name: str, 
-                               column_mapping: dict[str, str]) -> None:
+    def _check_incoming_field_name_valid(self, field_name: str) -> None:
     
-        if field_name not in column_mapping:
-            raise InvalidIncomingRowError(f"{field_name} is not in the SharePoint List")
+        if field_name not in self.display_to_canonical:
+            raise KeyError(f"{field_name} is not in the SharePoint List")
         
 
     def _check_incoming_field_type_valid(self, field_name: str, 
@@ -185,11 +162,10 @@ class SharePointList:
 
         return validated_incoming_field
 
-    def _check_incoming_field_is_pk(self, field_name: str, 
-                                    field_list: list[dict[str, Any]]) -> bool:
-        for field in field_list:
-            if field['display_name'] == field_name:
-                if field.get('indexed') == True:
+    def _check_incoming_field_is_pk(self, field_name: str) -> bool:
+        for field in self._columns:
+            if field.display_name == field_name:
+                if field.indexed == True:
                     return True
 
         raise InvalidIncomingRowError(f"The specified field does not exist: {field_name}.")
@@ -199,9 +175,6 @@ class SharePointList:
             self, input_data: dict[str, Any]
             ) -> dict[str, IncomingField]:
         
-        display_to_canonical, _ = self._get_column_mapping()
-        column_types = self._get_column_types()
-
         validated_fields = {}
 
         invalid_column_names = []
@@ -210,11 +183,9 @@ class SharePointList:
 
         for field_name, field_value in input_data.items():
             try:
-                self._check_incoming_field_name_valid(
-                    field_name, display_to_canonical
-                    )
+                self._check_incoming_field_name_valid(field_name)
                 validated_field = self._check_incoming_field_type_valid(
-                                    field_name, field_value, column_types
+                                    field_name, field_value, self.column_types
                                 )
                 
                 validated_fields[field_name] = validated_field
@@ -247,7 +218,7 @@ class SharePointList:
         for i in range(0, len(data), size):
             yield data[i : i + size]
 
-    def _format_row_for_api(self, data: dict[str, Any]) -> SharePointListRow:
+    def _format_incoming_row(self, data: dict[str, Any]) -> SharePointListRow:
         """
         Formats an incoming row to be sent to the API. Validates incoming
         data and maps the user-facing field names to the canonical API names.
@@ -263,19 +234,17 @@ class SharePointList:
         # Make sure all keys are present in SharePointList
         fields_payload = SharePointListRow()
 
-        display_to_canonical, _ = self._get_column_mapping()
-
         validated_data = self._validate_incoming_data(data)
 
         for display_name, column_data in validated_data.items():
-            canonical_name = display_to_canonical[display_name]
+            canonical_name = self.display_to_canonical[display_name]
             fields_payload.fields[canonical_name] = column_data.field_value
 
         return fields_payload
 
     def _fetch_page(
         self, url: str | None, params: dict | None
-    ) -> GraphAPIResponse[SharePointListRow] | None:
+    ) -> GraphAPIResponse | None:
         """A helper funtion to fetch a single page of rows 
         from a SharePoint List. Used by the list_rows method to paginate
         through all data in a SharePoint list.
@@ -296,7 +265,7 @@ class SharePointList:
         raw_data = self.client.make_request(
             HTTPMethod.GET, url, params=params).json()
 
-        response_envelope = GraphAPIResponse[SharePointListRow].model_validate(
+        response_envelope = GraphAPIResponse.model_validate(
             raw_data
         )
 
@@ -314,28 +283,24 @@ class SharePointList:
         Returns (dict): A dictionary with null fields added back
         """
 
-        _, canonical_to_display = self._get_column_mapping()
         # Includes fields that are null, for standardized output
         formatted_row = {}
 
-        for canonical_column, display_column in canonical_to_display.items():
+        for canonical_column, display_column in \
+            self.canonical_to_display.items():
             formatted_row[display_column] = row.get(canonical_column)
 
         return formatted_row
 
         
-    def list_columns(self) -> list[dict]:
+    def list_columns(self) -> list[SharePointListColumn]:
         """List the columns in a SharePoint list.
 
         Returns:
             list[SharePointListColumn]: A list of SharePointColumn objects.
         """
-
-        if self._column_list:
-            return self._column_list
-
         columns_url = build_url(
-            ListEndpoints.LIST_COLUMNS,
+            ListEndpoint.LIST_COLUMNS,
             graph_url=GRAPH_URL,
             site_id=self.site_id,
             list_id=self.list_id,
@@ -358,79 +323,170 @@ class SharePointList:
         for column in response_envelope.value:
             if column['name'] not in SHARE_POINT_LIST_EXCLUDED_COLUMNS: 
                 column_list.append(
-                    SharePointListColumn.model_validate(column).model_dump()
+                    SharePointListColumn.model_validate(column)
                 )
 
         self._column_list = column_list
         return column_list
     
-    def _get_row_by_id(self, row_id: int) -> dict[str, Any]:
+    def _build_url_and_body_from_method(self, method: HTTPMethod, item: Any,
+                                         **kwargs) -> tuple[str, dict | None]:
         """
-        Get a single row from a list by list id.
+        Creates a correctly formatted url to the API based on the HTTP method.
+        Args:
+            method (HTTPMethod): The HTTP method being used
+            item (Any): An item that will be passed to the API as part of a request body. 
+            Will be returned if the method requires it.
+        """
+        match method:
+            # Get Rows
+            case HTTPMethod.GET:
+                url = build_url(
+                ListEndpoint.GET_ROW_BY_PK, 
+                site_id = self.site_id,
+                list_id = self.list_id,
+                column_name=kwargs.get("key_col"),
+                value=item, 
+                kwargs={"$select": "id"}
+                )
+
+                return url, None
+
+            # Add Rows
+            case HTTPMethod.POST:
+                url = build_url(
+                    ListEndpoint.ADD_ROW,
+                    list_id=self.list_id,
+                    site_id=self.site_id,
+                )
+
+                return url, item
+
+            # In the case of an edit or delete request,
+            # we need to pass an item containing an "id"
+
+            # Edit Rows
+            case HTTPMethod.PATCH:
+                url = build_url(
+                ListEndpoint.EDIT_OR_DELETE_ROW, 
+                site_id = self.site_id,
+                list_id = self.list_id,
+                row_id = item['fields']['id']
+                )
+
+                return url, item
+
+            # Delete Rows
+            case HTTPMethod.DELETE:
+                url = build_url(
+                ListEndpoint.EDIT_OR_DELETE_ROW, 
+                site_id = self.site_id,
+                list_id = self.list_id,
+                row_id = item['fields']['id']
+                )
+
+                return url, None
+
+        raise ValueError(f"Cannot build URL. Unsupported method: {method}")
+
+    def _create_request_batch(self, method: HTTPMethod, batch: list[Any], 
+                              **kwargs):
+        """
+        Creates a batch of requests for the API's batch endpoint. Determines
+        how to format those requests based on the method provided.
+        """
+
+        request_batch = []
+        for idx, item in enumerate(batch):
+            url, body = self._build_url_and_body_from_method(
+                method, item, **kwargs
+            )
+
+            request_batch.append(
+                IncomingRequest(
+                    id=str(idx),
+                    method=method,
+                    url=url,
+                    body=body
+                )
+            )
+
+        return IncomingBatch(requests=request_batch)
+
+    def _parse_batch_request_response(self, batch_response: Response)\
+          -> BatchResult[SharePointListRow]:
+        """
+        For the response from each request in a batch request, parse
+        that a request and return whether or not it succeeded or failed.
 
         Args:
-            row_id (str): The id of the row to return
-
+            batch: The batch that was processed.
+            batch_response: The response from a batch request to the SharePoint API.
+        
         Returns:
-            dict: A dictionary with row data
+            BatchResult: An object containing information about batch request
+            successes and failures.
+        
         """
-        row_url = build_url(
-            ListEndpoints.GET_ROW_BY_ID,
-            graph_url=GRAPH_URL,
-            site_id=self.site_id,
-            list_id=self.list_id,
-            row_id=row_id,
-            kwargs={"$select": "id"}
-        )
+        batch_result = BatchResult()
 
-        raw_response = self.client.make_request(HTTPMethod.GET, row_url).json()
-        validated_response = GraphAPIResponse[SharePointListRow].model_validate(raw_response)
-        validated_row = validated_response.fields
+        batch_responses = Batch.model_validate(batch_response.json())
 
-        formatted_row = self._format_outgoing_row(validated_row)
+        for response in batch_responses.responses:
+            for row in response.body.value:
+                batch_result.responses.append(row)
 
-        return formatted_row
+        return batch_result
 
-    def get_row(self, key_col: str, value: Any) -> dict[str, Any]:
+    def get_rows(self, key_col: str, values: list[Any])\
+         -> Iterator[SharePointListRow]:
         """
-        Get a single row from a list by primary key.
+        Get rows by primary key.
 
         Args:
             key_col (str): The name of the primary key column to search on
-            value (Any): The value of the priamry key column
+            value list[any]: The primary key values to search for.
 
         Returns:
-            dict: A dictionary with row data
+            list[dict]: A dictionary with row data
         """
+        # Check if the incoming column exists
+        self._check_incoming_field_name_valid(key_col)
 
-        display_to_canonical_column, _ = self._get_column_mapping()
-        canonical_field_name = display_to_canonical_column[key_col]
+        # Check if the index column is valid
+        self._check_incoming_field_is_pk(key_col)
 
-        row_url = build_url(
-            ListEndpoints.GET_ROW_BY_PK,
-            graph_url=GRAPH_URL,
-            site_id=self.site_id,
-            list_id=self.list_id,
-            column_name=canonical_field_name,
-            value=value,
-            kwargs={"$select": "id"}
-        )
+        canonical_key_name = self.display_to_canonical.get(key_col)
 
-        raw_response = self.client.make_request(HTTPMethod.GET, row_url).json()
-        validated_response = GraphAPIResponse.model_validate(raw_response)
+        for batch in self._batch_list(values):
+        # For each row that we want to get, we need to construct
+        # a separate get request URL
+            payload = self._create_request_batch(
+                HTTPMethod.GET,
+                batch,
+                key_col=canonical_key_name
+                )
+            
+            response = self.client.make_request(
+                HTTPMethod.POST,
+                ListEndpoint.SUBMIT_BATCH,
+                json=payload.model_dump()
+            )
 
-        if validated_response.value:
-            validated_row = validated_response.value[0]['fields']
-            formatted_row = self._format_outgoing_row(validated_row)
+            response.raise_for_status()
 
-            # Add id back, since format outgoing row removes it
-            # TODO: Is there a cleaner way around this?
-            formatted_row['id'] = validated_row['id']
-            return formatted_row
+            batch_response = self._parse_batch_request_response(response)
 
-        raise ValueError("Row not found.")
+            if not batch_response.responses:
+                raise ValueError(
+                    f"No rows found where '{key_col}' matches the given values."
+                )
 
-    def list_rows(self) -> Iterator[dict]:
+            for response in batch_response.responses:
+                yield response
+
+
+    def list_rows(self) -> Iterator[dict[str, Any]]:
         """List all rows in a SharePoint List.
 
         Paginates through each page of the SharePoint list and returns
@@ -441,7 +497,7 @@ class SharePointList:
             a row of data.
         """
         next_link = build_url(
-            ListEndpoints.LIST_ROWS,
+            ListEndpoint.LIST_ROWS,
             graph_url=GRAPH_URL,
             site_id=self.site_id,
             list_id=self.list_id,
@@ -456,14 +512,14 @@ class SharePointList:
 
             # Returns unnecessary extra column information, filter it out
             for row in response_envelope.value: # pyright: ignore
-                validated_row = row.fields
+                validated_row = row['fields']
 
                 formatted_row = self._format_outgoing_row(validated_row)
 
                 
                 yield formatted_row
         
-    def add_rows(self, data: list[dict[str, Any]]) -> BatchResult:
+    def add_rows(self, data: list[dict[str, Any]]) -> Iterator[GraphAPIResponse]:
         """Add a row to a SharePoint list.
 
         Note: This method does not currently work for Lists with
@@ -478,12 +534,10 @@ class SharePointList:
             list[Response] -> A list of response objects from the API.
         """
         add_row_url = build_url(
-            ListEndpoints.ADD_ROW,
+            ListEndpoint.ADD_ROW,
             list_id=self.list_id,
             site_id=self.site_id,
         )
-
-        result = BatchResult()
 
         for batch in self._batch_list(data):
             # For each row to add, we need to construct a
@@ -493,7 +547,7 @@ class SharePointList:
                     id=str(idx),
                     method=HTTPMethod.POST,
                     url=add_row_url,
-                    body=self._format_row_for_api(raw_row),
+                    body=self._format_incoming_row(raw_row),
                 )
                 for idx, raw_row in enumerate(batch)
             ]
@@ -502,132 +556,112 @@ class SharePointList:
 
             response = self.client.make_request(
                 HTTPMethod.POST,
-                ListEndpoints.SUBMIT_BATCH,
+                ListEndpoint.SUBMIT_BATCH,
                 json=payload.model_dump()
             )
 
             response.raise_for_status()
 
             # Parse individual item outcomes within the batch envelope
-            batch_responses = response.json().get("responses", [])
-            for item in batch_responses:
-                req_idx = int(item.get("id"))
-                status = item.get("status", 500)
-                body = item.get("body", {})
 
-                # Mark which responses succeeded and which didn't,
-                # return ids of each
-                if 200 <= status < 300:
-                    result.created_ids.append(str(body.get("id")))
+            batch_response = self._parse_batch_request_response(response)
 
-                else:
-                    err_msg = body.get("error", {}).get("message", "Unknown error")
-                    result.failures.append(
-                        BatchFailure(
-                            index=req_idx,
-                            status_code=status,
-                            error_message=err_msg,
-                            row_data=batch[req_idx]
-                        )
-                    )
-
-        return result 
+            for response in batch_response.responses:
+                yield response
     
-    def edit_row(self, key_col: str, value: Any, 
-                       data: dict[str, Any]) -> Response:
-        """Edit a row in a SharePoint list.
+    # def edit_row(self, key_col: str, value: Any, 
+    #                    data: dict[str, Any]) -> Response:
+    #     """Edit a row in a SharePoint list.
 
-        Note: This method does not currently work for Lists with
-        a Location column, Person column, or Hyperlink or image column.
+    #     Note: This method does not currently work for Lists with
+    #     a Location column, Person column, or Hyperlink or image column.
 
-        Args:
-            key_col (str): The name of the primary key column to search on.
-            value: The value of the primary key column to search on.
-            data (dict[str, Any]): A dict of row data to edit. Keys in the dict
-            must match the name of the name of the column in the SharePoint
-            list.
+    #     Args:
+    #         key_col (str): The name of the primary key column to search on.
+    #         value: The value of the primary key column to search on.
+    #         data (dict[str, Any]): A dict of row data to edit. Keys in the dict
+    #         must match the name of the name of the column in the SharePoint
+    #         list.
 
-        Returns:
-            dict[str, Any]: A json response object from the API.
-        """
-        # First, we need to check if the incoming column exists:
-        display_to_canonical, _ = self._get_column_mapping()
-        self._check_incoming_field_name_valid(key_col, display_to_canonical)
+    #     Returns:
+    #         dict[str, Any]: A json response object from the API.
+    #     """
+    #     # First, we need to check if the incoming column exists:
+    #     self._check_incoming_field_name_valid(key_col, 
+    #                                           self.display_to_canonical)
 
-        # Then, we need to check if the index column is valid
-        list_columns = self.list_columns()
-        self._check_incoming_field_is_pk(key_col, list_columns)
+    #     # Then, we need to check if the index column is valid
+    #     list_columns = self.list_columns()
+    #     self._check_incoming_field_is_pk(key_col, list_columns)
 
-        # Then, we need to validate that the incoming data is valid
-        self._validate_incoming_data(data)
+    #     # Then, we need to validate that the incoming data is valid
+    #     self._validate_incoming_data(data)
 
-        # Then, we need to get the id of the row to edit
-        returned_row = self.get_row(key_col, value)
-        row_id = returned_row['id']
+    #     # Then, we need to get the id of the row to edit
+    #     returned_row = self.get_rows(key_col, value)
+    #     row_id = returned_row['id']
 
-        edit_row_url = build_url(
-            ListEndpoints.EDIT_ROW,
-            graph_url=GRAPH_URL,
-            list_id=self.list_id,
-            site_id=self.site_id,
-            row_id=row_id
-        )
+    #     edit_row_url = build_url(
+    #         ListEndpoint.EDIT_ROW,
+    #         graph_url=GRAPH_URL,
+    #         list_id=self.list_id,
+    #         site_id=self.site_id,
+    #         row_id=row_id
+    #     )
 
-        fields_payload = self._format_row_for_api(data)
+    #     fields_payload = self._format_row_for_api(data)
 
-        response = self.client.make_request(
-            HTTPMethod.PATCH, edit_row_url, json=fields_payload
-        )
+    #     response = self.client.make_request(
+    #         HTTPMethod.PATCH, edit_row_url, json=fields_payload
+    #     )
 
-        return response
+    #     return response
 
-    def delete_row(self, key_col: str, value: Any) -> Response:
-        """Delete a row in a SharePoint list.
-        Args:
-            key_col (str): The name of the primary key column to search on.
-            value: The value of the primary key column to search on.
+    # def delete_row(self, key_col: str, value: Any) -> Response:
+    #     """Delete a row in a SharePoint list.
+    #     Args:
+    #         key_col (str): The name of the primary key column to search on.
+    #         value: The value of the primary key column to search on.
 
-        Returns:
-            dict[str, Any]: A json response object from the API.
-        """
-        # First, we need to check if the incoming column exists:
-        display_to_canonical, _ = self._get_column_mapping()
-        self._check_incoming_field_name_valid(key_col, display_to_canonical)
+    #     Returns:
+    #         dict[str, Any]: A json response object from the API.
+    #     """
+    #     # First, we need to check if the incoming column exists:
+    #     self._check_incoming_field_name_valid(key_col, self.display_to_canonical)
 
-        # Then, we need to check if the index column is valid
-        list_columns = self.list_columns()
-        self._check_incoming_field_is_pk(key_col, list_columns)
+    #     # Then, we need to check if the index column is valid
+    #     list_columns = self.list_columns()
+    #     self._check_incoming_field_is_pk(key_col, list_columns)
 
-        # Then, we need to get the id of the row to edit
-        returned_row = self.get_row(key_col, value)
-        row_id = returned_row['id']
+    #     # Then, we need to get the id of the row to edit
+    #     returned_row = self.get_rows(key_col, value)
+    #     row_id = returned_row['id']
     
-        delete_row_url = build_url(
-            ListEndpoints.EDIT_ROW,
-            graph_url=GRAPH_URL,
-            list_id=self.list_id,
-            site_id=self.site_id,
-            row_id=row_id
-        )
+    #     delete_row_url = build_url(
+    #         ListEndpoint.EDIT_ROW,
+    #         graph_url=GRAPH_URL,
+    #         list_id=self.list_id,
+    #         site_id=self.site_id,
+    #         row_id=row_id
+    #     )
 
-        response = self.client.make_request(
-            HTTPMethod.DELETE, delete_row_url
-        )
+    #     response = self.client.make_request(
+    #         HTTPMethod.DELETE, delete_row_url
+    #     )
 
-        return response
+    #     return response
 
-    def upsert_row(
-        self, key_col: str, data: dict[str, Any]
-    ) -> dict[str, Any]:
-                # First, we need to check if the incoming column exists:
-        display_to_canonical, _ = self._get_column_mapping()
-        self._check_incoming_field_name_valid(key_col, display_to_canonical)
+    # def upsert_row(
+    #     self, key_col: str, data: dict[str, Any]
+    # ) -> dict[str, Any]:
+    #             # First, we need to check if the incoming column exists:
+    #     self._check_incoming_field_name_valid(key_col, self.display_to_canonical)
 
-        # Then, we need to check if the index column is valid
-        list_columns = self.list_columns()
-        self._check_incoming_field_is_pk(key_col, list_columns)
+    #     # Then, we need to check if the index column is valid
+    #     list_columns = self.list_columns()
+    #     self._check_incoming_field_is_pk(key_col, list_columns)
 
-        return {}
+    #     return {}
 
 
 if __name__ == "__main__":

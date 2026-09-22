@@ -10,6 +10,8 @@ from espy.models.models import (
     ColumnKind,
     GraphAPIResponse,
     InvalidIncomingRowError,
+    SharePointListRow,
+    SharePointListColumn
 )
 
 
@@ -58,32 +60,42 @@ def mocked_single_page_data() -> dict:
     return mock_page_data
 
 @pytest.fixture
-def mocked_row_data() -> dict:
-    mock_row_data = {
-        "odata_context": "789",
-        "fields": {
-            "Title": "Test",
-            "col_one": "123456",
-            "col_two": "1234 Market Street"
-        },
-        "value": [{
-            "fields": {
-            "Title": "Test",
-            "col_one": "123456",
-            "col_two": "1234 Market Street",
-            "id": "123"
-            }
+def mocked_batch_data() -> dict:
+    mock_batch_data = {
+        "responses": [{
+            "id": "0",
+            "status": 200,
+            "headers": {"header": "test"},
+            "body": {"value": [
+                {"fields":
+                 {
+                    "Title": "Test",
+                    "col_one": "123456",
+                    "col_two": "1234 Market Street"
+                 }}
+            ]}
+    }]
+    }
+
+    return mock_batch_data
+
+@pytest.fixture
+def mocked_empty_batch_data() -> dict:
+    mock_empty_batch_data = {
+        "responses": [{
+            "id": "0",
+            "status": 200,
+            "headers": {"header": "test"},
+            "body": {"value": []}
         }]
     }
 
-    return mock_row_data
+    return mock_empty_batch_data
 
 @pytest.fixture
-def mocked_column_data() -> dict:
-
-    mock_column_data = { "odata_context": "101112",
-     "value": [
-        {'description': '', 
+def raw_column_data() -> list[dict]:
+    return [
+        {'description': '',
          'display_name': 'col_one',
          'enforce_unique_values': True,
          'hidden': False,
@@ -93,7 +105,7 @@ def mocked_column_data() -> dict:
          'read_only': False,
          'required': True,
          'type': 'text'},
-        {'description': '', 
+        {'description': '',
          'display_name': 'col_two',
          'enforce_unique_values': False,
          'hidden': False,
@@ -104,9 +116,15 @@ def mocked_column_data() -> dict:
          'required': True,
          'type': 'boolean'},
         ]
-    }
 
-    return mock_column_data
+@pytest.fixture
+def mocked_column_api_response(raw_column_data) -> dict:
+    return {"value": raw_column_data}
+
+@pytest.fixture
+def mocked_column_data(raw_column_data) -> list[SharePointListColumn]:
+    return [SharePointListColumn.model_validate(column)
+            for column in raw_column_data]
 
 def test_fetch_page_returns_graph_api_response(
     configured_test_list, mocked_single_page_data, monkeypatch
@@ -133,7 +151,7 @@ def test_list_page_yields_dict(
 ):  
 
     mock_list_columns_func = MagicMock()
-    mock_list_columns_func.return_value = mocked_column_data["value"]
+    mock_list_columns_func.return_value = mocked_column_data
 
     monkeypatch.setattr("espy.list.SharePointList.list_columns", mock_list_columns_func)
 
@@ -150,109 +168,88 @@ def test_list_page_yields_dict(
 
     result = configured_test_list.list_rows()
 
-    ## Assert that what is returned is actually an iterator
     assert isinstance(result, Iterator)
 
     record = next(result)
 
-    ## Assert that the iterator yields a dict
     assert isinstance(record, dict)
 
     record = next(result)
 
-    ## Assert that iterator stops yielding when exhausted
     assert isinstance(record, dict)
 
     with pytest.raises(StopIteration):
         next(result)
 
-
-def test_get_row_by_id_yields_dict(
+def test_get_rows_yields_share_point_list_rows(
     configured_test_list,
     mocked_column_data,
-    mocked_row_data,
+    mocked_batch_data,
     monkeypatch,
 ):
     mock_list_columns_func = MagicMock()
-    mock_list_columns_func.return_value = mocked_column_data["value"]
+    mock_list_columns_func.return_value = mocked_column_data
 
     monkeypatch.setattr("espy.list.SharePointList.list_columns", mock_list_columns_func)
 
-    mock_get = mocked_request(mocked_row_data)
+    mock_get = mocked_request(mocked_batch_data)
 
     monkeypatch.setattr(
         "espy.list.GraphAPIClient.make_request", mock_get
     )
 
-    result = configured_test_list._get_row_by_id("1")
+    result = configured_test_list.get_rows("col_one", ["123456"])
+    next_resp = next(result)
 
-    assert isinstance(result, dict)
+    assert isinstance(next_resp, SharePointListRow)
 
-def test_get_row_yields_dict(
+def test_get_rows_raises_key_error_when_column_not_present(
     configured_test_list,
     mocked_column_data,
-    mocked_row_data,
+    mocked_batch_data,
     monkeypatch,
 ):
     mock_list_columns_func = MagicMock()
-    mock_list_columns_func.return_value = mocked_column_data["value"]
+    mock_list_columns_func.return_value = mocked_column_data
 
     monkeypatch.setattr("espy.list.SharePointList.list_columns", mock_list_columns_func)
 
-    mock_get = mocked_request(mocked_row_data)
+    mock_get = mocked_request(mocked_batch_data)
 
     monkeypatch.setattr(
         "espy.list.GraphAPIClient.make_request", mock_get
     )
 
-    result = configured_test_list.get_row("col_one", "123")
-    assert isinstance(result, dict)
-
-def test_get_row_raises_key_error_when_column_not_present(
-    configured_test_list,
-    mocked_column_data,
-    mocked_row_data,
-    monkeypatch,
-):
-    mock_list_columns_func = MagicMock()
-    mock_list_columns_func.return_value = mocked_column_data["value"]
-
-    monkeypatch.setattr("espy.list.SharePointList.list_columns", mock_list_columns_func)
-
-    mock_get = mocked_request(mocked_row_data)
-
-    monkeypatch.setattr(
-        "espy.list.GraphAPIClient.make_request", mock_get
-    )
-
+    # get_rows is a generator, so the validation only runs once consumed
     with pytest.raises(KeyError):
-        configured_test_list.get_row("col_three", "123")
+        next(configured_test_list.get_rows("col_three", ["123"]))
 
-def test_get_row_raises_value_error_when_value_not_present(
+def test_get_rows_raises_value_error_when_value_not_present(
     configured_test_list,
     mocked_column_data,
+    mocked_empty_batch_data,
     monkeypatch,
 ):
     mock_list_columns_func = MagicMock()
-    mock_list_columns_func.return_value = mocked_column_data["value"]
+    mock_list_columns_func.return_value = mocked_column_data
 
     monkeypatch.setattr("espy.list.SharePointList.list_columns", mock_list_columns_func)
 
-    mock_get = mocked_request({"value": []})
+    mock_get = mocked_request(mocked_empty_batch_data)
 
     monkeypatch.setattr(
         "espy.list.GraphAPIClient.make_request", mock_get
     )
 
     with pytest.raises(ValueError):
-        configured_test_list.get_row("col_one", "456")
+        next(configured_test_list.get_rows("col_one", ["456"]))
 
-def test_list_column_returns_list_of_dict(
+def test_list_columns_returns_list_of_share_point_list_column(
         configured_test_list,
-        mocked_column_data,
+        mocked_column_api_response,
         monkeypatch
 ):
-    mock_get = mocked_request(mocked_column_data)
+    mock_get = mocked_request(mocked_column_api_response)
 
     monkeypatch.setattr(
         "espy.list.GraphAPIClient.make_request", mock_get
@@ -261,7 +258,7 @@ def test_list_column_returns_list_of_dict(
     result = configured_test_list.list_columns()
 
     assert isinstance(result, list)
-    assert isinstance(result[0], dict)
+    assert isinstance(result[0], SharePointListColumn)
 
 def test_add_rows_breaks_with_bad_column_name(
         configured_test_list,
@@ -271,12 +268,13 @@ def test_add_rows_breaks_with_bad_column_name(
     data = [{"col_three": "1234 Market St"}]
 
     mock_list_columns_func = MagicMock()
-    mock_list_columns_func.return_value = mocked_column_data["value"]
+    mock_list_columns_func.return_value = mocked_column_data
 
     monkeypatch.setattr("espy.list.SharePointList.list_columns", mock_list_columns_func)
 
+    # add_rows is a generator, so it must be consumed to run validation
     with pytest.raises(InvalidIncomingRowError):
-        configured_test_list.add_rows(data)
+        list(configured_test_list.add_rows(data))
 
 def test_column_kind_enum_matches_type_mapping():
     assert set(ColumnKind) == set(COLUMN_KIND_PYTHON_TYPES.keys())
@@ -289,14 +287,14 @@ def test_add_rows_breaks_with_bad_data_type(
     data = [{"col_two": "True"}]
 
     mock_list_columns_func = MagicMock()
-    mock_list_columns_func.return_value = mocked_column_data["value"]
+    mock_list_columns_func.return_value = mocked_column_data
 
     monkeypatch.setattr(
-        "espy.list.SharePointList.list_columns", 
+        "espy.list.SharePointList.list_columns",
         mock_list_columns_func)
 
     with pytest.raises(InvalidIncomingRowError):
-        configured_test_list.add_rows(data)
+        list(configured_test_list.add_rows(data))
 
 def test_edit_row_breaks_with_bad_column_name(
         configured_test_list,
