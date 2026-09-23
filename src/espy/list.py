@@ -24,6 +24,7 @@ from espy.models.models import (
     SharePointListRow,
 )
 from espy.urls import build_url
+from functools import cached_property
 
 # TODO: Print warning that a list containing a hyperlink or location column
 # Cannot be updated with the api
@@ -52,7 +53,7 @@ class ListEndpoints(StrEnum):
     GET_ROW_BY_PK = (
         "{graph_url}/sites/"
         "{site_id}/lists/{list_id}/items?"
-        "$expand=fields&$filter=fields/{column_name} eq {value}"
+        "$expand=fields&$filter=fields/{column_name} eq '{value}'"
         )
 
     ADD_ROW = "{graph_url}/sites/{site_id}/lists/{list_id}/items"
@@ -86,10 +87,26 @@ class SharePointList:
         self.client = client
         self.site_id = site_id
         self.list_id = list_id
-        self._column_list: list[dict] | None = None
-        self._display_to_canonical_column: dict | None = None
-        self._canonical_to_display_column: dict | None = None
-        self._column_types: dict | None = None 
+
+    # Column data
+    @cached_property
+    def _columns(self) -> list[dict]:
+        return self.list_columns()
+
+    @cached_property
+    def display_to_canonical(self) -> dict[str, str]:
+        return { column['display_name'] : column['name']
+                            for column in self._columns }
+
+    @cached_property
+    def canonical_to_display(self) -> dict[str, str]:
+        return { column['name'] : column['display_name']
+                for column in self._columns }
+
+    @cached_property
+    def column_types(self) -> dict[str, str]:
+        return { column['display_name'] : column['type']
+                for column in self._columns }
 
     @classmethod
     def setup(cls, site_name: str, list_name: str):
@@ -120,47 +137,9 @@ class SharePointList:
 
         return cls(client, site_id, list_id)
 
-    def _get_column_mapping(self) -> tuple[dict[str, str], dict[str, str]]:
-        """
-        Gets a column mapping for the list mapping the column's user-visible
-        name to the column's real name in the graph API.
+    def _check_incoming_field_name_valid(self, field_name: str) -> None:
 
-        Returns:
-            tuple[dict]: A mapping of the user visible name to the real name in the
-            graph API, and a mapping of the real name to the user visible name.
-        """
-        if self._display_to_canonical_column and self._canonical_to_display_column:
-            return (self._display_to_canonical_column, 
-                    self._canonical_to_display_column
-                    )
-
-        columns = self.list_columns()
-        
-        self._display_to_canonical_column = { column['display_name'] : column['name']
-                                for column in columns }
-
-        self._canonical_to_display_column = { column['name'] : column['display_name']
-                                             for column in columns }
-
-        return (self._display_to_canonical_column, 
-                self._canonical_to_display_column
-                )
-
-    def _get_column_types(self) -> dict[str, str]:
-        if self._column_types:
-            return self._column_types
-
-        columns = self.list_columns()
-
-        self._column_types = { column['display_name'] : column['type']
-                                for column in columns }
-
-        return self._column_types
-
-    def _check_incoming_field_name_valid(self, field_name: str, 
-                               column_mapping: dict[str, str]) -> None:
-    
-        if field_name not in column_mapping:
+        if field_name not in self.display_to_canonical:
             raise InvalidIncomingRowError(f"{field_name} is not in the SharePoint List")
         
 
@@ -179,9 +158,8 @@ class SharePointList:
 
         return validated_incoming_field
 
-    def _check_incoming_field_is_pk(self, field_name: str, 
-                                    field_list: list[dict[str, Any]]) -> bool:
-        for field in field_list:
+    def _check_incoming_field_is_pk(self, field_name: str) -> bool:
+        for field in self._columns:
             if field['display_name'] == field_name:
                 if field.get('indexed') == True:
                     return True
@@ -192,9 +170,6 @@ class SharePointList:
     def _validate_incoming_data(
             self, input_data: dict[str, Any]
             ) -> dict[str, IncomingField]:
-        
-        display_to_canonical, _ = self._get_column_mapping()
-        column_types = self._get_column_types()
 
         validated_fields = {}
 
@@ -204,11 +179,9 @@ class SharePointList:
 
         for field_name, field_value in input_data.items():
             try:
-                self._check_incoming_field_name_valid(
-                    field_name, display_to_canonical
-                    )
+                self._check_incoming_field_name_valid(field_name)
                 validated_field = self._check_incoming_field_type_valid(
-                                    field_name, field_value, column_types
+                                    field_name, field_value, self.column_types
                                 )
                 
                 validated_fields[field_name] = validated_field
@@ -251,12 +224,10 @@ class SharePointList:
         fields_payload = {}
         fields_payload['fields'] = {}
 
-        display_to_canonical, _ = self._get_column_mapping()
-
         validated_data = self._validate_incoming_data(data)
 
         for display_name, column_data in validated_data.items():
-            canonical_name = display_to_canonical[display_name]
+            canonical_name = self.display_to_canonical[display_name]
             fields_payload['fields'][canonical_name] = column_data.field_value
 
         return fields_payload
@@ -302,11 +273,11 @@ class SharePointList:
         Returns (dict): A dictionary with null fields added back
         """
 
-        _, canonical_to_display = self._get_column_mapping()
         # Includes fields that are null, for standardized output
         formatted_row = {}
 
-        for canonical_column, display_column in canonical_to_display.items():
+        for canonical_column, display_column in \
+            self.canonical_to_display.items():
             formatted_row[display_column] = row.get(canonical_column)
 
         return formatted_row
@@ -318,10 +289,6 @@ class SharePointList:
         Returns:
             list[SharePointListColumn]: A list of SharePointColumn objects.
         """
-
-        if self._column_list:
-            return self._column_list
-
         columns_url = build_url(
             ListEndpoints.LIST_COLUMNS,
             graph_url=GRAPH_URL,
@@ -349,7 +316,6 @@ class SharePointList:
                     SharePointListColumn.model_validate(column).model_dump()
                 )
 
-        self._column_list = column_list
         return column_list
     
     def _get_row_by_id(self, row_id: int) -> dict[str, Any]:
@@ -391,8 +357,7 @@ class SharePointList:
             dict: A dictionary with row data
         """
 
-        display_to_canonical_column, _ = self._get_column_mapping()
-        canonical_field_name = display_to_canonical_column[key_col]
+        canonical_field_name = self.display_to_canonical[key_col]
 
         row_url = build_url(
             ListEndpoints.GET_ROW_BY_PK,
@@ -499,12 +464,10 @@ class SharePointList:
             dict[str, Any]: A json response object from the API.
         """
         # First, we need to check if the incoming column exists:
-        display_to_canonical, _ = self._get_column_mapping()
-        self._check_incoming_field_name_valid(key_col, display_to_canonical)
+        self._check_incoming_field_name_valid(key_col)
 
         # Then, we need to check if the index column is valid
-        list_columns = self.list_columns()
-        self._check_incoming_field_is_pk(key_col, list_columns)
+        self._check_incoming_field_is_pk(key_col)
 
         # Then, we need to validate that the incoming data is valid
         self._validate_incoming_data(data)
@@ -539,12 +502,10 @@ class SharePointList:
             dict[str, Any]: A json response object from the API.
         """
         # First, we need to check if the incoming column exists:
-        display_to_canonical, _ = self._get_column_mapping()
-        self._check_incoming_field_name_valid(key_col, display_to_canonical)
+        self._check_incoming_field_name_valid(key_col)
 
         # Then, we need to check if the index column is valid
-        list_columns = self.list_columns()
-        self._check_incoming_field_is_pk(key_col, list_columns)
+        self._check_incoming_field_is_pk(key_col)
 
         # Then, we need to get the id of the row to edit
         returned_row = self.get_row(key_col, value)
@@ -567,13 +528,11 @@ class SharePointList:
     def upsert_row(
         self, key_col: str, data: dict[str, Any]
     ) -> dict[str, Any]:
-                # First, we need to check if the incoming column exists:
-        display_to_canonical, _ = self._get_column_mapping()
-        self._check_incoming_field_name_valid(key_col, display_to_canonical)
+        # First, we need to check if the incoming column exists:
+        self._check_incoming_field_name_valid(key_col)
 
         # Then, we need to check if the index column is valid
-        list_columns = self.list_columns()
-        self._check_incoming_field_is_pk(key_col, list_columns)
+        self._check_incoming_field_is_pk(key_col)
 
         return {}
 
