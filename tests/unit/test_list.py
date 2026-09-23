@@ -8,8 +8,7 @@ from espy.list import SharePointList
 from espy.models.models import (
     COLUMN_KIND_PYTHON_TYPES,
     ColumnKind,
-    GraphAPIResponse,
-    InvalidIncomingRowError,
+    GraphAPIResponse
 )
 
 
@@ -77,6 +76,26 @@ def mocked_row_data() -> dict:
     }
 
     return mock_row_data
+
+@pytest.fixture
+def mocked_batch_data() -> dict:
+    mock_batch_data = {
+        "responses": [{
+            "id": "0",
+            "status": 200,
+            "headers": {"header": "test"},
+            "body": {"value": [
+                {"fields":
+                 {
+                    "Title": "Test",
+                    "col_one": "123456",
+                    "col_two": "1234 Market Street"
+                 }}
+            ]}
+    }]
+    }
+
+    return mock_batch_data
 
 @pytest.fixture
 def mocked_column_data() -> dict:
@@ -275,7 +294,7 @@ def test_add_row_breaks_with_bad_column_name(
 
     monkeypatch.setattr("espy.list.SharePointList.list_columns", mock_list_columns_func)
 
-    with pytest.raises(InvalidIncomingRowError):
+    with pytest.raises(KeyError):
         configured_test_list.add_row(data)
 
 def test_column_kind_enum_matches_type_mapping():
@@ -295,7 +314,7 @@ def test_add_row_breaks_with_bad_data_type(
         "espy.list.SharePointList.list_columns", 
         mock_list_columns_func)
 
-    with pytest.raises(InvalidIncomingRowError):
+    with pytest.raises(KeyError):
         configured_test_list.add_row(data)
 
 def test_edit_row_breaks_with_bad_column_name(
@@ -310,7 +329,7 @@ def test_edit_row_breaks_with_bad_column_name(
 
     monkeypatch.setattr("espy.list.SharePointList.list_columns", mock_list_columns_func)
 
-    with pytest.raises(InvalidIncomingRowError):
+    with pytest.raises(KeyError):
         configured_test_list.edit_row("col_four", "123456", data)
 
 def test_edit_row_breaks_with_bad_data_type(
@@ -327,7 +346,7 @@ def test_edit_row_breaks_with_bad_data_type(
         "espy.list.SharePointList.list_columns", 
         mock_list_columns_func)
 
-    with pytest.raises(InvalidIncomingRowError):
+    with pytest.raises(KeyError):
         configured_test_list.edit_row("col_one", "123456", data)
 
 def test_edit_row_breaks_with_non_index_col(
@@ -344,7 +363,7 @@ def test_edit_row_breaks_with_non_index_col(
         "espy.list.SharePointList.list_columns", 
         mock_list_columns_func)
 
-    with pytest.raises(InvalidIncomingRowError):
+    with pytest.raises(KeyError):
         configured_test_list.edit_row("col_two", "123456", data)
 
 def test_delete_row_breaks_with_bad_column_name(
@@ -358,7 +377,7 @@ def test_delete_row_breaks_with_bad_column_name(
 
     monkeypatch.setattr("espy.list.SharePointList.list_columns", mock_list_columns_func)
 
-    with pytest.raises(InvalidIncomingRowError):
+    with pytest.raises(KeyError):
         configured_test_list.delete_row("col_four", "123456")
 
 def test_delete_row_breaks_with_non_index_col(
@@ -373,7 +392,7 @@ def test_delete_row_breaks_with_non_index_col(
         "espy.list.SharePointList.list_columns", 
         mock_list_columns_func)
 
-    with pytest.raises(InvalidIncomingRowError):
+    with pytest.raises(KeyError):
         configured_test_list.delete_row("col_two", "123456")
 
 def test_upsert_row_returns_error_when_key_col_not_present(
@@ -388,5 +407,5 @@ def test_upsert_row_returns_error_when_key_col_not_present(
 
     monkeypatch.setattr("espy.list.SharePointList.list_columns", mock_list_columns_func)
 
-    with pytest.raises(InvalidIncomingRowError):
+    with pytest.raises(KeyError):
         configured_test_list.upsert_row("col_four", data)

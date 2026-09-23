@@ -1,6 +1,7 @@
 # list.py
 from collections.abc import Iterator
 from enum import StrEnum
+from itertools import batched
 from typing import Any
 
 from httpx import Response
@@ -13,13 +14,13 @@ from espy.constants import (
     GRAPH_URL,
     HOST_NAME,
     SHARE_POINT_LIST_EXCLUDED_COLUMNS,
+    BATCH_SIZE
 )
 from espy.models.models import (
     ColumnKind,
     GraphAPIResponse,
     HTTPMethod,
     IncomingField,
-    InvalidIncomingRowError,
     SharePointListColumn,
     SharePointListRow,
 )
@@ -140,7 +141,7 @@ class SharePointList:
     def _check_incoming_field_name_valid(self, field_name: str) -> None:
 
         if field_name not in self.display_to_canonical:
-            raise InvalidIncomingRowError(f"{field_name} is not in the SharePoint List")
+            raise KeyError(f"{field_name} is not in the SharePoint List")
         
 
     def _check_incoming_field_type_valid(self, field_name: str, 
@@ -164,7 +165,7 @@ class SharePointList:
                 if field.get('indexed') == True:
                     return True
 
-        raise InvalidIncomingRowError(f"The specified field does not exist: {field_name}.")
+        raise KeyError(f"The specified field does not exist: {field_name}.")
             
 
     def _validate_incoming_data(
@@ -203,7 +204,7 @@ class SharePointList:
                 compiled_errors.append(f"""The following incoming columns
                 have the incorrect data type: {','.join(invalid_data_types)}""")
 
-            raise InvalidIncomingRowError(f"{'\n'.join(compiled_errors)}")
+            raise KeyError(f"{'\n'.join(compiled_errors)}")
 
         return validated_fields
 
@@ -528,13 +529,16 @@ class SharePointList:
     def upsert_row(
         self, key_col: str, data: dict[str, Any]
     ) -> dict[str, Any]:
-        # First, we need to check if the incoming column exists:
-        self._check_incoming_field_name_valid(key_col)
+        
+        raise NotImplementedError
+        # # First, we need to check if the incoming column exists:
+        # self._check_incoming_field_name_valid(key_col)
 
-        # Then, we need to check if the index column is valid
-        self._check_incoming_field_is_pk(key_col)
+        # # Then, we need to check if the index column is valid
+        # self._check_incoming_field_is_pk(key_col)
 
-        return {}
+        # return {}
+
 
 
 if __name__ == "__main__":

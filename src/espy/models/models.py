@@ -4,7 +4,7 @@ from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
-from typing import Any, Protocol
+from typing import Any, Dict, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pydantic.alias_generators import to_camel
@@ -77,19 +77,6 @@ class UnsupportedMethodError(BaseException):
         BaseException (BaseException): Inherited from the Base Exception class.
     """
 
-class InvalidIncomingRowError(BaseException):
-    """Invalid Incoming Row Error. Raised when an incoming
-    row to the API (used in either an add, edit, or upsert method)
-    is incorrectly formatted."""
-
-class UnsupportedColumnForWriteError(BaseException):
-    """
-    Raised when a column type does not support write operations.
-
-    Args:
-    BaseException (BaseException): Inherited from the Base Exception class.
-    """
-
 ## API Input Classes
 
 ### Validation for Data Coming from SharePoint API
@@ -120,6 +107,59 @@ class TabularStorage(Protocol):
 
 
 ## API Response Classes
+### Validation for data coming from the user
+class IncomingField(BaseModel):
+    """Checks whether or not the type for an incoming field is a valid
+    type, given the type on the Microsoft List"""
+    field_name: str
+    field_value: Any
+    list_column_kind: ColumnKind
+
+    @model_validator(mode='after')
+    def check_incoming_data_type_is_valid(self):
+        valid_data_types = COLUMN_KIND_PYTHON_TYPES[self.list_column_kind]
+
+        if UnsupportedForWrite in valid_data_types:
+            raise ValueError(f"""Field name {self.field_name} has column type
+            that does not support write operations with the API: {
+                self.list_column_kind.value}
+            .""")
+
+        # Null values should not be flaggedc as a bad data type
+        if (not isinstance(self.field_value, valid_data_types)\
+                and self.field_value is not None):
+            raise ValueError(f"""Field name {self.field_name} has the wrong
+                    data type. Data type must be one of 
+                    {",".join(t.__name__ for t in valid_data_types)}""")
+
+        return self
+    
+class IncomingRequest(BaseModel):
+    """Formats an incoming request from the user. Passed to IncomingBatch
+    to collect batches of requests together to speed up bulk calls
+    to the API."""
+    id: str
+    method: str
+    url: str
+    headers: Dict[str, str] = Field(
+        default_factory=lambda: {"Content-Type": "application/json"}
+    )
+    body: SharePointListRow | None = None
+
+class IncomingBatch(BaseModel):
+    """Formats an incoming batch from the user. Used for batch operations
+    against the API. Batches can be of size no more than 20."""
+
+    requests: list[IncomingRequest]
+
+    @model_validator(mode='after')
+    def check_list_length_ok(self):
+        if len(self.requests) > 20:
+            raise ValueError(f"""Only 20 requests can be made to the API at a time.""")
+
+        return self
+
+### Validation for data returned by the API
 class GraphAPIResponse[T](BaseModel):
     """A model representing the data envelope given back by the Microsoft
     Graph API. Data is wrapped in an envelope containing pagination data
@@ -138,6 +178,25 @@ class GraphAPIResponse[T](BaseModel):
     # it doesn't, e.g., in the case of getting all rows)
     id: str | int | None = Field(None)
 
+class ErrorContents(BaseModel):
+    code: str
+    message: str
+
+class ErrorResult(BaseModel):
+    error: ErrorContents
+
+#### Batch Response data:
+class BatchResponseBody(BaseModel):
+    value: list[SharePointListRow]
+
+class BatchResponse(BaseModel):
+    id: str
+    status: int
+    headers: dict
+    body: BatchResponseBody | ErrorResult | SharePointListRow
+
+class Batch(BaseModel):
+    responses: list[BatchResponse]
 
 ### Share Point List Data
 class SharePointListRow(BaseModel):
@@ -147,7 +206,6 @@ class SharePointListRow(BaseModel):
         BaseModel (BaseModel): Inherits from Pydantic's BaseModel class.
     """
     fields: dict = Field(default_factory=dict)
-
 
 class SharePointListColumn(BaseModel):
     """A model representing a column of a SharePoint list. Contains
@@ -191,30 +249,3 @@ class SharePointListColumn(BaseModel):
         # and hyperlink
         data["type"] = ColumnKind.UNTYPED
         return data
-
-### Validation for data coming from the user
-class IncomingField(BaseModel):
-    """Checks whether or not the type for an incoming field is a valid
-    type, given the type on the Microsoft List"""
-    field_name: str
-    field_value: Any
-    list_column_kind: ColumnKind
-
-    @model_validator(mode='after')
-    def check_incoming_data_type_is_valid(self):
-        valid_data_types = COLUMN_KIND_PYTHON_TYPES[self.list_column_kind]
-
-        if UnsupportedForWrite in valid_data_types:
-            raise ValueError(f"""Field name {self.field_name} has column type
-            that does not support write operations with the API: {
-                self.list_column_kind.value}
-            .""")
-
-        # Null values should not be flaggedc as a bad data type
-        if (not isinstance(self.field_value, valid_data_types)\
-                and self.field_value is not None):
-            raise ValueError(f"""Field name {self.field_name} has the wrong
-                    data type. Data type must be one of 
-                    {",".join(t.__name__ for t in valid_data_types)}""")
-
-        return self
