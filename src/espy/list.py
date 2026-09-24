@@ -2,11 +2,10 @@
 from collections.abc import Iterator
 from enum import StrEnum
 from itertools import batched
-from typing import Any
+from typing import Any, Dict
 
 from httpx import Response
 from pydantic import ValidationError
-
 from espy.client import GraphAPIClient
 
 # TODO: Make host name a variable, not a constant. Edit in optional config file?
@@ -24,6 +23,7 @@ from espy.models.models import (
     SharePointListColumn,
     SharePointListRow,
 )
+from espy.operations import GetRow, AddRow, EditRow, DeleteRow
 from espy.urls import build_url
 from functools import cached_property
 
@@ -52,14 +52,13 @@ class ListEndpoints(StrEnum):
     )
 
     GET_ROW_BY_PK = (
-        "{graph_url}/sites/"
         "{site_id}/lists/{list_id}/items?"
         "$expand=fields&$filter=fields/{column_name} eq '{value}'"
         )
 
-    ADD_ROW = "{graph_url}/sites/{site_id}/lists/{list_id}/items"
+    ADD_ROW = "/sites/{site_id}/lists/{list_id}/items"
 
-    EDIT_ROW = "{graph_url}/sites/{site_id}/lists/{list_id}/items/{row_id}"
+    EDIT_OR_DELETE_ROW = "/sites/{site_id}/lists/{list_id}/items/{row_id}"
 
 
 class SharePointList:
@@ -282,8 +281,141 @@ class SharePointList:
             formatted_row[display_column] = row.get(canonical_column)
 
         return formatted_row
+    
+    def _get_row_by_id(self, row_id: int) -> dict[str, Any]:
+        """
+        Get a single row from a list by list id.
 
-        
+        Args:
+            row_id (str): The id of the row to return
+
+        Returns:
+            dict: A dictionary with row data
+        """
+        row_url = build_url(
+            ListEndpoints.GET_ROW_BY_ID,
+            graph_url=GRAPH_URL,
+            site_id=self.site_id,
+            list_id=self.list_id,
+            row_id=row_id,
+            kwargs={"$select": "id"}
+        )
+
+        raw_response = self.client.make_request(HTTPMethod.GET, row_url).json()
+        validated_response = GraphAPIResponse[SharePointListRow].model_validate(raw_response)
+        validated_row = validated_response.fields
+
+        formatted_row = self._format_outgoing_row(validated_row)
+
+        return formatted_row
+
+    def _build_get(self, key_col: str, value: Any) \
+        -> tuple[HTTPMethod, str, dict|None]:
+        # First, we need to check if the incoming column exists:
+        self._check_incoming_field_name_valid(key_col)
+
+        # Then, we need to check if the index column is valid
+        self._check_incoming_field_is_pk(key_col)
+
+        canonical_field_name = self.display_to_canonical[key_col]
+
+        method = HTTPMethod.GET
+
+        url = build_url(
+            ListEndpoints.GET_ROW_BY_PK,
+            graph_url=GRAPH_URL,
+            site_id=self.site_id,
+            list_id=self.list_id,
+            column_name=canonical_field_name,
+            value=value
+        )
+
+        body = None
+
+        return (method, url, body)
+
+    def _interpret_get(self, raw_response: Response):
+        validated_response = GraphAPIResponse.model_validate(raw_response)
+
+        if validated_response.value:
+            validated_row = validated_response.value[0]['fields']
+            formatted_row = self._format_outgoing_row(validated_row)
+
+            # Add id back, since format outgoing row removes it
+            # TODO: Is there a cleaner way around this?
+            formatted_row['id'] = validated_row['id']
+            return formatted_row
+
+        raise ValueError("Row not found.")
+
+    def _build_add(self, data: Dict) -> tuple[HTTPMethod, str, dict|None]:
+        #We need to validate that the incoming data is valid
+        self._validate_incoming_data(data)
+
+        method = HTTPMethod.POST
+
+        url = build_url(
+            ListEndpoints.ADD_ROW,
+            graph_url=GRAPH_URL,
+            list_id=self.list_id,
+            site_id=self.site_id,
+        )
+
+        body = self._format_payload_for_api(data)
+
+        return (method, url, body)
+
+    def _build_edit(self, row_id: int, data: Dict)\
+          -> tuple[HTTPMethod, str, dict|None]:
+
+        # We need to validate that the incoming data is valid
+        self._validate_incoming_data(data)
+
+        method = HTTPMethod.PATCH
+
+        url = build_url(
+            ListEndpoints.EDIT_OR_DELETE_ROW,
+            graph_url=GRAPH_URL,
+            list_id=self.list_id,
+            site_id=self.site_id,
+            row_id=row_id
+        )
+
+        body = self._format_payload_for_api(data)
+
+        return (method, url, body)
+
+    def _build_delete(self, row_id: int) -> tuple[HTTPMethod, str, dict|None]:
+
+        method = HTTPMethod.DELETE
+
+        url = build_url(
+            ListEndpoints.EDIT_OR_DELETE_ROW,
+            graph_url=GRAPH_URL,
+            list_id=self.list_id,
+            site_id=self.site_id,
+            row_id=row_id
+        )
+
+        body = None
+
+        return (method, url, body)
+
+    def _dispatch_batch_request(self, request: Any)\
+          -> tuple[HTTPMethod, str, dict|None]:
+
+        match request:
+            case GetRow(key_col, value):
+                return self._build_get(key_col, value)
+            case AddRow(data):
+                return self._build_add(data)
+            case EditRow(row_id, data):
+                return self._build_edit(row_id, data)
+            case DeleteRow(row_id):
+                return self._build_delete(row_id)
+            case _:
+                raise ValueError(f"Unknown request type")
+
     def list_columns(self) -> list[dict]:
         """List the columns in a SharePoint list.
 
@@ -318,71 +450,6 @@ class SharePointList:
                 )
 
         return column_list
-    
-    def _get_row_by_id(self, row_id: int) -> dict[str, Any]:
-        """
-        Get a single row from a list by list id.
-
-        Args:
-            row_id (str): The id of the row to return
-
-        Returns:
-            dict: A dictionary with row data
-        """
-        row_url = build_url(
-            ListEndpoints.GET_ROW_BY_ID,
-            graph_url=GRAPH_URL,
-            site_id=self.site_id,
-            list_id=self.list_id,
-            row_id=row_id,
-            kwargs={"$select": "id"}
-        )
-
-        raw_response = self.client.make_request(HTTPMethod.GET, row_url).json()
-        validated_response = GraphAPIResponse[SharePointListRow].model_validate(raw_response)
-        validated_row = validated_response.fields
-
-        formatted_row = self._format_outgoing_row(validated_row)
-
-        return formatted_row
-
-    def get_row(self, key_col: str, value: Any) -> dict[str, Any]:
-        """
-        Get a single row from a list by primary key.
-
-        Args:
-            key_col (str): The name of the primary key column to search on
-            value (Any): The value of the priamry key column
-
-        Returns:
-            dict: A dictionary with row data
-        """
-
-        canonical_field_name = self.display_to_canonical[key_col]
-
-        row_url = build_url(
-            ListEndpoints.GET_ROW_BY_PK,
-            graph_url=GRAPH_URL,
-            site_id=self.site_id,
-            list_id=self.list_id,
-            column_name=canonical_field_name,
-            value=value,
-            kwargs={"$select": "id"}
-        )
-
-        raw_response = self.client.make_request(HTTPMethod.GET, row_url).json()
-        validated_response = GraphAPIResponse.model_validate(raw_response)
-
-        if validated_response.value:
-            validated_row = validated_response.value[0]['fields']
-            formatted_row = self._format_outgoing_row(validated_row)
-
-            # Add id back, since format outgoing row removes it
-            # TODO: Is there a cleaner way around this?
-            formatted_row['id'] = validated_row['id']
-            return formatted_row
-
-        raise ValueError("Row not found.")
 
     def list_rows(self) -> Iterator[dict]:
         """List all rows in a SharePoint List.
@@ -414,11 +481,32 @@ class SharePointList:
 
                 formatted_row = self._format_outgoing_row(validated_row)
 
-                
                 yield formatted_row
-        
+
+    def get_row(self, key_col: str, value: Any) -> dict[str, Any]:
+        """
+        Get a single row from a list by primary key.
+
+        Args:
+            key_col (str): The name of the primary key column to search on
+            value (Any): The value of the priamry key column
+
+        Returns:
+            dict: A dictionary with row data
+        """
+
+        method, url, _ = self._build_get(key_col, value)
+
+        single_request_url = f"{GRAPH_URL}{url}"
+
+        raw_response = self.client.make_request(
+            method, single_request_url).json()
+
+        interpreted_response = self._interpret_get(raw_response)
+
+        return interpreted_response
+     
     def add_row(self, data: dict[str, Any]) -> Response:
-        # TODO: Add functionality to make this add rows, adding one or more rows.
         """Add a row to a SharePoint list.
 
         Note: This method does not currently work for Lists with
@@ -432,17 +520,11 @@ class SharePointList:
         Returns:
             dict[str, Any]: A json response object from the API.
         """
-        add_row_url = build_url(
-            ListEndpoints.ADD_ROW,
-            graph_url=GRAPH_URL,
-            list_id=self.list_id,
-            site_id=self.site_id,
-        )
 
-        fields_payload = self._format_payload_for_api(data)
+        method, url, body = self._build_add(data)
 
         response = self.client.make_request(
-            HTTPMethod.POST, add_row_url, json=fields_payload
+            method, url, json=body
         )
 
         return response
@@ -478,7 +560,7 @@ class SharePointList:
         row_id = returned_row['id']
 
         edit_row_url = build_url(
-            ListEndpoints.EDIT_ROW,
+            ListEndpoints.EDIT_OR_DELETE_ROW,
             graph_url=GRAPH_URL,
             list_id=self.list_id,
             site_id=self.site_id,
@@ -513,7 +595,7 @@ class SharePointList:
         row_id = returned_row['id']
     
         delete_row_url = build_url(
-            ListEndpoints.EDIT_ROW,
+            ListEndpoints.EDIT_OR_DELETE_ROW,
             graph_url=GRAPH_URL,
             list_id=self.list_id,
             site_id=self.site_id,
@@ -539,13 +621,3 @@ class SharePointList:
 
         # return {}
 
-
-
-if __name__ == "__main__":
-    site_name = "311-servicing-department-integrations"
-    list_name = "PPR 311 Requests"
-    sp_list = SharePointList.setup(site_name=site_name, list_name=list_name)
-
-    for row in sp_list.list_rows():
-        if row.get('Comments'):
-            print(row)
