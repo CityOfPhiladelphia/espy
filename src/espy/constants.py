@@ -1,5 +1,5 @@
 # constants.py
-BATCH_SIZE = 20
+MAX_BATCH_SIZE = 20
 
 SCOPE = "https://graph.microsoft.com/.default"
 GRAPH_URL = "https://graph.microsoft.com/v1.0"

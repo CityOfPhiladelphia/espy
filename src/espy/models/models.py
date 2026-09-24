@@ -1,10 +1,9 @@
 # Models.py 
 
-from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
-from typing import Any, Dict, Protocol
+from typing import Any, Dict
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pydantic.alias_generators import to_camel
@@ -77,35 +76,6 @@ class UnsupportedMethodError(BaseException):
         BaseException (BaseException): Inherited from the Base Exception class.
     """
 
-## API Input Classes
-
-### Validation for Data Coming from SharePoint API
-
-class TabularStorage(Protocol):
-    """Protocol defining a contract for what methods any class representing
-    a Tabular Storage object (e.g., the SharePointList class) must fulfill. 
-
-    Args:
-        Protocol (Protocol): Inherits from the Protocol class in the typing
-        module.
-    """
-    def get_row(self, row_id: str|int) -> dict[str, Any]: ...
-
-    def list_rows(self) -> list[dict[str, Any]] | Iterator : ...
-
-    def list_columns(self) -> list: ...
-        
-    def add_rows(self, data: dict[str, Any]) -> dict[str, Any]: ...
-
-    def edit_row(self, row_id: str|int, data: dict[str, Any]) -> dict[str, Any]: ...
-
-    def delete_row(self, row_id: str|int) -> bool: ...
-
-    def upsert_row(
-        self, key_col: str, data: dict[str, Any]
-    ) -> dict[str, Any]: ...
-
-
 ## API Response Classes
 ### Validation for data coming from the user
 class IncomingField(BaseModel):
@@ -151,14 +121,7 @@ class IncomingBatch(BaseModel):
     against the API. Batches can be of size no more than 20."""
 
     requests: list[IncomingRequest]
-
-    @model_validator(mode='after')
-    def check_list_length_ok(self):
-        if len(self.requests) > 20:
-            raise ValueError(f"""Only 20 requests can be made to the API at a time.""")
-
-        return self
-
+    
 ### Validation for data returned by the API
 class GraphAPIResponse[T](BaseModel):
     """A model representing the data envelope given back by the Microsoft
@@ -193,7 +156,7 @@ class BatchResponse(BaseModel):
     id: str
     status: int
     headers: dict
-    body: BatchResponseBody | ErrorResult | SharePointListRow
+    body: SharePointListRow | BatchResponseBody | ErrorResult | None = None
 
 class Batch(BaseModel):
     responses: list[BatchResponse]

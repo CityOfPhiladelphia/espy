@@ -185,28 +185,6 @@ def test_list_page_yields_dict(
     with pytest.raises(StopIteration):
         next(result)
 
-
-def test_get_row_by_id_yields_dict(
-    configured_test_list,
-    mocked_column_data,
-    mocked_row_data,
-    monkeypatch,
-):
-    mock_list_columns_func = MagicMock()
-    mock_list_columns_func.return_value = mocked_column_data["value"]
-
-    monkeypatch.setattr("espy.list.SharePointList.list_columns", mock_list_columns_func)
-
-    mock_get = mocked_request(mocked_row_data)
-
-    monkeypatch.setattr(
-        "espy.list.GraphAPIClient.make_request", mock_get
-    )
-
-    result = configured_test_list._get_row_by_id("1")
-
-    assert isinstance(result, dict)
-
 def test_get_row_yields_dict(
     configured_test_list,
     mocked_column_data,

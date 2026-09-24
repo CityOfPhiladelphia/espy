@@ -1,7 +1,6 @@
 # list.py
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from enum import StrEnum
-from itertools import batched
 from typing import Any, Dict
 
 from httpx import Response
@@ -13,17 +12,20 @@ from espy.constants import (
     GRAPH_URL,
     HOST_NAME,
     SHARE_POINT_LIST_EXCLUDED_COLUMNS,
-    BATCH_SIZE
+    MAX_BATCH_SIZE
 )
 from espy.models.models import (
     ColumnKind,
     GraphAPIResponse,
     HTTPMethod,
     IncomingField,
+    IncomingRequest,
+    IncomingBatch,
+    Batch,
     SharePointListColumn,
     SharePointListRow,
 )
-from espy.operations import GetRow, AddRow, EditRow, DeleteRow
+from espy.operations import GetRow, AddRow, EditRow, DeleteRow, BatchOperation
 from espy.urls import build_url
 from functools import cached_property
 
@@ -51,14 +53,18 @@ class ListEndpoints(StrEnum):
         "{site_id}/lists/{list_id}/items/{row_id}"
     )
 
+    # Exclude graph url from these as they may be needed for batch requests
+    # which take a different base URL
     GET_ROW_BY_PK = (
-        "/sites/{site_id}/lists/{list_id}/items?"
+        "sites/{site_id}/lists/{list_id}/items?"
         "$expand=fields&$filter=fields/{column_name} eq '{value}'"
         )
 
-    ADD_ROW = "/sites/{site_id}/lists/{list_id}/items"
+    ADD_ROW = "sites/{site_id}/lists/{list_id}/items"
 
-    EDIT_OR_DELETE_ROW = "/sites/{site_id}/lists/{list_id}/items/{row_id}"
+    EDIT_OR_DELETE_ROW = "sites/{site_id}/lists/{list_id}/items/{row_id}"
+
+    SUBMIT_BATCH = "https://graph.microsoft.com/v1.0/$batch"
 
 
 class SharePointList:
@@ -165,7 +171,6 @@ class SharePointList:
                     return True
 
         raise KeyError(f"The specified field does not exist: {field_name}.")
-            
 
     def _validate_incoming_data(
             self, input_data: dict[str, Any]
@@ -281,33 +286,6 @@ class SharePointList:
             formatted_row[display_column] = row.get(canonical_column)
 
         return formatted_row
-    
-    def _get_row_by_id(self, row_id: int) -> dict[str, Any]:
-        """
-        Get a single row from a list by list id.
-
-        Args:
-            row_id (str): The id of the row to return
-
-        Returns:
-            dict: A dictionary with row data
-        """
-        row_url = build_url(
-            ListEndpoints.GET_ROW_BY_ID,
-            graph_url=GRAPH_URL,
-            site_id=self.site_id,
-            list_id=self.list_id,
-            row_id=row_id,
-            kwargs={"$select": "id"}
-        )
-
-        raw_response = self.client.make_request(HTTPMethod.GET, row_url).json()
-        validated_response = GraphAPIResponse[SharePointListRow].model_validate(raw_response)
-        validated_row = validated_response.fields
-
-        formatted_row = self._format_outgoing_row(validated_row)
-
-        return formatted_row
 
     def _build_get(self, key_col: str, value: Any) \
         -> tuple[HTTPMethod, str, dict|None]:
@@ -323,7 +301,6 @@ class SharePointList:
 
         url = build_url(
             ListEndpoints.GET_ROW_BY_PK,
-            graph_url=GRAPH_URL,
             site_id=self.site_id,
             list_id=self.list_id,
             column_name=canonical_field_name,
@@ -356,7 +333,6 @@ class SharePointList:
 
         url = build_url(
             ListEndpoints.ADD_ROW,
-            graph_url=GRAPH_URL,
             list_id=self.list_id,
             site_id=self.site_id,
         )
@@ -375,7 +351,6 @@ class SharePointList:
 
         url = build_url(
             ListEndpoints.EDIT_OR_DELETE_ROW,
-            graph_url=GRAPH_URL,
             list_id=self.list_id,
             site_id=self.site_id,
             row_id=row_id
@@ -391,7 +366,6 @@ class SharePointList:
 
         url = build_url(
             ListEndpoints.EDIT_OR_DELETE_ROW,
-            graph_url=GRAPH_URL,
             list_id=self.list_id,
             site_id=self.site_id,
             row_id=row_id
@@ -401,10 +375,10 @@ class SharePointList:
 
         return (method, url, body)
 
-    def _dispatch_batch_request(self, request: Any)\
+    def _dispatch_batch_operation(self, operation: Any)\
           -> tuple[HTTPMethod, str, dict|None]:
 
-        match request:
+        match operation:
             case GetRow(key_col, value):
                 return self._build_get(key_col, value)
             case AddRow(data):
@@ -415,6 +389,28 @@ class SharePointList:
                 return self._build_delete(row_id)
             case _:
                 raise ValueError(f"Unknown request type")
+    
+    def _build_batch(self, operations: Sequence[BatchOperation]) -> IncomingBatch:
+
+        if (batch_len := len(operations)) > MAX_BATCH_SIZE:
+            raise ValueError(f"""Batch size of {batch_len} longer 
+            than max size {MAX_BATCH_SIZE}.""")
+
+        incoming_batch = []
+        for idx, operation in enumerate(operations):
+
+            method, url, body = self._dispatch_batch_operation(operation)
+            
+            incoming_batch.append(
+                IncomingRequest(
+                    id=str(idx),
+                    method=method,
+                    url=url,
+                    body=body #pyright: ignore
+                    )
+            )
+
+        return IncomingBatch(requests=incoming_batch)
 
     def list_columns(self) -> list[dict]:
         """List the columns in a SharePoint list.
@@ -497,7 +493,7 @@ class SharePointList:
 
         method, url, _ = self._build_get(key_col, value)
 
-        single_request_url = f"{GRAPH_URL}{url}"
+        single_request_url = f"{GRAPH_URL}/{url}"
 
         raw_response = self.client.make_request(
             method, single_request_url).json()
@@ -523,7 +519,9 @@ class SharePointList:
 
         method, url, body = self._build_add(data)
 
-        single_request_url = f"{GRAPH_URL}{url}"
+        # For a single request, we need to add the GRAPH URL on
+        # the URL returned without it is suitable for batch requests
+        single_request_url = f"{GRAPH_URL}/{url}"
 
         response = self.client.make_request(
             method, single_request_url, json=body
@@ -554,7 +552,7 @@ class SharePointList:
 
         method, url, body = self._build_edit(row_id, data)
 
-        single_request_url = f"{GRAPH_URL}{url}"
+        single_request_url = f"{GRAPH_URL}/{url}"
 
         response = self.client.make_request(
             method, single_request_url, json=body
@@ -576,7 +574,7 @@ class SharePointList:
 
         method, url, _ = self._build_delete(row_id)
 
-        single_request_url = f"{GRAPH_URL}{url}"
+        single_request_url = f"{GRAPH_URL}/{url}"
 
         response = self.client.make_request(method, single_request_url)
 
@@ -594,4 +592,22 @@ class SharePointList:
         # self._check_incoming_field_is_pk(key_col)
 
         # return {}
+    
+    def batch(self, operations: Sequence[BatchOperation]) -> Batch:
+        """
+        Given a list of user supplied BatchOperations, collate
+        and process the operations as a batch.
+        """
+
+        incoming_batch = self._build_batch(operations)
+        
+        response = self.client.make_request(
+            HTTPMethod.POST,
+            ListEndpoints.SUBMIT_BATCH,
+            json=incoming_batch.model_dump()
+        )
+
+        return Batch.model_validate(response.json())
+
+
 
