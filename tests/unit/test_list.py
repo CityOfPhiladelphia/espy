@@ -334,17 +334,17 @@ def test_edit_row_breaks_with_bad_column_name(
 
 def test_edit_row_breaks_with_bad_data_type(
         configured_test_list,
-        mocked_column_data,
+        mocked_row_data,
         monkeypatch
 ):
     data = {"col_two": "fdhfdfh"}
 
-    mock_list_columns_func = MagicMock()
-    mock_list_columns_func.return_value = mocked_column_data["value"]
+    mock_list_get_row_func = MagicMock()
+    mock_list_get_row_func.return_value = mocked_row_data
 
     monkeypatch.setattr(
-        "espy.list.SharePointList.list_columns", 
-        mock_list_columns_func)
+        "espy.list.SharePointList.get_row", 
+        mock_list_get_row_func)
 
     with pytest.raises(KeyError):
         configured_test_list.edit_row("col_one", "123456", data)

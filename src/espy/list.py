@@ -52,7 +52,7 @@ class ListEndpoints(StrEnum):
     )
 
     GET_ROW_BY_PK = (
-        "{site_id}/lists/{list_id}/items?"
+        "/sites/{site_id}/lists/{list_id}/items?"
         "$expand=fields&$filter=fields/{column_name} eq '{value}'"
         )
 
@@ -523,8 +523,10 @@ class SharePointList:
 
         method, url, body = self._build_add(data)
 
+        single_request_url = f"{GRAPH_URL}{url}"
+
         response = self.client.make_request(
-            method, url, json=body
+            method, single_request_url, json=body
         )
 
         return response
@@ -546,31 +548,16 @@ class SharePointList:
         Returns:
             dict[str, Any]: A json response object from the API.
         """
-        # First, we need to check if the incoming column exists:
-        self._check_incoming_field_name_valid(key_col)
-
-        # Then, we need to check if the index column is valid
-        self._check_incoming_field_is_pk(key_col)
-
-        # Then, we need to validate that the incoming data is valid
-        self._validate_incoming_data(data)
-
-        # Then, we need to get the id of the row to edit
         returned_row = self.get_row(key_col, value)
+
         row_id = returned_row['id']
 
-        edit_row_url = build_url(
-            ListEndpoints.EDIT_OR_DELETE_ROW,
-            graph_url=GRAPH_URL,
-            list_id=self.list_id,
-            site_id=self.site_id,
-            row_id=row_id
-        )
+        method, url, body = self._build_edit(row_id, data)
 
-        fields_payload = self._format_payload_for_api(data)
+        single_request_url = f"{GRAPH_URL}{url}"
 
         response = self.client.make_request(
-            HTTPMethod.PATCH, edit_row_url, json=fields_payload
+            method, single_request_url, json=body
         )
 
         return response
@@ -584,27 +571,14 @@ class SharePointList:
         Returns:
             dict[str, Any]: A json response object from the API.
         """
-        # First, we need to check if the incoming column exists:
-        self._check_incoming_field_name_valid(key_col)
-
-        # Then, we need to check if the index column is valid
-        self._check_incoming_field_is_pk(key_col)
-
-        # Then, we need to get the id of the row to edit
         returned_row = self.get_row(key_col, value)
         row_id = returned_row['id']
-    
-        delete_row_url = build_url(
-            ListEndpoints.EDIT_OR_DELETE_ROW,
-            graph_url=GRAPH_URL,
-            list_id=self.list_id,
-            site_id=self.site_id,
-            row_id=row_id
-        )
 
-        response = self.client.make_request(
-            HTTPMethod.DELETE, delete_row_url
-        )
+        method, url, _ = self._build_delete(row_id)
+
+        single_request_url = f"{GRAPH_URL}{url}"
+
+        response = self.client.make_request(method, single_request_url)
 
         return response
 
