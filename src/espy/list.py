@@ -1,9 +1,8 @@
 # list.py
-from collections.abc import Iterator, Sequence
+from collections.abc import Callable, Iterator, Sequence
 from enum import StrEnum
-from typing import Any, Dict
+from typing import Any
 
-from httpx import Response
 from pydantic import ValidationError
 from espy.client import GraphAPIClient
 
@@ -11,7 +10,7 @@ from espy.client import GraphAPIClient
 from espy.constants import (
     GRAPH_URL,
     HOST_NAME,
-    SHARE_POINT_LIST_EXCLUDED_COLUMNS,
+    SHAREPOINT_LIST_EXCLUDED_COLUMNS,
     MAX_BATCH_SIZE
 )
 from espy.models.models import (
@@ -19,9 +18,9 @@ from espy.models.models import (
     GraphAPIResponse,
     HTTPMethod,
     IncomingField,
-    IncomingRequest,
-    IncomingBatch,
-    Batch,
+    BatchEnvelope,
+    BatchError,
+    BatchResult,
     SharePointListColumn,
     SharePointListRow,
 )
@@ -200,13 +199,10 @@ class SharePointList:
 
         if invalid_column_names or invalid_data_types:
             if invalid_column_names:
-                compiled_errors.append(f"""The following incoming columns do
-                not exist in the SharePointList: 
-                {','.join(invalid_column_names)}""")
+                compiled_errors.append(f"""The following incoming columns do not exist in the SharePointList: {','.join(invalid_column_names)}""")
 
             if invalid_data_types:
-                compiled_errors.append(f"""The following incoming columns
-                have the incorrect data type: {','.join(invalid_data_types)}""")
+                compiled_errors.append(f"""The following incoming columns have the incorrect data type: {','.join(invalid_data_types)}""")
 
             raise KeyError(f"{'\n'.join(compiled_errors)}")
 
@@ -285,6 +281,9 @@ class SharePointList:
             self.canonical_to_display.items():
             formatted_row[display_column] = row.get(canonical_column)
 
+        # Add id back
+        formatted_row['id'] = row['id']
+
         return formatted_row
 
     def _build_get(self, key_col: str, value: Any) \
@@ -311,21 +310,16 @@ class SharePointList:
 
         return (method, url, body)
 
-    def _interpret_get(self, raw_response: Response):
-        validated_response = GraphAPIResponse.model_validate(raw_response)
+    def _interpret_get(self, body: dict | None):
+        if body and (rows := body.get('value')):
+            row = rows[0]['fields']
+            formatted_row = self._format_outgoing_row(row)
 
-        if validated_response.value:
-            validated_row = validated_response.value[0]['fields']
-            formatted_row = self._format_outgoing_row(validated_row)
-
-            # Add id back, since format outgoing row removes it
-            # TODO: Is there a cleaner way around this?
-            formatted_row['id'] = validated_row['id']
             return formatted_row
 
         raise ValueError("Row not found.")
 
-    def _build_add(self, data: Dict) -> tuple[HTTPMethod, str, dict|None]:
+    def _build_add(self, data: dict) -> tuple[HTTPMethod, str, dict|None]:
         #We need to validate that the incoming data is valid
         self._validate_incoming_data(data)
 
@@ -341,7 +335,14 @@ class SharePointList:
 
         return (method, url, body)
 
-    def _build_edit(self, row_id: int, data: Dict)\
+    def _interpret_add(self, body: dict | None) -> dict:
+        validated_row = SharePointListRow.model_validate(body)\
+            .fields
+        formatted_row = self._format_outgoing_row(validated_row)
+
+        return formatted_row
+
+    def _build_edit(self, row_id: int, data: dict)\
           -> tuple[HTTPMethod, str, dict|None]:
 
         # We need to validate that the incoming data is valid
@@ -360,6 +361,13 @@ class SharePointList:
 
         return (method, url, body)
 
+    def _interpret_edit(self, body: dict | None) -> dict:
+        validated_row = SharePointListRow.model_validate(body)\
+            .fields
+        formatted_row = self._format_outgoing_row(validated_row)
+
+        return formatted_row
+
     def _build_delete(self, row_id: int) -> tuple[HTTPMethod, str, dict|None]:
 
         method = HTTPMethod.DELETE
@@ -375,42 +383,49 @@ class SharePointList:
 
         return (method, url, body)
 
-    def _dispatch_batch_operation(self, operation: Any)\
-          -> tuple[HTTPMethod, str, dict|None]:
+    def _interpret_delete(self, body: dict | None) -> dict | None:
+        return body
+        
+    def _dispatch_batch_operation(self, operation: Any):
 
         match operation:
             case GetRow(key_col, value):
-                return self._build_get(key_col, value)
+                return self._build_get(key_col, value), self._interpret_get
             case AddRow(data):
-                return self._build_add(data)
+                return self._build_add(data), self._interpret_add
             case EditRow(row_id, data):
-                return self._build_edit(row_id, data)
+                return self._build_edit(row_id, data), self._interpret_edit
             case DeleteRow(row_id):
-                return self._build_delete(row_id)
+                return self._build_delete(row_id), self._interpret_delete
             case _:
                 raise ValueError(f"Unknown request type")
     
-    def _build_batch(self, operations: Sequence[BatchOperation]) -> IncomingBatch:
+    def _build_batch(self, operations: Sequence[BatchOperation]) -> tuple[list[dict], list[Callable]]:
 
         if (batch_len := len(operations)) > MAX_BATCH_SIZE:
             raise ValueError(f"""Batch size of {batch_len} longer 
             than max size {MAX_BATCH_SIZE}.""")
 
         incoming_batch = []
+        interpreters = []
+
         for idx, operation in enumerate(operations):
 
-            method, url, body = self._dispatch_batch_operation(operation)
+            (method, url, body), interpreter = self._dispatch_batch_operation(operation)
             
             incoming_batch.append(
-                IncomingRequest(
-                    id=str(idx),
-                    method=method,
-                    url=url,
-                    body=body #pyright: ignore
-                    )
+                {
+                    'id': str(idx),
+                    'method': method,
+                    'url': url,
+                    'headers': {"Content-Type": "application/json"},
+                    'body': body
+                }
             )
 
-        return IncomingBatch(requests=incoming_batch)
+            interpreters.append(interpreter)
+
+        return incoming_batch, interpreters
 
     def list_columns(self) -> list[dict]:
         """List the columns in a SharePoint list.
@@ -440,7 +455,7 @@ class SharePointList:
             raise ValueError("No columns to return.")
 
         for column in response_envelope.value:
-            if column['name'] not in SHARE_POINT_LIST_EXCLUDED_COLUMNS: 
+            if column['name'] not in SHAREPOINT_LIST_EXCLUDED_COLUMNS: 
                 column_list.append(
                     SharePointListColumn.model_validate(column).model_dump()
                 )
@@ -495,14 +510,12 @@ class SharePointList:
 
         single_request_url = f"{GRAPH_URL}/{url}"
 
-        raw_response = self.client.make_request(
-            method, single_request_url).json()
+        response = self.client.make_request(
+            method, single_request_url)
 
-        interpreted_response = self._interpret_get(raw_response)
-
-        return interpreted_response
+        return self._interpret_get(response.json())
      
-    def add_row(self, data: dict[str, Any]) -> Response:
+    def add_row(self, data: dict[str, Any]) -> dict:
         """Add a row to a SharePoint list.
 
         Note: This method does not currently work for Lists with
@@ -527,10 +540,10 @@ class SharePointList:
             method, single_request_url, json=body
         )
 
-        return response
+        return self._interpret_add(response.json())
 
     def edit_row(self, key_col: str, value: Any, 
-                       data: dict[str, Any]) -> Response:
+                       data: dict[str, Any]) -> dict:
         """Edit a row in a SharePoint list.
 
         Note: This method does not currently work for Lists with
@@ -558,9 +571,9 @@ class SharePointList:
             method, single_request_url, json=body
         )
 
-        return response
+        return self._interpret_edit(response.json())
 
-    def delete_row(self, key_col: str, value: Any) -> Response:
+    def delete_row(self, key_col: str, value: Any) -> dict | None:
         """Delete a row in a SharePoint list.
         Args:
             key_col (str): The name of the primary key column to search on.
@@ -578,7 +591,7 @@ class SharePointList:
 
         response = self.client.make_request(method, single_request_url)
 
-        return response
+        return self._interpret_delete(response.json())
 
     def upsert_row(
         self, key_col: str, data: dict[str, Any]
@@ -593,21 +606,55 @@ class SharePointList:
 
         # return {}
     
-    def batch(self, operations: Sequence[BatchOperation]) -> Batch:
+    def batch(self, operations: Sequence[BatchOperation]) -> list[BatchResult | None]:
         """
         Given a list of user supplied BatchOperations, collate
         and process the operations as a batch.
         """
 
-        incoming_batch = self._build_batch(operations)
+        incoming_batch, interpreters = self._build_batch(operations)
         
         response = self.client.make_request(
             HTTPMethod.POST,
             ListEndpoints.SUBMIT_BATCH,
-            json=incoming_batch.model_dump()
+            json={"requests": incoming_batch}
         )
 
-        return Batch.model_validate(response.json())
+        envelope = BatchEnvelope.model_validate(response.json())
+        
+        # Prepopulate results list with the required length
+        results: list[BatchResult | None] = [None] * len(operations)
+
+        for sub_request in envelope.responses:
+            # Get the request id, which is separate from the
+            # row_id also called 'id' in the response body
+            idx = int(sub_request.id)
+
+            # Batch result may be in a different order than
+            # was provided. Get in correct order.
+            op = operations[idx]
+            if not 200 <= sub_request.status < 300:
+                err = (sub_request.body or {}).get("error", {})
+                results[idx] = BatchResult(operation=op, 
+                    error=BatchError(
+                        status=sub_request.status, 
+                        message=err.get("message", ""),
+                        code=err.get("code"))
+                        )
+                continue
+            try:
+                # Look up which interpreter needs to be used
+                # for each result
+                results[idx] = BatchResult(operation=op,
+                        value=interpreters[idx](sub_request.body))
+                
+            except (ValueError, ValidationError) as e:
+                results[idx] = BatchResult(operation=op, 
+                                error=BatchError(status=sub_request.status, 
+                                                 message=str(e)))
+
+        return results
+                
 
 
 

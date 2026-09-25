@@ -6,10 +6,10 @@ GRAPH_URL = "https://graph.microsoft.com/v1.0"
 GRAPH_APP = "AppReg: CityGeo-Databridge-Updates (All Fields)"
 HOST_NAME = "phila.sharepoint.com"
 
-SHARE_POINT_LIST_EXCLUDED_COLUMNS = [
+SHAREPOINT_LIST_EXCLUDED_COLUMNS = {
     "@odata.etag",
     "Title",
-    "ID",
+    #"ID",
     "LinkTitle",
     "_ColorTag",
     "ComplianceAssetId",
@@ -37,4 +37,4 @@ SHARE_POINT_LIST_EXCLUDED_COLUMNS = [
     "AppAuthorLookupId",
     "AppEditor",
     "AppEditorLookupId"
-]
+}

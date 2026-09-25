@@ -126,11 +126,13 @@ class GraphAPIClient:
         try:
             response.raise_for_status()
 
-        except httpx.HTTPError as e:
-            error_msg = f"""{e} | Server Error Body: 
+        except httpx.HTTPStatusError as e:
+            msg = f"""{e} | Server Error Body: 
             {response.json()}"""
 
-            raise httpx.HTTPError(error_msg) from e
+            raise httpx.HTTPStatusError(
+                msg, request=e.request, response=e.response
+                )
         
         return response
 

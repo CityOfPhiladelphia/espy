@@ -2,7 +2,7 @@ from datetime import datetime
 from requests.exceptions import HTTPError
 
 from espy.list import SharePointList
-from espy.models.models import ErrorResult, BatchResponseBody, SharePointListRow 
+from espy.models.models import ErrorResult, SharePointListRow 
 from espy.operations import GetRow, AddRow, EditRow, DeleteRow
 
 SITE_NAME = "ps360-metrics-share"
@@ -17,7 +17,7 @@ def test_get_rows(sp_list: SharePointList):
 
     response = sp_list.batch(operations)
 
-    print(response.model_dump())
+    print(response)
 
 def test_add_rows(sp_list: SharePointList):
 
@@ -58,7 +58,7 @@ def test_add_rows(sp_list: SharePointList):
 
     response = sp_list.batch(operations)
 
-    print(response.model_dump())
+    print(response)
 
 def test_edit_rows(sp_list: SharePointList):
     key_col = "Service Request Number"
@@ -99,34 +99,19 @@ def test_edit_rows(sp_list: SharePointList):
 
     get_operations = [GetRow(key_col=key_col, value=value) for value in values]
 
-    canonical_key = sp_list.display_to_canonical[key_col]
-
     batch = sp_list.batch(get_operations)
 
     id_key_map = {}
 
-    for response in batch.responses:
-        match response.body:
+    for response in batch:
+        if response and (body := response.value):
+            row_id = body['id']
+            pk_val = body[key_col]
+            id_key_map[pk_val] = row_id
 
-            case BatchResponseBody():
-                row_id = response.body.value[0].fields['id']
-                pk_val = response.body.value[0].fields[canonical_key]
+        elif response and (error := response.error):
+            raise HTTPError(f"{error.status}: {error.message}")
 
-            case SharePointListRow():
-                row_id = response.body.fields['id']
-                pk_val = response.body.fields[canonical_key]
-
-            case ErrorResult():
-                error_code = ErrorResult.error.code
-                error_message = ErrorResult.error.message
-
-                raise HTTPError(f"{error_code}: {error_message}")
-
-            case _:
-                raise ValueError(f"""Batch endpoint returned 
-                                    unexpected data format.""")
-
-        id_key_map[pk_val] = row_id
 
     edit_operations = []
 
@@ -138,7 +123,7 @@ def test_edit_rows(sp_list: SharePointList):
 
     response = sp_list.batch(edit_operations)
 
-    print(response.model_dump())
+    print(response)
 
 def test_delete_rows(sp_list: SharePointList):
     key_col = "Service Request Number"
@@ -146,52 +131,28 @@ def test_delete_rows(sp_list: SharePointList):
 
     get_operations = [GetRow(key_col=key_col, value=value) for value in values]
 
-    canonical_key = sp_list.display_to_canonical[key_col]
-
     batch = sp_list.batch(get_operations)
-
-    id_key_map = {}
-
-    for response in batch.responses:
-        match response.body:
-
-            case BatchResponseBody():
-                row_id = response.body.value[0].fields['id']
-                pk_val = response.body.value[0].fields[canonical_key]
-
-            case SharePointListRow():
-                row_id = response.body.fields['id']
-                pk_val = response.body.fields[canonical_key]
-
-            case ErrorResult():
-                error_code = ErrorResult.error.code
-                error_message = ErrorResult.error.message
-
-                raise HTTPError(f"{error_code}: {error_message}")
-
-            case _:
-                raise ValueError(f"""Batch endpoint returned 
-                                    unexpected data format.""")
-
-        id_key_map[pk_val] = row_id
 
     delete_operations = []
 
-    for value in values:
-        row_id = id_key_map[value]
-        delete_operations.append(DeleteRow(row_id))
+    for response in batch:
+        if response and (body := response.value):
+            row_id = body['id']
+            delete_operations.append(DeleteRow(row_id))
 
+        elif response and (error := response.error):
+            raise HTTPError(f"{error.status}: {error.message}")
 
     response = sp_list.batch(delete_operations)
 
-    print(response.model_dump())
+    print(response)
 
 def main():
     sp_list = SharePointList.setup(site_name=SITE_NAME, list_name=LIST_NAME)
     #test_get_rows(sp_list)
     #test_add_rows(sp_list)
     #test_edit_rows(sp_list)
-    test_delete_rows(sp_list)
+    #test_delete_rows(sp_list)
 
 if __name__ == "__main__":
     main()

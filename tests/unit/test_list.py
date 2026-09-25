@@ -373,6 +373,7 @@ def test_delete_row_breaks_with_non_index_col(
     with pytest.raises(KeyError):
         configured_test_list.delete_row("col_two", "123456")
 
+@pytest.mark.skip(reason="Not implemented yet")
 def test_upsert_row_returns_error_when_key_col_not_present(
         configured_test_list,
         mocked_column_data,

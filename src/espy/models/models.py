@@ -3,11 +3,13 @@
 from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
-from typing import Any, Dict
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pydantic.alias_generators import to_camel
 
+from espy.constants import SHAREPOINT_LIST_EXCLUDED_COLUMNS
+from espy.operations import BatchOperation
 
 ## Enums
 class HTTPMethod(StrEnum):
@@ -111,10 +113,10 @@ class IncomingRequest(BaseModel):
     id: str
     method: str
     url: str
-    headers: Dict[str, str] = Field(
+    headers: dict[str, str] = Field(
         default_factory=lambda: {"Content-Type": "application/json"}
     )
-    body: SharePointListRow | None = None
+    body: dict[str, Any] | None = None
 
 class IncomingBatch(BaseModel):
     """Formats an incoming batch from the user. Used for batch operations
@@ -149,17 +151,24 @@ class ErrorResult(BaseModel):
     error: ErrorContents
 
 #### Batch Response data:
-class BatchResponseBody(BaseModel):
-    value: list[SharePointListRow]
+class BatchEnvelope(BaseModel):
+    responses: list[BatchResponse]
 
 class BatchResponse(BaseModel):
     id: str
     status: int
     headers: dict
-    body: SharePointListRow | BatchResponseBody | ErrorResult | None = None
+    body: dict[str, Any] | None = None
 
-class Batch(BaseModel):
-    responses: list[BatchResponse]
+class BatchError(BaseModel):
+    status: int
+    message: str
+    code: str | None = None
+
+class BatchResult(BaseModel):
+    operation: BatchOperation
+    value: Any | None = None
+    error: BatchError | None = None
 
 ### Share Point List Data
 class SharePointListRow(BaseModel):
@@ -169,6 +178,14 @@ class SharePointListRow(BaseModel):
         BaseModel (BaseModel): Inherits from Pydantic's BaseModel class.
     """
     fields: dict = Field(default_factory=dict)
+
+    @model_validator(mode="before")
+    @classmethod
+    def remove_excluded_fields(cls, value: Any) -> Any:
+        if isinstance(value, dict):
+            return {k: v for k, v in value.items() if 
+                    k not in SHAREPOINT_LIST_EXCLUDED_COLUMNS}
+        return value
 
 class SharePointListColumn(BaseModel):
     """A model representing a column of a SharePoint list. Contains
