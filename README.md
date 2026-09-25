@@ -30,12 +30,16 @@ uv lock --upgrade-package espy && uv sync
 from espy.list import SharePointList
 
 # Instantiate a SharePoint List Object
-sp_list = SharePointList.setup(site_name="list_site_name", list_name="list_name")
+sp_list = SharePointList.setup(
+    site_name="list_site_name", list_name="list_name"
+)
 
 # Create a row mapping data to column names in the list
-row_to_add = {"name": "Billy Penn", 
-              "address": "1234 Market St, Philadelphia, PA", 
-              "age": 250}
+row_to_add = {
+    "name": "Billy Penn",
+    "address": "1234 Market St, Philadelphia, PA",
+    "age": 250,
+}
 
 
 response = sp_list.add_row(row_to_add)

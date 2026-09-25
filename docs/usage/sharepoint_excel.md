@@ -38,7 +38,7 @@ excel = ExcelWorksheet.setup(
     document_library=document_library,
     workbook_path=workbook_path,
     worksheet_name=worksheet_name,
-    table_name=table_name
+    table_name=table_name,
 )
 ```
  
@@ -59,9 +59,9 @@ columns = excel.list_columns()
 Returns the rows of an Excel table as a `List[dict]`. Each dictionary's keys are column names, and the values are the corresponding cell values.
 
 ```python
-import pandas as pd 
+import pandas as pd
 
-rows = excel.list_rows() 
+rows = excel.list_rows()
 
 # Can easily convert to a dataframe view if needed
 df = pd.DataFrame(rows)
@@ -206,9 +206,11 @@ For data that is a `DataFrame` or `list[dict]`, data can be ordered in anyway.
 ```python
 pk_col = "primary_key"
 
-data = [{"primary_key": "pk1", "fruit_name":"Apple", "weight": "900"},
-        {"primary_key": "pk2", "fruit_name":"Nana", "weight": "500"},
-        {"primary_key": "pk3", "fruit_name":"Kiwi", "weight": "432"}]
+data = [
+    {"primary_key": "pk1", "fruit_name": "Apple", "weight": "900"},
+    {"primary_key": "pk2", "fruit_name": "Nana", "weight": "500"},
+    {"primary_key": "pk3", "fruit_name": "Kiwi", "weight": "432"},
+]
 
 excel.upsert_rows(pk_col=pk_col, data=tups)
 ```

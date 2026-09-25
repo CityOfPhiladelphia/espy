@@ -9,7 +9,7 @@ HOST_NAME = "phila.sharepoint.com"
 SHAREPOINT_LIST_EXCLUDED_COLUMNS = {
     "@odata.etag",
     "Title",
-    #"ID",
+    # "ID",
     "LinkTitle",
     "_ColorTag",
     "ComplianceAssetId",
@@ -36,5 +36,5 @@ SHAREPOINT_LIST_EXCLUDED_COLUMNS = {
     "AppAuthor",
     "AppAuthorLookupId",
     "AppEditor",
-    "AppEditorLookupId"
+    "AppEditorLookupId",
 }

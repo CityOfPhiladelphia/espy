@@ -1,32 +1,33 @@
 # list.py
 from collections.abc import Callable, Iterator, Sequence
 from enum import StrEnum
+from functools import cached_property
 from typing import Any
 
 from pydantic import ValidationError
+
 from espy.client import GraphAPIClient
 
 # TODO: Make host name a variable, not a constant. Edit in optional config file?
 from espy.constants import (
     GRAPH_URL,
     HOST_NAME,
+    MAX_BATCH_SIZE,
     SHAREPOINT_LIST_EXCLUDED_COLUMNS,
-    MAX_BATCH_SIZE
 )
 from espy.models.models import (
+    BatchEnvelope,
+    BatchError,
+    BatchResult,
     ColumnKind,
     GraphAPIResponse,
     HTTPMethod,
     IncomingField,
-    BatchEnvelope,
-    BatchError,
-    BatchResult,
     SharePointListColumn,
     SharePointListRow,
 )
-from espy.operations import GetRow, AddRow, EditRow, DeleteRow, BatchOperation
+from espy.operations import AddRow, BatchOperation, DeleteRow, EditRow, GetRow
 from espy.urls import build_url
-from functools import cached_property
 
 # TODO: Print warning that a list containing a hyperlink or location column
 # Cannot be updated with the api
@@ -47,17 +48,14 @@ class ListEndpoints(StrEnum):
 
     LIST_COLUMNS = "{graph_url}/sites/{site_id}/lists/{list_id}/columns"
 
-    GET_ROW_BY_ID = (
-        "{graph_url}/sites/"
-        "{site_id}/lists/{list_id}/items/{row_id}"
-    )
+    GET_ROW_BY_ID = "{graph_url}/sites/{site_id}/lists/{list_id}/items/{row_id}"
 
     # Exclude graph url from these as they may be needed for batch requests
     # which take a different base URL
     GET_ROW_BY_PK = (
         "sites/{site_id}/lists/{list_id}/items?"
         "$expand=fields&$filter=fields/{column_name} eq '{value}'"
-        )
+    )
 
     ADD_ROW = "sites/{site_id}/lists/{list_id}/items"
 
@@ -78,6 +76,7 @@ class SharePointList:
         site_id (str): A string id for the SharePoint site the graph is on.
         list_id (str): A string identifier for the specific SharePoint list.
     """
+
     def __init__(self, client: GraphAPIClient, site_id: str, list_id: str):
         """Initializes the SharePointList object with id information. Most
         users will initialize the SharePointList object using the setup()
@@ -100,18 +99,21 @@ class SharePointList:
 
     @cached_property
     def display_to_canonical(self) -> dict[str, str]:
-        return { column['display_name'] : column['name']
-                            for column in self._columns }
+        return {
+            column["display_name"]: column["name"] for column in self._columns
+        }
 
     @cached_property
     def canonical_to_display(self) -> dict[str, str]:
-        return { column['name'] : column['display_name']
-                for column in self._columns }
+        return {
+            column["name"]: column["display_name"] for column in self._columns
+        }
 
     @cached_property
     def column_types(self) -> dict[str, str]:
-        return { column['display_name'] : column['type']
-                for column in self._columns }
+        return {
+            column["display_name"]: column["type"] for column in self._columns
+        }
 
     @classmethod
     def setup(cls, site_name: str, list_name: str):
@@ -137,8 +139,7 @@ class SharePointList:
             list_name=list_name,
         )
 
-        list_id = client.make_request(HTTPMethod.GET, list_id_url)\
-            .json()["id"]
+        list_id = client.make_request(HTTPMethod.GET, list_id_url).json()["id"]
 
         return cls(client, site_id, list_id)
 
@@ -146,34 +147,34 @@ class SharePointList:
 
         if field_name not in self.display_to_canonical:
             raise KeyError(f"{field_name} is not in the SharePoint List")
-        
 
-    def _check_incoming_field_type_valid(self, field_name: str, 
-                                      field_value: Any, 
-                                      column_types: dict[str, str]) \
-                                        -> IncomingField:
+    def _check_incoming_field_type_valid(
+        self, field_name: str, field_value: Any, column_types: dict[str, str]
+    ) -> IncomingField:
 
         list_column_kind = column_types[field_name]
 
         validated_incoming_field = IncomingField(
             field_name=field_name,
             field_value=field_value,
-            list_column_kind=ColumnKind(list_column_kind)
+            list_column_kind=ColumnKind(list_column_kind),
         )
 
         return validated_incoming_field
 
     def _check_incoming_field_is_pk(self, field_name: str) -> bool:
         for field in self._columns:
-            if field['display_name'] == field_name:
-                if field.get('indexed') == True:
-                    return True
+            if (
+                field["display_name"] == field_name
+                and field.get("indexed") == True
+            ):
+                return True
 
         raise KeyError(f"The specified field does not exist: {field_name}.")
 
     def _validate_incoming_data(
-            self, input_data: dict[str, Any]
-            ) -> dict[str, IncomingField]:
+        self, input_data: dict[str, Any]
+    ) -> dict[str, IncomingField]:
 
         validated_fields = {}
 
@@ -185,9 +186,9 @@ class SharePointList:
             try:
                 self._check_incoming_field_name_valid(field_name)
                 validated_field = self._check_incoming_field_type_valid(
-                                    field_name, field_value, self.column_types
-                                )
-                
+                    field_name, field_value, self.column_types
+                )
+
                 validated_fields[field_name] = validated_field
 
             except KeyError:
@@ -196,13 +197,16 @@ class SharePointList:
             except ValidationError:
                 invalid_data_types.append(field_name)
 
-
         if invalid_column_names or invalid_data_types:
             if invalid_column_names:
-                compiled_errors.append(f"""The following incoming columns do not exist in the SharePointList: {','.join(invalid_column_names)}""")
+                compiled_errors.append(
+                    f"""The following incoming columns do not exist in the SharePointList: {",".join(invalid_column_names)}"""
+                )
 
             if invalid_data_types:
-                compiled_errors.append(f"""The following incoming columns have the incorrect data type: {','.join(invalid_data_types)}""")
+                compiled_errors.append(
+                    f"""The following incoming columns have the incorrect data type: {",".join(invalid_data_types)}"""
+                )
 
             raise KeyError(f"{'\n'.join(compiled_errors)}")
 
@@ -212,31 +216,31 @@ class SharePointList:
         """
         Formats an incoming payload to be sent to the API. Validates incoming
         data and maps the user-facing field names to the canonical API names.
-        
+
         Args:
             data (dict[str, Any]): The data to send to the API. May be used
             as downstream part of a POST or PATCH request.
 
         Returns: dict, a validated and
-        formatted payload that the graph API will accept. 
+        formatted payload that the graph API will accept.
         """
         # Map to the canonical names in the table
         # Make sure all keys are present in SharePointList
         fields_payload = {}
-        fields_payload['fields'] = {}
+        fields_payload["fields"] = {}
 
         validated_data = self._validate_incoming_data(data)
 
         for display_name, column_data in validated_data.items():
             canonical_name = self.display_to_canonical[display_name]
-            fields_payload['fields'][canonical_name] = column_data.field_value
+            fields_payload["fields"][canonical_name] = column_data.field_value
 
         return fields_payload
 
     def _fetch_page(
         self, url: str | None, params: dict | None
     ) -> GraphAPIResponse[SharePointListRow] | None:
-        """A helper funtion to fetch a single page of rows 
+        """A helper funtion to fetch a single page of rows
         from a SharePoint List. Used by the list_rows method to paginate
         through all data in a SharePoint list.
 
@@ -254,7 +258,8 @@ class SharePointList:
             return None
 
         raw_data = self.client.make_request(
-            HTTPMethod.GET, url, params=params).json()
+            HTTPMethod.GET, url, params=params
+        ).json()
 
         response_envelope = GraphAPIResponse[SharePointListRow].model_validate(
             raw_data
@@ -270,24 +275,27 @@ class SharePointList:
 
         Args:
             row: A validated list row returned by the Microsoft Graph API
-        
+
         Returns (dict): A dictionary with null fields added back
         """
 
         # Includes fields that are null, for standardized output
         formatted_row = {}
 
-        for canonical_column, display_column in \
-            self.canonical_to_display.items():
+        for (
+            canonical_column,
+            display_column,
+        ) in self.canonical_to_display.items():
             formatted_row[display_column] = row.get(canonical_column)
 
         # Add id back
-        formatted_row['id'] = row['id']
+        formatted_row["id"] = row["id"]
 
         return formatted_row
 
-    def _build_get(self, key_col: str, value: Any) \
-        -> tuple[HTTPMethod, str, dict|None]:
+    def _build_get(
+        self, key_col: str, value: Any
+    ) -> tuple[HTTPMethod, str, dict | None]:
         # First, we need to check if the incoming column exists:
         self._check_incoming_field_name_valid(key_col)
 
@@ -303,7 +311,7 @@ class SharePointList:
             site_id=self.site_id,
             list_id=self.list_id,
             column_name=canonical_field_name,
-            value=value
+            value=value,
         )
 
         body = None
@@ -311,16 +319,16 @@ class SharePointList:
         return (method, url, body)
 
     def _interpret_get(self, body: dict | None):
-        if body and (rows := body.get('value')):
-            row = rows[0]['fields']
+        if body and (rows := body.get("value")):
+            row = rows[0]["fields"]
             formatted_row = self._format_outgoing_row(row)
 
             return formatted_row
 
         raise ValueError("Row not found.")
 
-    def _build_add(self, data: dict) -> tuple[HTTPMethod, str, dict|None]:
-        #We need to validate that the incoming data is valid
+    def _build_add(self, data: dict) -> tuple[HTTPMethod, str, dict | None]:
+        # We need to validate that the incoming data is valid
         self._validate_incoming_data(data)
 
         method = HTTPMethod.POST
@@ -336,14 +344,14 @@ class SharePointList:
         return (method, url, body)
 
     def _interpret_add(self, body: dict | None) -> dict:
-        validated_row = SharePointListRow.model_validate(body)\
-            .fields
+        validated_row = SharePointListRow.model_validate(body).fields
         formatted_row = self._format_outgoing_row(validated_row)
 
         return formatted_row
 
-    def _build_edit(self, row_id: int, data: dict)\
-          -> tuple[HTTPMethod, str, dict|None]:
+    def _build_edit(
+        self, row_id: int, data: dict
+    ) -> tuple[HTTPMethod, str, dict | None]:
 
         # We need to validate that the incoming data is valid
         self._validate_incoming_data(data)
@@ -354,7 +362,7 @@ class SharePointList:
             ListEndpoints.EDIT_OR_DELETE_ROW,
             list_id=self.list_id,
             site_id=self.site_id,
-            row_id=row_id
+            row_id=row_id,
         )
 
         body = self._format_payload_for_api(data)
@@ -362,13 +370,12 @@ class SharePointList:
         return (method, url, body)
 
     def _interpret_edit(self, body: dict | None) -> dict:
-        validated_row = SharePointListRow.model_validate(body)\
-            .fields
+        validated_row = SharePointListRow.model_validate(body).fields
         formatted_row = self._format_outgoing_row(validated_row)
 
         return formatted_row
 
-    def _build_delete(self, row_id: int) -> tuple[HTTPMethod, str, dict|None]:
+    def _build_delete(self, row_id: int) -> tuple[HTTPMethod, str, dict | None]:
 
         method = HTTPMethod.DELETE
 
@@ -376,7 +383,7 @@ class SharePointList:
             ListEndpoints.EDIT_OR_DELETE_ROW,
             list_id=self.list_id,
             site_id=self.site_id,
-            row_id=row_id
+            row_id=row_id,
         )
 
         body = None
@@ -385,7 +392,7 @@ class SharePointList:
 
     def _interpret_delete(self, body: dict | None) -> dict | None:
         return body
-        
+
     def _dispatch_batch_operation(self, operation: Any):
 
         match operation:
@@ -398,9 +405,11 @@ class SharePointList:
             case DeleteRow(row_id):
                 return self._build_delete(row_id), self._interpret_delete
             case _:
-                raise ValueError(f"Unknown request type")
-    
-    def _build_batch(self, operations: Sequence[BatchOperation]) -> tuple[list[dict], list[Callable]]:
+                raise ValueError("Unknown request type")
+
+    def _build_batch(
+        self, operations: Sequence[BatchOperation]
+    ) -> tuple[list[dict], list[Callable]]:
 
         if (batch_len := len(operations)) > MAX_BATCH_SIZE:
             raise ValueError(f"""Batch size of {batch_len} longer 
@@ -410,16 +419,17 @@ class SharePointList:
         interpreters = []
 
         for idx, operation in enumerate(operations):
+            (method, url, body), interpreter = self._dispatch_batch_operation(
+                operation
+            )
 
-            (method, url, body), interpreter = self._dispatch_batch_operation(operation)
-            
             incoming_batch.append(
                 {
-                    'id': str(idx),
-                    'method': method,
-                    'url': url,
-                    'headers': {"Content-Type": "application/json"},
-                    'body': body
+                    "id": str(idx),
+                    "method": method,
+                    "url": url,
+                    "headers": {"Content-Type": "application/json"},
+                    "body": body,
                 }
             )
 
@@ -438,24 +448,25 @@ class SharePointList:
             graph_url=GRAPH_URL,
             site_id=self.site_id,
             list_id=self.list_id,
-            kwargs={"$expand": "fields"}
+            kwargs={"$expand": "fields"},
         )
 
-        # Raw columns data will include hidden metadata columns that we want 
+        # Raw columns data will include hidden metadata columns that we want
         # to exclude, since they will break our data validation rules
         # and are ultimately not useful. We filter those out here.
         column_list = []
 
         raw_response = self.client.make_request(
-            HTTPMethod.GET, columns_url).json()
-        
+            HTTPMethod.GET, columns_url
+        ).json()
+
         response_envelope = GraphAPIResponse.model_validate(raw_response)
 
         if not response_envelope.value:
             raise ValueError("No columns to return.")
 
         for column in response_envelope.value:
-            if column['name'] not in SHAREPOINT_LIST_EXCLUDED_COLUMNS: 
+            if column["name"] not in SHAREPOINT_LIST_EXCLUDED_COLUMNS:
                 column_list.append(
                     SharePointListColumn.model_validate(column).model_dump()
                 )
@@ -479,7 +490,9 @@ class SharePointList:
             list_id=self.list_id,
         )
 
-        while response_envelope := self._fetch_page(next_link, {"$expand": "fields"}):
+        while response_envelope := self._fetch_page(
+            next_link, {"$expand": "fields"}
+        ):
             # API returns results wrapped in a response envelope
             # that contains pagination metadata
             # actual value is nested within that
@@ -487,7 +500,7 @@ class SharePointList:
             next_link = response_envelope.next_link
 
             # Returns unnecessary extra column information, filter it out
-            for row in response_envelope.value: # pyright: ignore
+            for row in response_envelope.value:  # pyright: ignore
                 validated_row = row.fields
 
                 formatted_row = self._format_outgoing_row(validated_row)
@@ -510,11 +523,10 @@ class SharePointList:
 
         single_request_url = f"{GRAPH_URL}/{url}"
 
-        response = self.client.make_request(
-            method, single_request_url)
+        response = self.client.make_request(method, single_request_url)
 
         return self._interpret_get(response.json())
-     
+
     def add_row(self, data: dict[str, Any]) -> dict:
         """Add a row to a SharePoint list.
 
@@ -542,8 +554,7 @@ class SharePointList:
 
         return self._interpret_add(response.json())
 
-    def edit_row(self, key_col: str, value: Any, 
-                       data: dict[str, Any]) -> dict:
+    def edit_row(self, key_col: str, value: Any, data: dict[str, Any]) -> dict:
         """Edit a row in a SharePoint list.
 
         Note: This method does not currently work for Lists with
@@ -561,7 +572,7 @@ class SharePointList:
         """
         returned_row = self.get_row(key_col, value)
 
-        row_id = returned_row['id']
+        row_id = returned_row["id"]
 
         method, url, body = self._build_edit(row_id, data)
 
@@ -583,7 +594,7 @@ class SharePointList:
             dict[str, Any]: A json response object from the API.
         """
         returned_row = self.get_row(key_col, value)
-        row_id = returned_row['id']
+        row_id = returned_row["id"]
 
         method, url, _ = self._build_delete(row_id)
 
@@ -593,10 +604,8 @@ class SharePointList:
 
         return self._interpret_delete(response.json())
 
-    def upsert_row(
-        self, key_col: str, data: dict[str, Any]
-    ) -> dict[str, Any]:
-        
+    def upsert_row(self, key_col: str, data: dict[str, Any]) -> dict[str, Any]:
+
         raise NotImplementedError
         # # First, we need to check if the incoming column exists:
         # self._check_incoming_field_name_valid(key_col)
@@ -605,23 +614,25 @@ class SharePointList:
         # self._check_incoming_field_is_pk(key_col)
 
         # return {}
-    
-    def batch(self, operations: Sequence[BatchOperation]) -> list[BatchResult | None]:
+
+    def batch(
+        self, operations: Sequence[BatchOperation]
+    ) -> list[BatchResult | None]:
         """
         Given a list of user supplied BatchOperations, collate
         and process the operations as a batch.
         """
 
         incoming_batch, interpreters = self._build_batch(operations)
-        
+
         response = self.client.make_request(
             HTTPMethod.POST,
             ListEndpoints.SUBMIT_BATCH,
-            json={"requests": incoming_batch}
+            json={"requests": incoming_batch},
         )
 
         envelope = BatchEnvelope.model_validate(response.json())
-        
+
         # Prepopulate results list with the required length
         results: list[BatchResult | None] = [None] * len(operations)
 
@@ -635,26 +646,26 @@ class SharePointList:
             op = operations[idx]
             if not 200 <= sub_request.status < 300:
                 err = (sub_request.body or {}).get("error", {})
-                results[idx] = BatchResult(operation=op, 
+                results[idx] = BatchResult(
+                    operation=op,
                     error=BatchError(
-                        status=sub_request.status, 
+                        status=sub_request.status,
                         message=err.get("message", ""),
-                        code=err.get("code"))
-                        )
+                        code=err.get("code"),
+                    ),
+                )
                 continue
             try:
                 # Look up which interpreter needs to be used
                 # for each result
-                results[idx] = BatchResult(operation=op,
-                        value=interpreters[idx](sub_request.body))
-                
+                results[idx] = BatchResult(
+                    operation=op, value=interpreters[idx](sub_request.body)
+                )
+
             except (ValueError, ValidationError) as e:
-                results[idx] = BatchResult(operation=op, 
-                                error=BatchError(status=sub_request.status, 
-                                                 message=str(e)))
+                results[idx] = BatchResult(
+                    operation=op,
+                    error=BatchError(status=sub_request.status, message=str(e)),
+                )
 
         return results
-                
-
-
-

@@ -1,12 +1,13 @@
 from datetime import datetime
+
 from requests.exceptions import HTTPError
 
 from espy.list import SharePointList
-from espy.models.models import ErrorResult, SharePointListRow 
-from espy.operations import GetRow, AddRow, EditRow, DeleteRow
+from espy.operations import AddRow, DeleteRow, EditRow, GetRow
 
 SITE_NAME = "ps360-metrics-share"
 LIST_NAME = "PPR 311 Test List"
+
 
 def test_get_rows(sp_list: SharePointList):
 
@@ -19,6 +20,7 @@ def test_get_rows(sp_list: SharePointList):
 
     print(response)
 
+
 def test_add_rows(sp_list: SharePointList):
 
     data_to_add = [
@@ -30,9 +32,9 @@ def test_add_rows(sp_list: SharePointList):
             "Tree Inside Park or at Rec Center": None,
             "ZipCode": "19107",
             "Status": "New",
-            "Notes": None
+            "Notes": None,
         },
-                {
+        {
             "Date/Time Opened": str(datetime.now()),
             "Address/Intersection": "1234 MARKET ST",
             "Service Request Number": "99999998",
@@ -40,9 +42,9 @@ def test_add_rows(sp_list: SharePointList):
             "Tree Inside Park or at Rec Center": None,
             "ZipCode": "19107",
             "Status": "New",
-            "Notes": None
+            "Notes": None,
         },
-                {
+        {
             "Date/Time Opened": str(datetime.now()),
             "Address/Intersection": "1234 MARKET ST",
             "Service Request Number": "99999997",
@@ -50,8 +52,8 @@ def test_add_rows(sp_list: SharePointList):
             "Tree Inside Park or at Rec Center": None,
             "ZipCode": "19107",
             "Status": "New",
-            "Notes": None
-        }
+            "Notes": None,
+        },
     ]
 
     operations = [AddRow(data) for data in data_to_add]
@@ -59,6 +61,7 @@ def test_add_rows(sp_list: SharePointList):
     response = sp_list.batch(operations)
 
     print(response)
+
 
 def test_edit_rows(sp_list: SharePointList):
     key_col = "Service Request Number"
@@ -73,9 +76,9 @@ def test_edit_rows(sp_list: SharePointList):
             "Tree Inside Park or at Rec Center": None,
             "ZipCode": "19107",
             "Status": "In-Progress",
-            "Notes": None
+            "Notes": None,
         },
-                {
+        {
             "Date/Time Opened": str(datetime.now()),
             "Address/Intersection": "1234 MARKET ST",
             "Service Request Number": "99999998",
@@ -83,9 +86,9 @@ def test_edit_rows(sp_list: SharePointList):
             "Tree Inside Park or at Rec Center": None,
             "ZipCode": "19107",
             "Status": "In-Progress",
-            "Notes": None
+            "Notes": None,
         },
-                {
+        {
             "Date/Time Opened": str(datetime.now()),
             "Address/Intersection": "1234 MARKET ST",
             "Service Request Number": "99999997",
@@ -93,8 +96,8 @@ def test_edit_rows(sp_list: SharePointList):
             "Tree Inside Park or at Rec Center": None,
             "ZipCode": "19107",
             "Status": "In-Progress",
-            "Notes": None
-        }
+            "Notes": None,
+        },
     ]
 
     get_operations = [GetRow(key_col=key_col, value=value) for value in values]
@@ -105,13 +108,12 @@ def test_edit_rows(sp_list: SharePointList):
 
     for response in batch:
         if response and (body := response.value):
-            row_id = body['id']
+            row_id = body["id"]
             pk_val = body[key_col]
             id_key_map[pk_val] = row_id
 
         elif response and (error := response.error):
             raise HTTPError(f"{error.status}: {error.message}")
-
 
     edit_operations = []
 
@@ -120,10 +122,10 @@ def test_edit_rows(sp_list: SharePointList):
         row_id = id_key_map[pk_val]
         edit_operations.append(EditRow(row_id, data))
 
-
     response = sp_list.batch(edit_operations)
 
     print(response)
+
 
 def test_delete_rows(sp_list: SharePointList):
     key_col = "Service Request Number"
@@ -137,7 +139,7 @@ def test_delete_rows(sp_list: SharePointList):
 
     for response in batch:
         if response and (body := response.value):
-            row_id = body['id']
+            row_id = body["id"]
             delete_operations.append(DeleteRow(row_id))
 
         elif response and (error := response.error):
@@ -147,12 +149,14 @@ def test_delete_rows(sp_list: SharePointList):
 
     print(response)
 
+
 def main():
     sp_list = SharePointList.setup(site_name=SITE_NAME, list_name=LIST_NAME)
-    #test_get_rows(sp_list)
-    #test_add_rows(sp_list)
-    #test_edit_rows(sp_list)
-    #test_delete_rows(sp_list)
+    # test_get_rows(sp_list)
+    # test_add_rows(sp_list)
+    # test_edit_rows(sp_list)
+    # test_delete_rows(sp_list)
+
 
 if __name__ == "__main__":
     main()

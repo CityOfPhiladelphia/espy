@@ -18,7 +18,7 @@ class ClientEndpoints(StrEnum):
     UPLOAD_FILE = (
         "{graph_url}/sites/{site_id}"
         "/drive/root:/{dest_path}/{file_name}:/content"
-        )
+    )
 
     GET_CONTENT = (
         "{graph_url}/sites/{site_id}"
@@ -40,7 +40,7 @@ class GraphAPIClient:
 
     @classmethod
     def authenticate(cls):
-        # TODO: Change this to accept a dictionary of creds since people will have different graph apps 
+        # TODO: Change this to accept a dictionary of creds since people will have different graph apps
         """Authenticate to SharePoint by generating the Client Secret
         credential."""
         creds = cgs.get_secrets(GRAPH_APP)[GRAPH_APP]
@@ -86,11 +86,11 @@ class GraphAPIClient:
         """
         # Map selected method to HTTPX method
         func_map = {
-            "GET"   : httpx.get,
-            "POST"  : httpx.post,
-            "PUT"   : httpx.put,
-            "PATCH" : httpx.patch,
-            "DELETE": httpx.delete
+            "GET": httpx.get,
+            "POST": httpx.post,
+            "PUT": httpx.put,
+            "PATCH": httpx.patch,
+            "DELETE": httpx.delete,
         }
 
         try:
@@ -132,17 +132,17 @@ class GraphAPIClient:
 
             raise httpx.HTTPStatusError(
                 msg, request=e.request, response=e.response
-                )
-        
+            )
+
         return response
 
-    def get_site_id(self, hostname:str, site_name:str)-> str:
+    def get_site_id(self, hostname: str, site_name: str) -> str:
         site_id_url = build_url(
-                    ClientEndpoints.SITE_ID,
-                    graph_url=GRAPH_URL,
-                    hostname=hostname,
-                    site_name=site_name,
-                )
+            ClientEndpoints.SITE_ID,
+            graph_url=GRAPH_URL,
+            hostname=hostname,
+            site_name=site_name,
+        )
 
         response = self.make_request(HTTPMethod.GET, site_id_url).json()
 
@@ -150,33 +150,30 @@ class GraphAPIClient:
 
     def get_drive_id(self, site_id: str, document_library: str) -> str:
         drive_id_url = build_url(
-            ClientEndpoints.DRIVE_ID,
-            graph_url=GRAPH_URL,
-            site_id=site_id
+            ClientEndpoints.DRIVE_ID, graph_url=GRAPH_URL, site_id=site_id
         )
         drives = self.make_request(HTTPMethod.GET, drive_id_url).json()["value"]
 
         for drive in drives:
             if drive["name"] == document_library:
-                return drive['id']
+                return drive["id"]
 
+        raise RuntimeError(f"Document library '{document_library}' not found.")
 
-        raise RuntimeError(
-            f"Document library '{document_library}' not found."
-        )
-
-    def upload_local_file(self, site_name:str, local_path:str, dest_path:str) -> dict: 
+    def upload_local_file(
+        self, site_name: str, local_path: str, dest_path: str
+    ) -> dict:
         """
-        Upload a file to a SharePoint Documents folder. 
+        Upload a file to a SharePoint Documents folder.
 
         Args:
-            site_name (str) : The name of the sharepoint site you want to upload a file to 
-            local_path (str): the exact local path where your file is 
+            site_name (str) : The name of the sharepoint site you want to upload a file to
+            local_path (str): the exact local path where your file is
             dest_path (str): the path, relative to the Documents folder, where you want to save the file
-            
+
             Example: Setting dest_path="FolderName"
-            will create a file found at Documents/FolderName/file.xlsx 
-            Setting dest_path to "" will save it at Documents/file.xslx 
+            will create a file found at Documents/FolderName/file.xlsx
+            Setting dest_path to "" will save it at Documents/file.xslx
 
         Returns:
             dict: response json
@@ -188,47 +185,51 @@ class GraphAPIClient:
             file_data = f.read()
 
         upload_url = build_url(
-                    ClientEndpoints.UPLOAD_FILE,
-                    graph_url=GRAPH_URL,
-                    site_id=self.get_site_id(hostname=HOST_NAME, site_name=site_name),
-                    dest_path=dest_path,
-                    file_name=file_name                    
-                )
+            ClientEndpoints.UPLOAD_FILE,
+            graph_url=GRAPH_URL,
+            site_id=self.get_site_id(hostname=HOST_NAME, site_name=site_name),
+            dest_path=dest_path,
+            file_name=file_name,
+        )
 
-        response = self.make_request(HTTPMethod.PUT, 
-                                     upload_url,
-                                     data=file_data)
+        response = self.make_request(HTTPMethod.PUT, upload_url, data=file_data)
 
         return response.json()
 
-    def get_content(self, hostname: str, site_name: str, document_library: str, file_path:str) -> bytes:
+    def get_content(
+        self,
+        hostname: str,
+        site_name: str,
+        document_library: str,
+        file_path: str,
+    ) -> bytes:
         """
         Get the raw bytes of the excel workbook specified by
-        file_path. 
+        file_path.
 
         Args:
-            hostname: Sharepoint host name 
-            site_name: Sharepoint site name 
-            document_library: The sharepoint document library. 
+            hostname: Sharepoint host name
+            site_name: Sharepoint site name
+            document_library: The sharepoint document library.
             file_path (str): The path of the file you want, relative to the
-            instantiated document library. 
+            instantiated document library.
 
         Returns:
             bytes: The raw bytes representing the excel file.
         """
-        site_id  = self.get_site_id(hostname, site_name)
+        site_id = self.get_site_id(hostname, site_name)
         drive_id = self.get_drive_id(site_id, document_library)
 
-        content_url = build_url(ClientEndpoints.GET_CONTENT,
-                                 graph_url=GRAPH_URL,
-                                 site_id=site_id,
-                                 drive_id=drive_id,
-                                 file_path=file_path
-         )
+        content_url = build_url(
+            ClientEndpoints.GET_CONTENT,
+            graph_url=GRAPH_URL,
+            site_id=site_id,
+            drive_id=drive_id,
+            file_path=file_path,
+        )
 
-        request = self.make_request(HTTPMethod.GET,
-                                            content_url, 
-                                            timeout=60, 
-                                            follow_redirects=True)
+        request = self.make_request(
+            HTTPMethod.GET, content_url, timeout=60, follow_redirects=True
+        )
 
-        return request.content 
+        return request.content

@@ -29,6 +29,7 @@ def test_execute_request_invokes_correct_function(
 
     assert response == "Mocked Output"
 
+
 def test_execute_request_returns_error_with_wrong_method(configured_client):
 
     class MockHTTPMethod(StrEnum):

@@ -48,9 +48,9 @@ For example:
 - `dest_path="Folder Name"` creates a file at `Documents/Folder Name/file.xlsx`
 - `dest_path=""` saves it at `Documents/file.xlsx`
 ```python
-client.upload_local_file(site_name=site_name,
-                          local_path=local_path,
-                          dest_path=dest_path)
+client.upload_local_file(
+    site_name=site_name, local_path=local_path, dest_path=dest_path
+)
 ```
 ### Download a File
  
