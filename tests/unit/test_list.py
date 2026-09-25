@@ -6,9 +6,11 @@ import pytest
 
 from espy.list import SharePointList
 from espy.models.models import (
-    COLUMN_KIND_PYTHON_TYPES,
+    ACCEPTABLE_PYTHON_TYPES,
+    READ_ONLY_COLUMN_KINDS,
     ColumnKind,
-    GraphAPIResponse,
+    GraphCollection,
+    SharePointListColumn,
 )
 
 
@@ -125,7 +127,7 @@ def mocked_column_data() -> dict:
                 "name": "col_one",
                 "read_only": False,
                 "required": True,
-                "type": "text",
+                "text": {},
             },
             {
                 "description": "",
@@ -137,7 +139,7 @@ def mocked_column_data() -> dict:
                 "name": "col_two",
                 "read_only": False,
                 "required": True,
-                "type": "boolean",
+                "boolean": {},
             },
         ],
     }
@@ -156,7 +158,7 @@ def test_fetch_page_returns_graph_api_response(
         "example.com", params={"test": True}
     )
 
-    assert isinstance(page_data, GraphAPIResponse)
+    assert isinstance(page_data, GraphCollection)
 
 
 def test_list_page_yields_dict(
@@ -168,7 +170,10 @@ def test_list_page_yields_dict(
 ):
 
     mock_list_columns_func = MagicMock()
-    mock_list_columns_func.return_value = mocked_column_data["value"]
+    mock_list_columns_func.return_value = [
+        SharePointListColumn.model_validate(column)
+        for column in mocked_column_data["value"]
+    ]
 
     monkeypatch.setattr(
         "espy.list.SharePointList.list_columns", mock_list_columns_func
@@ -209,7 +214,10 @@ def test_get_row_yields_dict(
     monkeypatch,
 ):
     mock_list_columns_func = MagicMock()
-    mock_list_columns_func.return_value = mocked_column_data["value"]
+    mock_list_columns_func.return_value = [
+        SharePointListColumn.model_validate(column)
+        for column in mocked_column_data["value"]
+    ]
 
     monkeypatch.setattr(
         "espy.list.SharePointList.list_columns", mock_list_columns_func
@@ -230,7 +238,10 @@ def test_get_row_raises_key_error_when_column_not_present(
     monkeypatch,
 ):
     mock_list_columns_func = MagicMock()
-    mock_list_columns_func.return_value = mocked_column_data["value"]
+    mock_list_columns_func.return_value = [
+        SharePointListColumn.model_validate(column)
+        for column in mocked_column_data["value"]
+    ]
 
     monkeypatch.setattr(
         "espy.list.SharePointList.list_columns", mock_list_columns_func
@@ -250,7 +261,10 @@ def test_get_row_raises_value_error_when_value_not_present(
     monkeypatch,
 ):
     mock_list_columns_func = MagicMock()
-    mock_list_columns_func.return_value = mocked_column_data["value"]
+    mock_list_columns_func.return_value = [
+        SharePointListColumn.model_validate(column)
+        for column in mocked_column_data["value"]
+    ]
 
     monkeypatch.setattr(
         "espy.list.SharePointList.list_columns", mock_list_columns_func
@@ -264,7 +278,7 @@ def test_get_row_raises_value_error_when_value_not_present(
         configured_test_list.get_row("col_one", "456")
 
 
-def test_list_column_returns_list_of_dict(
+def test_list_column_returns_list_of_columns(
     configured_test_list, mocked_column_data, monkeypatch
 ):
     mock_get = mocked_request(mocked_column_data)
@@ -274,7 +288,9 @@ def test_list_column_returns_list_of_dict(
     result = configured_test_list.list_columns()
 
     assert isinstance(result, list)
-    assert isinstance(result[0], dict)
+    assert isinstance(result[0], SharePointListColumn)
+    assert result[0].type == ColumnKind.TEXT
+    assert result[1].type == ColumnKind.BOOLEAN
 
 
 def test_add_row_breaks_with_bad_column_name(
@@ -283,7 +299,10 @@ def test_add_row_breaks_with_bad_column_name(
     data = {"col_three": "1234 Market St"}
 
     mock_list_columns_func = MagicMock()
-    mock_list_columns_func.return_value = mocked_column_data["value"]
+    mock_list_columns_func.return_value = [
+        SharePointListColumn.model_validate(column)
+        for column in mocked_column_data["value"]
+    ]
 
     monkeypatch.setattr(
         "espy.list.SharePointList.list_columns", mock_list_columns_func
@@ -294,7 +313,10 @@ def test_add_row_breaks_with_bad_column_name(
 
 
 def test_column_kind_enum_matches_type_mapping():
-    assert set(ColumnKind) == set(COLUMN_KIND_PYTHON_TYPES.keys())
+    writable_kinds = set(ACCEPTABLE_PYTHON_TYPES.keys())
+
+    assert writable_kinds.isdisjoint(READ_ONLY_COLUMN_KINDS)
+    assert set(ColumnKind) == writable_kinds | READ_ONLY_COLUMN_KINDS
 
 
 def test_add_row_breaks_with_bad_data_type(
@@ -303,7 +325,10 @@ def test_add_row_breaks_with_bad_data_type(
     data = {"col_two": "True"}
 
     mock_list_columns_func = MagicMock()
-    mock_list_columns_func.return_value = mocked_column_data["value"]
+    mock_list_columns_func.return_value = [
+        SharePointListColumn.model_validate(column)
+        for column in mocked_column_data["value"]
+    ]
 
     monkeypatch.setattr(
         "espy.list.SharePointList.list_columns", mock_list_columns_func
@@ -316,10 +341,14 @@ def test_add_row_breaks_with_bad_data_type(
 def test_edit_row_breaks_with_bad_column_name(
     configured_test_list, mocked_column_data, monkeypatch
 ):
+    # col three does not exist
     data = {"col_three": "1234 Market St"}
 
     mock_list_columns_func = MagicMock()
-    mock_list_columns_func.return_value = mocked_column_data["value"]
+    mock_list_columns_func.return_value = [
+        SharePointListColumn.model_validate(column)
+        for column in mocked_column_data["value"]
+    ]
 
     monkeypatch.setattr(
         "espy.list.SharePointList.list_columns", mock_list_columns_func
@@ -330,19 +359,42 @@ def test_edit_row_breaks_with_bad_column_name(
 
 
 def test_edit_row_breaks_with_bad_data_type(
-    configured_test_list, mocked_row_data, monkeypatch
+    configured_test_list, mocked_column_data, monkeypatch
 ):
+    # col_two is a boolean column, so a string value is the wrong type
     data = {"col_two": "fdhfdfh"}
 
+    mock_list_columns_func = MagicMock()
+    mock_list_columns_func.return_value = [
+        SharePointListColumn.model_validate(column)
+        for column in mocked_column_data["value"]
+    ]
+
+    monkeypatch.setattr(
+        "espy.list.SharePointList.list_columns", mock_list_columns_func
+    )
+
+    # get_row returns a formatted row, which includes the row id
     mock_list_get_row_func = MagicMock()
-    mock_list_get_row_func.return_value = mocked_row_data
+    mock_list_get_row_func.return_value = {
+        "col_one": "123456",
+        "col_two": True,
+        "id": "123",
+    }
 
     monkeypatch.setattr(
         "espy.list.SharePointList.get_row", mock_list_get_row_func
     )
 
-    with pytest.raises(KeyError):
+    mock_request = MagicMock()
+
+    monkeypatch.setattr("espy.list.GraphAPIClient.make_request", mock_request)
+
+    with pytest.raises(KeyError, match="incorrect data type"):
         configured_test_list.edit_row("col_one", "123456", data)
+
+    # Validation should fail before the PATCH request is sent
+    mock_request.assert_not_called()
 
 
 def test_edit_row_breaks_with_non_index_col(
@@ -351,7 +403,10 @@ def test_edit_row_breaks_with_non_index_col(
     data = {"col_two": "fdhfdfh"}
 
     mock_list_columns_func = MagicMock()
-    mock_list_columns_func.return_value = mocked_column_data["value"]
+    mock_list_columns_func.return_value = [
+        SharePointListColumn.model_validate(column)
+        for column in mocked_column_data["value"]
+    ]
 
     monkeypatch.setattr(
         "espy.list.SharePointList.list_columns", mock_list_columns_func
@@ -366,7 +421,10 @@ def test_delete_row_breaks_with_bad_column_name(
 ):
 
     mock_list_columns_func = MagicMock()
-    mock_list_columns_func.return_value = mocked_column_data["value"]
+    mock_list_columns_func.return_value = [
+        SharePointListColumn.model_validate(column)
+        for column in mocked_column_data["value"]
+    ]
 
     monkeypatch.setattr(
         "espy.list.SharePointList.list_columns", mock_list_columns_func
@@ -380,7 +438,10 @@ def test_delete_row_breaks_with_non_index_col(
     configured_test_list, mocked_column_data, monkeypatch
 ):
     mock_list_columns_func = MagicMock()
-    mock_list_columns_func.return_value = mocked_column_data["value"]
+    mock_list_columns_func.return_value = [
+        SharePointListColumn.model_validate(column)
+        for column in mocked_column_data["value"]
+    ]
 
     monkeypatch.setattr(
         "espy.list.SharePointList.list_columns", mock_list_columns_func
@@ -397,7 +458,10 @@ def test_upsert_row_returns_error_when_key_col_not_present(
     data = {"col_three": "1234 Market St"}
 
     mock_list_columns_func = MagicMock()
-    mock_list_columns_func.return_value = mocked_column_data["value"]
+    mock_list_columns_func.return_value = [
+        SharePointListColumn.model_validate(column)
+        for column in mocked_column_data["value"]
+    ]
 
     monkeypatch.setattr(
         "espy.list.SharePointList.list_columns", mock_list_columns_func

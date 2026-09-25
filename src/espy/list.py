@@ -16,13 +16,14 @@ from espy.constants import (
     SHAREPOINT_LIST_EXCLUDED_COLUMNS,
 )
 from espy.models.models import (
-    BatchEnvelope,
+    ACCEPTABLE_PYTHON_TYPES,
+    READ_ONLY_COLUMN_KINDS,
+    GraphBatchResponse,
     BatchError,
     BatchResult,
     ColumnKind,
-    GraphAPIResponse,
+    GraphCollection,
     HTTPMethod,
-    IncomingField,
     SharePointListColumn,
     SharePointListRow,
 )
@@ -94,26 +95,20 @@ class SharePointList:
 
     # Column data
     @cached_property
-    def _columns(self) -> list[dict]:
+    def _columns(self) -> list[SharePointListColumn]:
         return self.list_columns()
 
     @cached_property
     def display_to_canonical(self) -> dict[str, str]:
-        return {
-            column["display_name"]: column["name"] for column in self._columns
-        }
+        return {column.display_name: column.name for column in self._columns}
 
     @cached_property
     def canonical_to_display(self) -> dict[str, str]:
-        return {
-            column["name"]: column["display_name"] for column in self._columns
-        }
+        return {column.name: column.display_name for column in self._columns}
 
     @cached_property
-    def column_types(self) -> dict[str, str]:
-        return {
-            column["display_name"]: column["type"] for column in self._columns
-        }
+    def column_types(self) -> dict[str, ColumnKind]:
+        return {column.display_name: column.type for column in self._columns}
 
     @classmethod
     def setup(cls, site_name: str, list_name: str):
@@ -149,34 +144,37 @@ class SharePointList:
             raise KeyError(f"{field_name} is not in the SharePoint List")
 
     def _check_incoming_field_type_valid(
-        self, field_name: str, field_value: Any, column_types: dict[str, str]
-    ) -> IncomingField:
+        self, field_name: str, field_value: Any
+    ) -> None:
 
-        list_column_kind = column_types[field_name]
+        column_kind = self.column_types[field_name]
 
-        validated_incoming_field = IncomingField(
-            field_name=field_name,
-            field_value=field_value,
-            list_column_kind=ColumnKind(list_column_kind),
-        )
+        if column_kind in READ_ONLY_COLUMN_KINDS:
+            raise TypeError(
+                f"Field name {field_name} has column type that does not "
+                f"support write operations with the API: {column_kind.value}."
+            )
 
-        return validated_incoming_field
+        valid_data_types = ACCEPTABLE_PYTHON_TYPES[column_kind]
+
+        # Null values should not be flagged as a bad data type
+        if field_value is not None and not isinstance(
+            field_value, valid_data_types
+        ):
+            raise TypeError(
+                f"Field name {field_name} has the wrong data type. Data type "
+                f"must be one of "
+                f"{','.join(t.__name__ for t in valid_data_types)}"
+            )
 
     def _check_incoming_field_is_pk(self, field_name: str) -> bool:
-        for field in self._columns:
-            if (
-                field["display_name"] == field_name
-                and field.get("indexed") == True
-            ):
+        for column in self._columns:
+            if column.display_name == field_name and column.indexed:
                 return True
 
-        raise KeyError(f"The specified field does not exist: {field_name}.")
+        raise KeyError(f"The specified field is not indexed: {field_name}.")
 
-    def _validate_incoming_data(
-        self, input_data: dict[str, Any]
-    ) -> dict[str, IncomingField]:
-
-        validated_fields = {}
+    def _validate_incoming_data(self, input_data: dict[str, Any]) -> None:
 
         invalid_column_names = []
         invalid_data_types = []
@@ -185,16 +183,12 @@ class SharePointList:
         for field_name, field_value in input_data.items():
             try:
                 self._check_incoming_field_name_valid(field_name)
-                validated_field = self._check_incoming_field_type_valid(
-                    field_name, field_value, self.column_types
-                )
-
-                validated_fields[field_name] = validated_field
+                self._check_incoming_field_type_valid(field_name, field_value)
 
             except KeyError:
                 invalid_column_names.append(field_name)
 
-            except ValidationError:
+            except TypeError:
                 invalid_data_types.append(field_name)
 
         if invalid_column_names or invalid_data_types:
@@ -210,8 +204,6 @@ class SharePointList:
 
             raise KeyError(f"{'\n'.join(compiled_errors)}")
 
-        return validated_fields
-
     def _format_payload_for_api(self, data: dict[str, Any]) -> dict[str, dict]:
         """
         Formats an incoming payload to be sent to the API. Validates incoming
@@ -224,22 +216,19 @@ class SharePointList:
         Returns: dict, a validated and
         formatted payload that the graph API will accept.
         """
+        self._validate_incoming_data(data)
+
         # Map to the canonical names in the table
-        # Make sure all keys are present in SharePointList
-        fields_payload = {}
-        fields_payload["fields"] = {}
-
-        validated_data = self._validate_incoming_data(data)
-
-        for display_name, column_data in validated_data.items():
-            canonical_name = self.display_to_canonical[display_name]
-            fields_payload["fields"][canonical_name] = column_data.field_value
-
-        return fields_payload
+        return {
+            "fields": {
+                self.display_to_canonical[display_name]: value
+                for display_name, value in data.items()
+            }
+        }
 
     def _fetch_page(
         self, url: str | None, params: dict | None
-    ) -> GraphAPIResponse[SharePointListRow] | None:
+    ) -> GraphCollection[SharePointListRow] | None:
         """A helper funtion to fetch a single page of rows
         from a SharePoint List. Used by the list_rows method to paginate
         through all data in a SharePoint list.
@@ -261,7 +250,7 @@ class SharePointList:
             HTTPMethod.GET, url, params=params
         ).json()
 
-        response_envelope = GraphAPIResponse[SharePointListRow].model_validate(
+        response_envelope = GraphCollection[SharePointListRow].model_validate(
             raw_data
         )
 
@@ -318,19 +307,17 @@ class SharePointList:
 
         return (method, url, body)
 
-    def _interpret_get(self, body: dict | None):
-        if body and (rows := body.get("value")):
-            row = rows[0]["fields"]
-            formatted_row = self._format_outgoing_row(row)
+    def _interpret_get(self, body: dict | None) -> dict:
+        rows = (
+            GraphCollection[SharePointListRow].model_validate(body or {}).value
+        )
 
-            return formatted_row
+        if not rows:
+            raise ValueError("Row not found.")
 
-        raise ValueError("Row not found.")
+        return self._format_outgoing_row(rows[0].fields)
 
     def _build_add(self, data: dict) -> tuple[HTTPMethod, str, dict | None]:
-        # We need to validate that the incoming data is valid
-        self._validate_incoming_data(data)
-
         method = HTTPMethod.POST
 
         url = build_url(
@@ -352,9 +339,6 @@ class SharePointList:
     def _build_edit(
         self, row_id: int, data: dict
     ) -> tuple[HTTPMethod, str, dict | None]:
-
-        # We need to validate that the incoming data is valid
-        self._validate_incoming_data(data)
 
         method = HTTPMethod.PATCH
 
@@ -437,7 +421,7 @@ class SharePointList:
 
         return incoming_batch, interpreters
 
-    def list_columns(self) -> list[dict]:
+    def list_columns(self) -> list[SharePointListColumn]:
         """List the columns in a SharePoint list.
 
         Returns:
@@ -460,16 +444,14 @@ class SharePointList:
             HTTPMethod.GET, columns_url
         ).json()
 
-        response_envelope = GraphAPIResponse.model_validate(raw_response)
+        response_envelope = GraphCollection[dict].model_validate(raw_response)
 
         if not response_envelope.value:
             raise ValueError("No columns to return.")
 
         for column in response_envelope.value:
             if column["name"] not in SHAREPOINT_LIST_EXCLUDED_COLUMNS:
-                column_list.append(
-                    SharePointListColumn.model_validate(column).model_dump()
-                )
+                column_list.append(SharePointListColumn.model_validate(column))
 
         return column_list
 
@@ -500,7 +482,7 @@ class SharePointList:
             next_link = response_envelope.next_link
 
             # Returns unnecessary extra column information, filter it out
-            for row in response_envelope.value:  # pyright: ignore
+            for row in response_envelope.value:
                 validated_row = row.fields
 
                 formatted_row = self._format_outgoing_row(validated_row)
@@ -631,7 +613,7 @@ class SharePointList:
             json={"requests": incoming_batch},
         )
 
-        envelope = BatchEnvelope.model_validate(response.json())
+        envelope = GraphBatchResponse.model_validate(response.json())
 
         # Prepopulate results list with the required length
         results: list[BatchResult | None] = [None] * len(operations)
