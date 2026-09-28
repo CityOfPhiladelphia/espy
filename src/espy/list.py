@@ -683,3 +683,109 @@ class SharePointList:
                 )
 
         return results
+
+    def add_rows(self, data: Sequence[dict[str, Any]]) -> list[BatchResult]:
+        """Add multiple rows to a SharePoint list.
+
+        Note: This method does not currently work for Lists with
+        a Location column, Person column, or Hyperlink or image column.
+
+        Args:
+            data Sequence(dict[str, Any]): A sequence of row data to add. 
+            Keys in the row data must match the name of the name of the column in the SharePoint
+            list.
+
+        Returns:
+            list[BatchResult]: A list of Batch Result objects.
+        """
+                
+        operations = [AddRow(row) for row in data]
+
+        return self.batch(operations)
+
+    def get_rows(self, key_col: str, values: list[Any]) -> list[BatchResult]:
+        """
+        Get multiple rows from a list by primary key.
+
+        Args:
+            key_col (str): The name of the primary key column to search on
+            values list(Any): The values of the priamry key column
+
+        Returns:
+            list[BatchResult]: A list of Batch Result objects.
+        """
+
+        operations = [GetRow(key_col, value) for value in values]
+
+        return self.batch(operations)
+
+    def edit_rows(self, key_col: str, values: list[Any], 
+                  data: list[dict[str, Any]]) -> list[BatchResult]:
+        """Edits rows in a SharePoint list.
+
+        Note: This method does not currently work for Lists with
+        a Location column, Person column, or Hyperlink or image column.
+
+        Args:
+            key_col (str): The name of the primary key column to search on.
+            value: The value of the primary key column to search on.
+            values list(Any): The values of the priamry key column
+            data Sequence(dict[str, Any]): A sequence of row data to edit. 
+            Keys in the row data must match the name of the name of the column in the SharePoint
+            list.
+
+        Returns:
+            list[BatchResult]: A list of Batch Result objects.
+        """
+
+        get_results = self.get_rows(key_col, values)
+
+        # Make a copy of get results to overwrite with results
+        # of batch delete for final output
+        results = list(get_results)
+
+        positions: list[int] = []
+        edit_ops: list[EditRow] = []
+
+        for pos, (result, new_data) in enumerate(zip(get_results, data, strict=True)):
+            if result.ok:
+                positions.append(pos)
+                edit_ops.append(EditRow(result.value["id"], new_data))
+
+        # Because batch returns in same order as entered, positions and batch
+        # align here
+        for pos, deleted in zip(positions, self.batch(edit_ops), strict=True):
+            results[pos] = deleted
+
+        return results
+
+    def delete_rows(self, key_col: str, values: list[Any]) -> list[BatchResult]:
+        """Delete multiple rows in a SharePoint list.
+        Args:
+            key_col (str): The name of the primary key column to search on.
+            values list[Any]: The value of the primary key column to search on.
+
+        Returns:
+            list[BatchResult]: A list of Batch Result objects.
+        """
+
+        get_results = self.get_rows(key_col, values)
+
+        # Make a copy of get results to overwrite with results
+        # of batch delete for final output
+        results = list(get_results)
+
+        positions: list[int] = []
+        delete_ops: list[DeleteRow] = []
+
+        for pos, result in enumerate(get_results):
+            if result.ok:
+                positions.append(pos)
+                delete_ops.append(DeleteRow(result.value["id"]))
+
+        # Because batch returns in same order as entered, positions and batch
+        # align here
+        for pos, deleted in zip(positions, self.batch(delete_ops), strict=True):
+            results[pos] = deleted
+
+        return results
