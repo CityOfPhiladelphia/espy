@@ -1,15 +1,15 @@
 from enum import StrEnum
 
-from httpx import Response
 import pandas as pd
+from httpx import Response
 
-from espy.client import GraphAPIClient
+from espy.client import GraphAPIClient, resolve_hostname
 from espy.constants import GRAPH_URL
 from espy.models.graph_api_models import (
     MalformedRowError,
     PrimaryKeyValueNotFound,
 )
-from espy.models.models import HTTPMethod
+from espy.models.models import APICredentials, HTTPMethod
 from espy.urls import build_url
 
 
@@ -22,6 +22,7 @@ class ExcelEndpoints(StrEnum):
         StrEnum (StrEnum): Inherits from the StrEnum class in the enum
         library.
     """
+
     WORKBOOK_ID = "{graph_url}/drives/{drive_id}/root:/{workbook_path}"
 
     ADD_ROW = (
@@ -53,18 +54,18 @@ class ExcelEndpoints(StrEnum):
         "{graph_url}/drives/{drive_id}/items/{workbook_id}"
         "/workbook/worksheets/{worksheet_name}/protection/protect"
     )
-    
+
     UNPROTECT = (
         "{graph_url}/drives/{drive_id}/items/{workbook_id}"
         "/workbook/worksheets/{worksheet_name}/protection/unprotect"
     )
 
-    
+
 class ExcelWorksheet:
     """
     Models a SharePoint Excel Workbook.
 
-    Provides functionality to access, add, modify, or delete rows in a Sharepoint Excel. 
+    Provides functionality to access, add, modify, or delete rows in a Sharepoint Excel.
 
     Attributes:
         client(GraphAPIClient): A GraphAPIClient instance, used to
@@ -72,91 +73,103 @@ class ExcelWorksheet:
 
         site_id (str)         : A string id for the SharePoint site the graph is on.
 
-        drive_id (str)        : A string identifier for a specfic sharepoint drive. 
+        drive_id (str)        : A string identifier for a specfic sharepoint drive.
 
         workbook_id (str)     : A string identifier for a specfic excel workbook.
 
         worksheet_name (str)  : String representing the name of a worksheet in Excel.
 
-        table_name (str)      : String representing the name of a table object in Excel. 
+        table_name (str)      : String representing the name of a table object in Excel.
     """
+
     def __init__(
         self,
         client: GraphAPIClient,
         site_id: str,
-        drive_id: str, 
+        drive_id: str,
         workbook_id: str,
-        worksheet_name: str|None=None,
-        table_name: str|None=None,
+        worksheet_name: str | None = None,
+        table_name: str | None = None,
     ):
 
-        self.client         = client
-        self.site_id        = site_id
-        self.drive_id       = drive_id
-        self.workbook_id    = workbook_id
+        self.client = client
+        self.site_id = site_id
+        self.drive_id = drive_id
+        self.workbook_id = workbook_id
         self.worksheet_name = worksheet_name
-        self.table_name     = table_name
+        self.table_name = table_name
 
     @classmethod
     def setup(
-        cls, 
-        hostname:str, 
-        site_name:str, 
-        document_library:str,
-        workbook_path:str,
-        worksheet_name:str|None=None,
-        table_name:str|None=None
-        ):
+        cls,
+        *,
+        site_name: str,
+        document_library: str,
+        workbook_path: str,
+        worksheet_name: str | None = None,
+        table_name: str | None = None,
+        hostname: str | None = None,
+        creds: APICredentials | None = None,
+    ):
         """
         Sets up the ExcelWorkbook class. Creates a client and fetches
-        necessary ids to have ExcelWorkbook operate on. 
+        necessary ids to have ExcelWorkbook operate on.
+
+        All arguments are keyword-only.
 
         Args:
-            hostname        : Sharepoint hostname. i.e. "phila.sharepoint.com"
             site_name       : The name of the sharepoint site. i.e. "ps360-metrics-share"
             document_library: The name of the document library. i.e. "Documents"
-            workbook_path   : The path to the file you want to access 
-            relative to document_library. i.e. "Philly Stat - OIT/OIT_data.xlsx" 
-            worksheet_name  : The name of the worksheet you want to affect. i.e. "Metrics" 
-            table_name      : The name of the table object in the excel. i.e. "Table1" 
+            workbook_path   : The path to the file you want to access
+            relative to document_library. i.e. "Philly Stat - OIT/OIT_data.xlsx"
+            worksheet_name  : The name of the worksheet you want to affect. i.e. "Metrics"
+            table_name      : The name of the table object in the excel. i.e. "Table1"
+            hostname        : Sharepoint hostname. i.e. "example.sharepoint.com".
+            If None, read from SHAREPOINT_HOSTNAME.
+            creds           : tenant_id, client_id and client_secret. If None,
+            read from AZURE_TENANT_ID, AZURE_CLIENT_ID and AZURE_CLIENT_SECRET.
 
         Returns:
             ExcelWorkbook: An ExcelWorkboook object.
         """
-        client = GraphAPIClient.authenticate()
+        client = GraphAPIClient.authenticate(creds)
 
-        site_id = client.get_site_id(hostname, site_name)
+        site_id = client.get_site_id(resolve_hostname(hostname), site_name)
         drive_id = client.get_drive_id(site_id, document_library)
 
         workbook_id_url = build_url(
             ExcelEndpoints.WORKBOOK_ID,
             graph_url=GRAPH_URL,
-            drive_id=drive_id, 
-            workbook_path=workbook_path
+            drive_id=drive_id,
+            workbook_path=workbook_path,
         )
-        workbook_id = client.make_request(HTTPMethod.GET, workbook_id_url).json()["id"]
+        workbook_id = client.make_request(
+            HTTPMethod.GET, workbook_id_url
+        ).json()["id"]
 
-        return cls(client, site_id, drive_id, workbook_id, worksheet_name, table_name)
+        return cls(
+            client, site_id, drive_id, workbook_id, worksheet_name, table_name
+        )
 
-    def add_rows(self, rows:list, password:str|None=None) -> Response:
+    def add_rows(self, rows: list, password: str | None = None) -> Response:
         """
-        Append a row of data to a specific table in a specific excel worksheet. 
-        For this function to work: 
+        Append a row of data to a specific table in a specific excel worksheet.
+        For this function to work:
             a) Excel must contain a table object in it, which
-            must have been set when instantiating ExcelWorksheet. 
-            
-            b) The list you pass must have a value for each column of the table, or 
-            the operation will fail. 
+            must have been set when instantiating ExcelWorksheet.
+
+            b) The list you pass must have a value for each column of the table, or
+            the operation will fail.
 
         Args:
-            row (list): The row you want to add, in list form. 
-                e.g. [[1,2,3]] would add a row with values 1, 2, and 3. 
+            row (list): The row you want to add, in list form.
+                e.g. [[1,2,3]] would add a row with values 1, 2, and 3.
 
             password (str, optional): Password to pass to sheet protection to temporarily un/reprotect sheet
                 Defaults to None.
 
         Returns:
-            Response - httpx response 
+            Response - httpx response
         """
         self._check_rows(rows)
 
@@ -167,67 +180,68 @@ class ExcelWorksheet:
             graph_url=GRAPH_URL,
             drive_id=self.drive_id,
             workbook_id=self.workbook_id,
-            table_name=self.table_name
+            table_name=self.table_name,
         )
 
-        json = {
-            "values": rows
-        }
-        
-        response = self.client.make_request(HTTPMethod.POST, 
-                                            add_row_url, 
-                                            json=json, 
-                                            timeout=60)
+        json = {"values": rows}
+
+        response = self.client.make_request(
+            HTTPMethod.POST, add_row_url, json=json, timeout=60
+        )
 
         self.toggle_protection(password, protect=True)
 
         return response
 
-    def delete_row_by_pk(self,pk_col:str, pk_val: str|int, password:str|None=None) -> Response:
+    def delete_row_by_pk(
+        self, pk_col: str, pk_val: str | int, password: str | None = None
+    ) -> Response:
         """
         Deletes a row based on a primart key column and value.
 
         Args:
-            pk_col (str): The name of the primary key column 
-            pk_val (str | int): The value we are looking to match on 
+            pk_col (str): The name of the primary key column
+            pk_val (str | int): The value we are looking to match on
             password (str | None, optional):  Sheet protection password. Defaults to None.
 
         Raises:
-            KeyError: Throws when key is not found as a column in the tbale 
-            PrimaryKeyValueNotFound: Thrown when the value to look for doesn't exist. 
-            ValueError: Thrown when trying to delete from empty table 
+            KeyError: Throws when key is not found as a column in the tbale
+            PrimaryKeyValueNotFound: Thrown when the value to look for doesn't exist.
+            ValueError: Thrown when trying to delete from empty table
 
         Returns:
             Response: HTTP Response
         """
 
         del_index = self._find_index_of_pk(pk_col, pk_val)
-    
+
         response = self.delete_row_at_index(del_index, password=password)
-        
+
         return response
 
-    def update_row_by_pk(self, 
-                         pk_col:str, 
-                         pk_val:str|int, 
-                         value:list, 
-                         password:str|None=None) -> Response:
+    def update_row_by_pk(
+        self,
+        pk_col: str,
+        pk_val: str | int,
+        value: list,
+        password: str | None = None,
+    ) -> Response:
         """
-        Update a row based on the primary key value. 
+        Update a row based on the primary key value.
 
         Args:
-            pk_col (str): Name of the primary key column 
-            pk_val (str | int): Value to match on for primary key 
-            value (list):  List containing the data to send to update 
+            pk_col (str): Name of the primary key column
+            pk_val (str | int): Value to match on for primary key
+            value (list):  List containing the data to send to update
             password (str | None, optional): Sheet protection password  Defaults to None.
 
         Raises:
-            KeyError: Throws when key is not found as a column in the tbale 
-            PrimaryKeyValueNotFound: Thrown when the value to look for doesn't exist. 
-            ValueError: Thrown when trying to delete from empty table 
+            KeyError: Throws when key is not found as a column in the tbale
+            PrimaryKeyValueNotFound: Thrown when the value to look for doesn't exist.
+            ValueError: Thrown when trying to delete from empty table
 
         Returns:
-            Response: The HTTP response. 
+            Response: The HTTP response.
         """
         self._check_rows(value)
 
@@ -237,10 +251,12 @@ class ExcelWorksheet:
 
         return response
 
-    def delete_row_at_index(self, index:int, password:str|None=None) -> Response:
+    def delete_row_at_index(
+        self, index: int, password: str | None = None
+    ) -> Response:
         """
-        Deletes a row, specified by index, from an excel table. 
-        Index is 0-based, so the first row in the table is set by 
+        Deletes a row, specified by index, from an excel table.
+        Index is 0-based, so the first row in the table is set by
         index=0,
 
         Args:
@@ -257,24 +273,26 @@ class ExcelWorksheet:
             drive_id=self.drive_id,
             workbook_id=self.workbook_id,
             table_name=self.table_name,
-            index=index
+            index=index,
         )
         response = self.client.make_request(HTTPMethod.DELETE, del_row_url)
         self.toggle_protection(password, protect=True)
 
         return response
 
-    def update_row_at_index(self, index:int, value:list, password:str|None=None) -> Response:
+    def update_row_at_index(
+        self, index: int, value: list, password: str | None = None
+    ) -> Response:
         """
-        Updates an existing row of an excel table. 
+        Updates an existing row of an excel table.
 
-        Arguments: 
-            index(int): The index of the row you want to update, 0-based. 
-            value(list): List containing the data to send to update 
-            password(str|None, optional): Sheet protection password 
+        Arguments:
+            index(int): The index of the row you want to update, 0-based.
+            value(list): List containing the data to send to update
+            password(str|None, optional): Sheet protection password
 
         Returns:
-            Response: The HTTP response. 
+            Response: The HTTP response.
         """
         self._check_rows(value)
 
@@ -285,30 +303,35 @@ class ExcelWorksheet:
             drive_id=self.drive_id,
             workbook_id=self.workbook_id,
             table_name=self.table_name,
-            index=index
+            index=index,
         )
 
-        json = {
-            "values": value
-        }
+        json = {"values": value}
 
-        response = self.client.make_request(HTTPMethod.PATCH, update_row_url, json=json)
+        response = self.client.make_request(
+            HTTPMethod.PATCH, update_row_url, json=json
+        )
         self.toggle_protection(password, protect=True)
 
         return response
 
-    def upsert_rows(self, pk_col:str, data:list|pd.DataFrame, password:str|None=None) -> None:
+    def upsert_rows(
+        self,
+        pk_col: str,
+        data: list | pd.DataFrame,
+        password: str | None = None,
+    ) -> None:
         """
-        Upserts rows to an excel worksheet. 
+        Upserts rows to an excel worksheet.
 
         Allowed formats of data are list[list], list[tuple], list[dict]
         and panda's DataFrames. Values in the inner list and tuple must
-        appear in the order the columns are. Dataframes and dictionaries 
-        can appear in any order. 
+        appear in the order the columns are. Dataframes and dictionaries
+        can appear in any order.
 
         Args:
-            pk_col (str): The name of the primary key column 
-            data (list | pd.DataFrame): Data to upsert 
+            pk_col (str): The name of the primary key column
+            data (list | pd.DataFrame): Data to upsert
             password (str | None, optional): Sheet protection password. Defaults to None.
         """
         trans_data = self._transform_data(data)
@@ -317,11 +340,11 @@ class ExcelWorksheet:
 
         add_lists, update_lists = [], []
 
-        for row in trans_data: 
+        for row in trans_data:
             if row[position] in pk_vals_from_source:
                 update_lists.append(row)
             else:
-                add_lists.append(row) 
+                add_lists.append(row)
 
         if len(add_lists):
             print(f"Adding {len(add_lists)} rows to the data...")
@@ -330,22 +353,24 @@ class ExcelWorksheet:
 
         if len(update_lists):
             print(f"Updating {len(update_lists)} rows of data...")
-            for row in update_lists: 
-                self.update_row_by_pk(pk_col=pk_col, 
-                                    pk_val=row[position], 
-                                    value=[row], 
-                                    password=password)
+            for row in update_lists:
+                self.update_row_by_pk(
+                    pk_col=pk_col,
+                    pk_val=row[position],
+                    value=[row],
+                    password=password,
+                )
             print("Sucessfully updated the rows")
 
     def _extract_pk_values(self, pk_col: str) -> tuple[int, list]:
         """
-        Internal function for upsert_rows to list all the values under the primary key column 
+        Internal function for upsert_rows to list all the values under the primary key column
 
         Args:
-            pk_col (str): Name of the primary key column. 
+            pk_col (str): Name of the primary key column.
 
         Raises:
-            KeyError: Raised when the primary key column does not exist in table 
+            KeyError: Raised when the primary key column does not exist in table
 
         Returns:
             tuple[int, list]: Tuple of the index of the primary key and its associated values.
@@ -355,29 +380,33 @@ class ExcelWorksheet:
             graph_url=GRAPH_URL,
             drive_id=self.drive_id,
             workbook_id=self.workbook_id,
-            table_name=self.table_name
+            table_name=self.table_name,
         )
 
-        response = self.client.make_request(HTTPMethod.GET, list_cols_url).json()
-        values = response.get("value", []) 
+        response = self.client.make_request(
+            HTTPMethod.GET, list_cols_url
+        ).json()
+        values = response.get("value", [])
 
-        for index, row in enumerate(values): 
-            if row['name'] == pk_col:
-                return (index, [val[0] for val in row['values'][1:]])
+        for index, row in enumerate(values):
+            if row["name"] == pk_col:
+                return (index, [val[0] for val in row["values"][1:]])
 
-        raise KeyError(f"Key {pk_col} does not exist in table! Must be one of {[col['name'] for col in values]}")
+        raise KeyError(
+            f"Key {pk_col} does not exist in table! Must be one of {[col['name'] for col in values]}"
+        )
 
-    def _transform_data(self, data:list|pd.DataFrame) -> list:
+    def _transform_data(self, data: list | pd.DataFrame) -> list:
         """
         Internal function to transform incoming data into a format acceptable
         for the GraphAPI (list[list])
 
         Args:
-            data (list | pd.DataFrame): The incoming data to transform. 
+            data (list | pd.DataFrame): The incoming data to transform.
 
         Raises:
             ValueError: Raised when there is no data in data
-            TypeError: Raised when data is not in one of the acceptable formats. 
+            TypeError: Raised when data is not in one of the acceptable formats.
 
         Returns:
             list: The formatted data.
@@ -387,12 +416,12 @@ class ExcelWorksheet:
             raise ValueError("Data is empty!")
 
         cols = self.list_columns()
-        
+
         if isinstance(data, pd.DataFrame):
-            dicts = data.to_dict(orient='records')
+            dicts = data.to_dict(orient="records")
             return [[row[col] for col in cols] for row in dicts]
 
-        if isinstance(data, list): 
+        if isinstance(data, list):
             first_entry = data[0]
 
             if isinstance(first_entry, dict):
@@ -402,18 +431,18 @@ class ExcelWorksheet:
                 return [list(tup) for tup in data]
 
             if isinstance(first_entry, list):
-                return data 
+                return data
 
         raise TypeError(f"Unsupported data type: {type(data)}")
 
     def list_rows(self) -> list[dict]:
         """
         Returns the rows of an excel table, represented as a list
-        of dictionaries. The the keys to the dictionary represent 
+        of dictionaries. The the keys to the dictionary represent
         the column name and the value is the value of the column
 
         Returns:
-            list[dict]: The rows of an excel table. 
+            list[dict]: The rows of an excel table.
         """
 
         column_names = self.list_columns()
@@ -423,24 +452,27 @@ class ExcelWorksheet:
             graph_url=GRAPH_URL,
             drive_id=self.drive_id,
             workbook_id=self.workbook_id,
-            table_name=self.table_name
+            table_name=self.table_name,
         )
-        response = self.client.make_request(HTTPMethod.GET, list_rows_url).json()
+        response = self.client.make_request(
+            HTTPMethod.GET, list_rows_url
+        ).json()
         items = response.get("value", [])
 
-        rows = [] 
+        rows = []
 
-        for item in items: 
-            row = {key: item['values'][0][i] for i, key in enumerate(column_names)}
-            rows.append(row)  
+        for item in items:
+            row = {
+                key: item["values"][0][i] for i, key in enumerate(column_names)
+            }
+            rows.append(row)
 
-        return rows 
-
+        return rows
 
     def list_columns(self) -> list:
         """
         Return a list of column names for a specific excel table.
-        Column names are returned in the order they appear in the table. 
+        Column names are returned in the order they appear in the table.
 
         Returns:
             list: A list containing the column names
@@ -451,98 +483,107 @@ class ExcelWorksheet:
             graph_url=GRAPH_URL,
             drive_id=self.drive_id,
             workbook_id=self.workbook_id,
-            table_name=self.table_name
+            table_name=self.table_name,
         )
 
-        response = self.client.make_request(HTTPMethod.GET, list_cols_url).json()
+        response = self.client.make_request(
+            HTTPMethod.GET, list_cols_url
+        ).json()
 
         values = response.get("value", [])
 
-        cols = [col['name'] for col in values]
+        cols = [col["name"] for col in values]
 
         return cols
 
-    def toggle_protection(self, password:str, protect:bool) -> None:
+    def toggle_protection(self, password: str | None, protect: bool) -> None:
         """
-        Turns on/off sheet protection in the excel worksheet. 
+        Turns on/off sheet protection in the excel worksheet.
 
         Args:
             password (str): Password for sheet protection
-            protect (bool): Boolean representing if you want it on (True) or off (False) 
+            protect (bool): Boolean representing if you want it on (True) or off (False)
         """
         if not password:
-            return 
-        
+            return
+
         if not self.worksheet_name:
-            return 
+            return
 
         if not protect:
             url = build_url(
-                        ExcelEndpoints.UNPROTECT,
-                        graph_url=GRAPH_URL,
-                        drive_id=self.drive_id,
-                        workbook_id=self.workbook_id,
-                        worksheet_name=self.worksheet_name
-                    )
+                ExcelEndpoints.UNPROTECT,
+                graph_url=GRAPH_URL,
+                drive_id=self.drive_id,
+                workbook_id=self.workbook_id,
+                worksheet_name=self.worksheet_name,
+            )
         else:
             url = build_url(
-                        ExcelEndpoints.PROTECT,
-                        graph_url=GRAPH_URL,
-                        drive_id=self.drive_id,
-                        workbook_id=self.workbook_id,
-                        worksheet_name=self.worksheet_name
-                    )
+                ExcelEndpoints.PROTECT,
+                graph_url=GRAPH_URL,
+                drive_id=self.drive_id,
+                workbook_id=self.workbook_id,
+                worksheet_name=self.worksheet_name,
+            )
 
-        json = { "password": password }
+        json = {"password": password}
 
         self.client.make_request(HTTPMethod.POST, url, json=json)
 
     def _check_rows(self, rows: list) -> None:
         """
-        Checks to make sure the shape of the incoming data matches the shape of the destination data. 
+        Checks to make sure the shape of the incoming data matches the shape of the destination data.
 
         Args:
             rows (list): The list of data to add
 
         Raises:
-            MalformedRowError: Thrown when the number of items in the list does not equal the number 
-            of columns the table has. 
+            MalformedRowError: Thrown when the number of items in the list does not equal the number
+            of columns the table has.
         """
         num_cols = len(self.list_columns())
 
         for row in rows:
             if len(row) != num_cols:
-                raise MalformedRowError(f"A row of data contains {len(row)} values, but requires exactly {num_cols} values.")
+                raise MalformedRowError(
+                    f"A row of data contains {len(row)} values, but requires exactly {num_cols} values."
+                )
 
-
-    def _find_index_of_pk(self,  pk_col:str, pk_val:str|int) -> int:
+    def _find_index_of_pk(self, pk_col: str, pk_val: str | int) -> int:
         """
-        Find the row index that contains `pk_val` under the `pk_col` column. 
+        Find the row index that contains `pk_val` under the `pk_col` column.
 
         Args:
-            pk_col (str): The name of the primary key column 
-            pk_val (str | int): The value you wish to match on 
+            pk_col (str): The name of the primary key column
+            pk_val (str | int): The value you wish to match on
 
         Raises:
-            ValueError: Thrown when trying to udpate/delete from an empty table. 
-            KeyError: Thrown when pk_col does not exist in the table/ 
-            PrimaryKeyValueNotFound: Thrown when pk_val couldn't be found in the table. 
+            ValueError: Thrown when trying to udpate/delete from an empty table.
+            KeyError: Thrown when pk_col does not exist in the table/
+            PrimaryKeyValueNotFound: Thrown when pk_val couldn't be found in the table.
 
         Returns:
-            int: The 0-based index of the row. 
+            int: The 0-based index of the row.
         """
         rows = self.list_rows()
 
         if not len(rows):
             raise ValueError("Cannot delete/update from empty table!")
         if pk_col not in rows[0]:
-            raise KeyError(f"Key {pk_col} does not exist in table! Must be one of {list(rows[0].keys())}")
+            raise KeyError(
+                f"Key {pk_col} does not exist in table! Must be one of {list(rows[0].keys())}"
+            )
 
-        for index, row in enumerate(rows): 
-                    if row[pk_col] == pk_val: 
-                        return index 
+        for index, row in enumerate(rows):
+            if row[pk_col] == pk_val:
+                return index
 
-        raise PrimaryKeyValueNotFound(f"Could not find value: '{pk_val}' under the primary key column {pk_col}!")
-            
+        raise PrimaryKeyValueNotFound(
+            f"Could not find value: '{pk_val}' under the primary key column {pk_col}!"
+        )
+
     def get_row(self):
-        raise NotImplementedError("Method for excel be implemented in the future.")
+        raise NotImplementedError(
+            "Method for excel be implemented in the future."
+        )

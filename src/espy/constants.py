@@ -2,8 +2,17 @@
 
 SCOPE = "https://graph.microsoft.com/.default"
 GRAPH_URL = "https://graph.microsoft.com/v1.0"
-GRAPH_APP = "AppReg: CityGeo-Databridge-Updates (All Fields)"
-HOST_NAME = "phila.sharepoint.com"
+
+# Environment variable read when no hostname is passed
+HOSTNAME_ENV_VAR = "SHAREPOINT_HOSTNAME"
+
+# APICredentials key -> environment variable read when no creds are passed.
+# These are the standard names used by azure-identity.
+CREDENTIAL_ENV_VARS = {
+    "tenant_id": "AZURE_TENANT_ID",
+    "client_id": "AZURE_CLIENT_ID",
+    "client_secret": "AZURE_CLIENT_SECRET",
+}
 
 SHARE_POINT_LIST_EXCLUDED_COLUMNS = [
     "@odata.etag",
@@ -35,5 +44,5 @@ SHARE_POINT_LIST_EXCLUDED_COLUMNS = [
     "AppAuthor",
     "AppAuthorLookupId",
     "AppEditor",
-    "AppEditorLookupId"
+    "AppEditorLookupId",
 ]

@@ -5,7 +5,7 @@ easier.
 
 !!! note
 
-    This library necessitates a `Graph App` being created and registered in Azure (Entra ID). Further this app needs to be provisioned to target sharepoint sites with read/write permissions. At the moment, the library is defaulting to using CityGeo's `Graph App`, which is provisioned for a handful of sharepoint sites. Future development will allow users to pass credentials for their own `Graph App`, but at the moment this will only work with CityGeo's `Graph App`.
+    This library requires a `Graph App` registered in Azure (Entra ID) and provisioned with read/write permissions on the target SharePoint sites. See [Authentication](#authentication) for how to provide its credentials.
 
 
 ## Core Features
@@ -28,17 +28,48 @@ uv add "git+https://github.com/CityOfPhiladelphia/espy.git" --tag v1.1.0
 uv lock --upgrade-package espy && uv sync
 ```
 
+### Authentication
+EsPy authenticates with an Azure (Entra ID) app registration that has read/write
+access to your SharePoint sites. Provide its credentials in one of two ways.
+
+**Environment variables (recommended).** If no `creds` are passed, EsPy reads:
+
+```bash
+export AZURE_TENANT_ID="..."
+export AZURE_CLIENT_ID="..."
+export AZURE_CLIENT_SECRET="..."
+export SHAREPOINT_HOSTNAME="example.sharepoint.com"
+```
+
+**Passing `creds` directly** to any `setup()` or `GraphAPIClient.authenticate()` call:
+
+```python
+creds = {
+    "tenant_id": "...",
+    "client_id": "...",       # a.k.a. Application ID
+    "client_secret": "...",   # a.k.a. Secret Value
+}
+sp_list = SharePointList.setup(site_name="list_site_name", list_name="list_name", creds=creds)
+```
+
+The SharePoint host is read from `SHAREPOINT_HOSTNAME` unless you pass `hostname=` to `setup()`.
+
 ### Usage Example
 ```python
 from espy.list import SharePointList
 
 # Instantiate a SharePoint List Object
-sp_list = SharePointList.setup(site_name="list_site_name", list_name="list_name")
+# (credentials read from AZURE_* environment variables)
+sp_list = SharePointList.setup(
+    site_name="list_site_name", list_name="list_name"
+)
 
 # Create a row mapping data to column names in the list
-row_to_add = {"name": "Billy Penn", 
-              "address": "1234 Market St, Philadelphia, PA", 
-              "age": 250}
+row_to_add = {
+    "name": "Billy Penn",
+    "address": "1234 Market St, Philadelphia, PA",
+    "age": 250,
+}
 
 
 response = sp_list.add_row(row_to_add)
