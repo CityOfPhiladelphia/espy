@@ -2,6 +2,7 @@
 from collections.abc import Callable, Iterator, Sequence
 from enum import StrEnum
 from functools import cached_property
+from itertools import batched
 from typing import Any
 
 from pydantic import ValidationError
@@ -18,10 +19,11 @@ from espy.constants import (
 from espy.models.models import (
     ACCEPTABLE_PYTHON_TYPES,
     READ_ONLY_COLUMN_KINDS,
-    GraphBatchResponse,
     BatchError,
     BatchResult,
     ColumnKind,
+    GraphBatchResponse,
+    GraphBatchSubResponse,
     GraphCollection,
     HTTPMethod,
     SharePointListColumn,
@@ -32,6 +34,13 @@ from espy.urls import build_url
 
 # TODO: Print warning that a list containing a hyperlink or location column
 # Cannot be updated with the api
+
+# The (method, url, body) parts of a single Graph request.
+type RequestParts = tuple[HTTPMethod, str, dict | None]
+
+# Turns a successful response body into the value returned to the user.
+# Each operation type has its own, e.g. _interpret_get for GetRow.
+type Interpreter = Callable[[dict | None], Any]
 
 
 class ListEndpoints(StrEnum):
@@ -377,7 +386,9 @@ class SharePointList:
     def _interpret_delete(self, body: dict | None) -> dict | None:
         return body
 
-    def _dispatch_batch_operation(self, operation: Any):
+    def _dispatch_batch_operation(
+        self, operation: BatchOperation
+    ) -> tuple[RequestParts, Interpreter]:
 
         match operation:
             case GetRow(key_col, value):
@@ -392,24 +403,25 @@ class SharePointList:
                 raise ValueError("Unknown request type")
 
     def _build_batch(
-        self, operations: Sequence[BatchOperation]
-    ) -> tuple[list[dict], list[Callable]]:
+        self, offset: int, operations: Sequence[BatchOperation]
+    ) -> tuple[list[dict], list[Interpreter]]:
+        """Build the Graph request bodies for one group of operations.
 
-        if (batch_len := len(operations)) > MAX_BATCH_SIZE:
-            raise ValueError(f"""Batch size of {batch_len} longer 
-            than max size {MAX_BATCH_SIZE}.""")
+        Request ids start at ``offset`` so they stay unique across groups.
+        ``interpreters[i]`` is the interpreter for ``operations[i]``.
+        """
 
-        incoming_batch = []
-        interpreters = []
+        requests: list[dict] = []
+        interpreters: list[Interpreter] = []
 
         for idx, operation in enumerate(operations):
             (method, url, body), interpreter = self._dispatch_batch_operation(
                 operation
             )
 
-            incoming_batch.append(
+            requests.append(
                 {
-                    "id": str(idx),
+                    "id": str(offset + idx),
                     "method": method,
                     "url": url,
                     "headers": {"Content-Type": "application/json"},
@@ -419,7 +431,46 @@ class SharePointList:
 
             interpreters.append(interpreter)
 
-        return incoming_batch, interpreters
+        return requests, interpreters
+
+    def _to_batch_result(
+        self,
+        operation: BatchOperation,
+        sub_response: GraphBatchSubResponse | None,
+        interpreter: Interpreter,
+    ) -> BatchResult:
+        """Turn one Graph sub-response into a BatchResult.
+
+        Never raises: a missing response, an HTTP error, or a body the
+        interpreter can't parse all become a BatchResult with ``error`` set.
+        """
+        if sub_response is None:
+            return BatchResult(
+                operation=operation,
+                error=BatchError(status=None, 
+                                 message="No response returned by Graph"),
+            )
+
+        if not 200 <= sub_response.status < 300:
+            err = (sub_response.body or {}).get("error", {})
+            return BatchResult(
+                operation=operation,
+                error=BatchError(
+                    status=sub_response.status,
+                    message=err.get("message", ""),
+                    code=err.get("code"),
+                ),
+            )
+
+        try:
+            return BatchResult(
+                operation=operation, value=interpreter(sub_response.body)
+            )
+        except (ValueError, ValidationError) as e:
+            return BatchResult(
+                operation=operation,
+                error=BatchError(status=sub_response.status, message=str(e)),
+            )
 
     def list_columns(self) -> list[SharePointListColumn]:
         """List the columns in a SharePoint list.
@@ -597,57 +648,38 @@ class SharePointList:
 
         # return {}
 
-    def batch(
-        self, operations: Sequence[BatchOperation]
-    ) -> list[BatchResult | None]:
+    def batch(self, operations: Sequence[BatchOperation]) -> list[BatchResult]:
         """
         Given a list of user supplied BatchOperations, collate
         and process the operations as a batch.
         """
 
-        incoming_batch, interpreters = self._build_batch(operations)
+        results: list[BatchResult] = []
 
-        response = self.client.make_request(
-            HTTPMethod.POST,
-            ListEndpoints.SUBMIT_BATCH,
-            json={"requests": incoming_batch},
-        )
+        # Graph accepts at most MAX_BATCH_SIZE requests per batch call
+        for group_num, group in enumerate(batched(operations, MAX_BATCH_SIZE)):
+            offset = group_num * MAX_BATCH_SIZE
+            requests, interpreters = self._build_batch(offset, group)
 
-        envelope = GraphBatchResponse.model_validate(response.json())
+            response = self.client.make_request(
+                HTTPMethod.POST,
+                ListEndpoints.SUBMIT_BATCH,
+                json={"requests": requests},
+            )
+            envelope = GraphBatchResponse.model_validate(response.json())
 
-        # Prepopulate results list with the required length
-        results: list[BatchResult | None] = [None] * len(operations)
+            # Graph may return sub-responses in any order, so look them up
+            # by request id. This is not the row id, which is also called
+            # 'id' but lives inside each response body.
+            by_id = {int(sub.id): sub for sub in envelope.responses}
 
-        for sub_request in envelope.responses:
-            # Get the request id, which is separate from the
-            # row_id also called 'id' in the response body
-            idx = int(sub_request.id)
-
-            # Batch result may be in a different order than
-            # was provided. Get in correct order.
-            op = operations[idx]
-            if not 200 <= sub_request.status < 300:
-                err = (sub_request.body or {}).get("error", {})
-                results[idx] = BatchResult(
-                    operation=op,
-                    error=BatchError(
-                        status=sub_request.status,
-                        message=err.get("message", ""),
-                        code=err.get("code"),
-                    ),
-                )
-                continue
-            try:
-                # Look up which interpreter needs to be used
-                # for each result
-                results[idx] = BatchResult(
-                    operation=op, value=interpreters[idx](sub_request.body)
-                )
-
-            except (ValueError, ValidationError) as e:
-                results[idx] = BatchResult(
-                    operation=op,
-                    error=BatchError(status=sub_request.status, message=str(e)),
+            # Walk the group in input order so results line up with operations
+            for idx, (operation, interpreter) in enumerate(
+                zip(group, interpreters, strict=True)
+            ):
+                sub_response = by_id.get(offset + idx)
+                results.append(
+                    self._to_batch_result(operation, sub_response, interpreter)
                 )
 
         return results

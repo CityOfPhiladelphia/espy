@@ -126,8 +126,12 @@ class BatchResult(BaseModel):
     value: Any = None
     error: BatchError | None = None
 
+    @property
+    def ok(self) -> bool:
+        return self.error is None
+
 class BatchError(BaseModel):
-    status: int
+    status: int | None
     message: str
     code: str | None = None
 
