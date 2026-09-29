@@ -17,7 +17,7 @@ The docs will be served at ```http://localhost:3000/```.
 To install this library to your project, run:
 
 ```bash
-uv add "git+https://github.com/CityOfPhiladelphia/espy.git" --tag v1.1.0
+uv add "git+https://github.com/CityOfPhiladelphia/espy.git" --tag v2.0.0
 ```
 
 ### Check for Updates
@@ -43,8 +43,8 @@ export SHAREPOINT_HOSTNAME="example.sharepoint.com"
 ```python
 creds = {
     "tenant_id": "...",
-    "client_id": "...",       # a.k.a. Application ID
-    "client_secret": "...",   # a.k.a. Secret Value
+    "client_id": "...",
+    "client_secret": "...",
 }
 sp_list = SharePointList.setup(site_name="list_site_name", list_name="list_name", creds=creds)
 ```

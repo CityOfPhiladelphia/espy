@@ -586,12 +586,4 @@ class SharePointList:
         return response
 
     def upsert_row(self, key_col: str, data: dict[str, Any]) -> dict[str, Any]:
-        # First, we need to check if the incoming column exists:
-        display_to_canonical, _ = self._get_column_mapping()
-        self._check_incoming_field_name_valid(key_col, display_to_canonical)
-
-        # Then, we need to check if the index column is valid
-        list_columns = self.list_columns()
-        self._check_incoming_field_is_pk(key_col, list_columns)
-
-        return {}
+        raise NotImplementedError

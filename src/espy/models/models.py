@@ -6,7 +6,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any, Protocol, TypedDict
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator, SecretStr
 from pydantic.alias_generators import to_camel
 
 
@@ -89,27 +89,21 @@ COLUMN_KIND_PYTHON_TYPES = {
 
 
 ## Errors
-class UnsupportedMethodError(BaseException):
+class UnsupportedMethodError(Exception):
     """Unsupported Method Error. Raised when
     a method against an API is not permitted.
-
-    Args:
-        BaseException (BaseException): Inherited from the Base Exception class.
     """
 
 
-class InvalidIncomingRowError(BaseException):
+class InvalidIncomingRowError(Exception):
     """Invalid Incoming Row Error. Raised when an incoming
     row to the API (used in either an add, edit, or upsert method)
     is incorrectly formatted."""
 
 
-class UnsupportedColumnForWriteError(BaseException):
+class UnsupportedColumnForWriteError(Exception):
     """
     Raised when a column type does not support write operations.
-
-    Args:
-    BaseException (BaseException): Inherited from the Base Exception class.
     """
 
 
@@ -148,9 +142,9 @@ class TabularStorage(Protocol):
 
 ### Authentication
 class APICredentials(TypedDict):
-    tenant_id: str
-    client_id: str
-    client_secret: str
+    tenant_id: SecretStr
+    client_id: SecretStr
+    client_secret: SecretStr
 
 
 ## API Response Classes
