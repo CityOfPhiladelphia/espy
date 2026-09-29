@@ -14,13 +14,17 @@ from pydantic.alias_generators import to_camel
 class GraphAPILimitationError(Exception):
     """Raised when the graph API does not provide this functionality."""
 
+
 class MalformedRowError(Exception):
     """Raised when a row of data to insert is malformed."""
+
 
 class PrimaryKeyValueNotFound(Exception):
     """Raised when searching for a value under the primary key, but it is not found"""
 
+
 # ========= SharePoint List Column Data Types ===========
+
 
 class SharePointListColumnType(BaseModel):
     """A parent class for Share Point List Columns. Converts attributes
@@ -29,12 +33,14 @@ class SharePointListColumnType(BaseModel):
     Args:
         BaseModel (Pydantic BaseModel): A Pydantic BaseModel class
     """
+
     # Microsoft returns field names in camel case, so we need to
     # convert. This will allow accessing the field either by
     # snake case or camel case.
 
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
-   
+
+
 class BooleanColumn(SharePointListColumnType):
     """Boolean column type. Currently empty, per MS documentation.
 
@@ -51,6 +57,7 @@ class CalculatedColumn(SharePointListColumnType):
         SharePointListColumnType (Pydantic Model): Inherits the \
         SharePointListColumnType class.
     """
+
     format: str | None = Field(None)
     formula: str | None = Field(None)
     output_type: str | None = Field(None)
@@ -63,6 +70,7 @@ class ChoiceColumn(SharePointListColumnType):
         SharePointListColumnType (Pydantic Model): Inherits the \
         SharePointListColumnType class.
     """
+
     allow_text_entry: bool | None = Field(None)
     choices: list[str] | None = Field(None)
     display_as: str | None = Field(None)
@@ -84,6 +92,7 @@ class CurrencyColumn(SharePointListColumnType):
         SharePointListColumnType (Pydantic Model): Inherits the \
         SharePointListColumnType class.
     """
+
     locale: str | None = Field(None)
 
 
@@ -94,6 +103,7 @@ class DateTimeColumn(SharePointListColumnType):
         SharePointListColumnType (Pydantic Model): Inherits the \
         SharePointListColumnType class.
     """
+
     display_as: str | None = Field(None)
     format: str | None = Field(None)
 
@@ -105,6 +115,7 @@ class LookupColumn(SharePointListColumnType):
         SharePointListColumnType (Pydantic Model): Inherits the \
         SharePointListColumnType class.
     """
+
     allow_multiple_values: bool | None = Field(None)
     allow_unlimited_length: bool | None = Field(None)
     column_name: str | None = Field(None)
@@ -119,6 +130,7 @@ class NumberColumn(SharePointListColumnType):
         SharePointListColumnType (Pydantic Model): Inherits the \
         SharePointListColumnType class.
     """
+
     decimal_places: (
         Literal["automatic", "none", "one", "two", "three", "four", "five"]
         | None
@@ -135,6 +147,7 @@ class PersonOrGroupColumn(SharePointListColumnType):
         SharePointListColumnType (Pydantic Model): Inherits the \
         SharePointListColumnType class.
     """
+
     allow_multiple_selection: bool | None = Field(None)
     choose_from_type: str | None = Field(None)
     display_as: str | None = Field(None)
@@ -147,6 +160,7 @@ class TermColumn(SharePointListColumnType):
         SharePointListColumnType (Pydantic Model): Inherits the \
         SharePointListColumnType class.
     """
+
     allow_multiple_values: bool | None = Field(None)
     show_fully_qualified_name: bool | None = Field(None)
 
@@ -158,6 +172,7 @@ class TextColumn(SharePointListColumnType):
         SharePointListColumnType (Pydantic Model): Inherits the \
         SharePointListColumnType class.
     """
+
     allow_multiple_lines: bool | None = Field(None)
     append_changes_to_existing_text: bool | None = Field(None)
     lines_for_editing: int | None = Field(None)
@@ -194,4 +209,5 @@ class HyperlinkOrPictureColumn(SharePointListColumnType):
         SharePointListColumnType (Pydantic Model): Inherits the \
         SharePointListColumnType class.
     """
+
     is_picture: bool | None = Field(None)

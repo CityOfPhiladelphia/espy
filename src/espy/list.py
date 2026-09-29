@@ -6,15 +6,13 @@ from typing import Any
 from httpx import Response
 from pydantic import ValidationError
 
-from espy.client import GraphAPIClient
-
-# TODO: Make host name a variable, not a constant. Edit in optional config file?
+from espy.client import GraphAPIClient, resolve_hostname
 from espy.constants import (
     GRAPH_URL,
-    HOST_NAME,
     SHARE_POINT_LIST_EXCLUDED_COLUMNS,
 )
 from espy.models.models import (
+    APICredentials,
     ColumnKind,
     GraphAPIResponse,
     HTTPMethod,
@@ -44,16 +42,13 @@ class ListEndpoints(StrEnum):
 
     LIST_COLUMNS = "{graph_url}/sites/{site_id}/lists/{list_id}/columns"
 
-    GET_ROW_BY_ID = (
-        "{graph_url}/sites/"
-        "{site_id}/lists/{list_id}/items/{row_id}"
-    )
+    GET_ROW_BY_ID = "{graph_url}/sites/{site_id}/lists/{list_id}/items/{row_id}"
 
     GET_ROW_BY_PK = (
         "{graph_url}/sites/"
         "{site_id}/lists/{list_id}/items?"
         "$expand=fields&$filter=fields/{column_name} eq {value}"
-        )
+    )
 
     ADD_ROW = "{graph_url}/sites/{site_id}/lists/{list_id}/items"
 
@@ -72,6 +67,7 @@ class SharePointList:
         site_id (str): A string id for the SharePoint site the graph is on.
         list_id (str): A string identifier for the specific SharePoint list.
     """
+
     def __init__(self, client: GraphAPIClient, site_id: str, list_id: str):
         """Initializes the SharePointList object with id information. Most
         users will initialize the SharePointList object using the setup()
@@ -89,24 +85,36 @@ class SharePointList:
         self._column_list: list[dict] | None = None
         self._display_to_canonical_column: dict | None = None
         self._canonical_to_display_column: dict | None = None
-        self._column_types: dict | None = None 
+        self._column_types: dict | None = None
 
     @classmethod
-    def setup(cls, site_name: str, list_name: str):
+    def setup(
+        cls,
+        *,
+        site_name: str,
+        list_name: str,
+        hostname: str | None = None,
+        creds: APICredentials | None = None,
+    ):
         """Authenticates and fetches the ids needed to create the SharePointList
-        object.
+        object. All arguments are keyword-only.
 
         Args:
             site_name (str): The site name of the SharePoint list.
             list_name (str): The name of the SharePoint list.
+            hostname (str | None, optional): SharePoint hostname, i.e.
+            "example.sharepoint.com". If None, read from SHAREPOINT_HOSTNAME.
+            creds (APICredentials | None, optional): tenant_id, client_id and
+            client_secret. If None, read from AZURE_TENANT_ID, AZURE_CLIENT_ID
+            and AZURE_CLIENT_SECRET.
 
         Returns:
             SharePointList: A SharePointList object, instantiated with client, \
                 site_id, and list_id.
         """
-        client = GraphAPIClient.authenticate()
+        client = GraphAPIClient.authenticate(creds)
 
-        site_id = client.get_site_id(HOST_NAME, site_name)
+        site_id = client.get_site_id(resolve_hostname(hostname), site_name)
 
         list_id_url = build_url(
             ListEndpoints.LIST_ID,
@@ -115,8 +123,7 @@ class SharePointList:
             list_name=list_name,
         )
 
-        list_id = client.make_request(HTTPMethod.GET, list_id_url)\
-            .json()["id"]
+        list_id = client.make_request(HTTPMethod.GET, list_id_url).json()["id"]
 
         return cls(client, site_id, list_id)
 
@@ -129,22 +136,29 @@ class SharePointList:
             tuple[dict]: A mapping of the user visible name to the real name in the
             graph API, and a mapping of the real name to the user visible name.
         """
-        if self._display_to_canonical_column and self._canonical_to_display_column:
-            return (self._display_to_canonical_column, 
-                    self._canonical_to_display_column
-                    )
+        if (
+            self._display_to_canonical_column
+            and self._canonical_to_display_column
+        ):
+            return (
+                self._display_to_canonical_column,
+                self._canonical_to_display_column,
+            )
 
         columns = self.list_columns()
-        
-        self._display_to_canonical_column = { column['display_name'] : column['name']
-                                for column in columns }
 
-        self._canonical_to_display_column = { column['name'] : column['display_name']
-                                             for column in columns }
+        self._display_to_canonical_column = {
+            column["display_name"]: column["name"] for column in columns
+        }
 
-        return (self._display_to_canonical_column, 
-                self._canonical_to_display_column
-                )
+        self._canonical_to_display_column = {
+            column["name"]: column["display_name"] for column in columns
+        }
+
+        return (
+            self._display_to_canonical_column,
+            self._canonical_to_display_column,
+        )
 
     def _get_column_types(self) -> dict[str, str]:
         if self._column_types:
@@ -152,47 +166,53 @@ class SharePointList:
 
         columns = self.list_columns()
 
-        self._column_types = { column['display_name'] : column['type']
-                                for column in columns }
+        self._column_types = {
+            column["display_name"]: column["type"] for column in columns
+        }
 
         return self._column_types
 
-    def _check_incoming_field_name_valid(self, field_name: str, 
-                               column_mapping: dict[str, str]) -> None:
-    
-        if field_name not in column_mapping:
-            raise InvalidIncomingRowError(f"{field_name} is not in the SharePoint List")
-        
+    def _check_incoming_field_name_valid(
+        self, field_name: str, column_mapping: dict[str, str]
+    ) -> None:
 
-    def _check_incoming_field_type_valid(self, field_name: str, 
-                                      field_value: Any, 
-                                      column_types: dict[str, str]) \
-                                        -> IncomingField:
+        if field_name not in column_mapping:
+            raise InvalidIncomingRowError(
+                f"{field_name} is not in the SharePoint List"
+            )
+
+    def _check_incoming_field_type_valid(
+        self, field_name: str, field_value: Any, column_types: dict[str, str]
+    ) -> IncomingField:
 
         list_column_kind = column_types[field_name]
 
         validated_incoming_field = IncomingField(
             field_name=field_name,
             field_value=field_value,
-            list_column_kind=ColumnKind(list_column_kind)
+            list_column_kind=ColumnKind(list_column_kind),
         )
 
         return validated_incoming_field
 
-    def _check_incoming_field_is_pk(self, field_name: str, 
-                                    field_list: list[dict[str, Any]]) -> bool:
+    def _check_incoming_field_is_pk(
+        self, field_name: str, field_list: list[dict[str, Any]]
+    ) -> bool:
         for field in field_list:
-            if field['display_name'] == field_name:
-                if field.get('indexed') == True:
-                    return True
+            if (
+                field["display_name"] == field_name
+                and field.get("indexed") == True
+            ):
+                return True
 
-        raise InvalidIncomingRowError(f"The specified field does not exist: {field_name}.")
-            
+        raise InvalidIncomingRowError(
+            f"The specified field does not exist: {field_name}."
+        )
 
     def _validate_incoming_data(
-            self, input_data: dict[str, Any]
-            ) -> dict[str, IncomingField]:
-        
+        self, input_data: dict[str, Any]
+    ) -> dict[str, IncomingField]:
+
         display_to_canonical, _ = self._get_column_mapping()
         column_types = self._get_column_types()
 
@@ -206,11 +226,11 @@ class SharePointList:
             try:
                 self._check_incoming_field_name_valid(
                     field_name, display_to_canonical
-                    )
+                )
                 validated_field = self._check_incoming_field_type_valid(
-                                    field_name, field_value, column_types
-                                )
-                
+                    field_name, field_value, column_types
+                )
+
                 validated_fields[field_name] = validated_field
 
             except KeyError:
@@ -219,16 +239,15 @@ class SharePointList:
             except ValidationError:
                 invalid_data_types.append(field_name)
 
-
         if invalid_column_names or invalid_data_types:
             if invalid_column_names:
                 compiled_errors.append(f"""The following incoming columns do
                 not exist in the SharePointList: 
-                {','.join(invalid_column_names)}""")
+                {",".join(invalid_column_names)}""")
 
             if invalid_data_types:
                 compiled_errors.append(f"""The following incoming columns
-                have the incorrect data type: {','.join(invalid_data_types)}""")
+                have the incorrect data type: {",".join(invalid_data_types)}""")
 
             raise InvalidIncomingRowError(f"{'\n'.join(compiled_errors)}")
 
@@ -238,18 +257,18 @@ class SharePointList:
         """
         Formats an incoming payload to be sent to the API. Validates incoming
         data and maps the user-facing field names to the canonical API names.
-        
+
         Args:
             data (dict[str, Any]): The data to send to the API. May be used
             as downstream part of a POST or PATCH request.
 
         Returns: dict, a validated and
-        formatted payload that the graph API will accept. 
+        formatted payload that the graph API will accept.
         """
         # Map to the canonical names in the table
         # Make sure all keys are present in SharePointList
         fields_payload = {}
-        fields_payload['fields'] = {}
+        fields_payload["fields"] = {}
 
         display_to_canonical, _ = self._get_column_mapping()
 
@@ -257,14 +276,14 @@ class SharePointList:
 
         for display_name, column_data in validated_data.items():
             canonical_name = display_to_canonical[display_name]
-            fields_payload['fields'][canonical_name] = column_data.field_value
+            fields_payload["fields"][canonical_name] = column_data.field_value
 
         return fields_payload
 
     def _fetch_page(
         self, url: str | None, params: dict | None
     ) -> GraphAPIResponse[SharePointListRow] | None:
-        """A helper funtion to fetch a single page of rows 
+        """A helper funtion to fetch a single page of rows
         from a SharePoint List. Used by the list_rows method to paginate
         through all data in a SharePoint list.
 
@@ -282,7 +301,8 @@ class SharePointList:
             return None
 
         raw_data = self.client.make_request(
-            HTTPMethod.GET, url, params=params).json()
+            HTTPMethod.GET, url, params=params
+        ).json()
 
         response_envelope = GraphAPIResponse[SharePointListRow].model_validate(
             raw_data
@@ -298,7 +318,7 @@ class SharePointList:
 
         Args:
             row: A validated list row returned by the Microsoft Graph API
-        
+
         Returns (dict): A dictionary with null fields added back
         """
 
@@ -311,7 +331,6 @@ class SharePointList:
 
         return formatted_row
 
-        
     def list_columns(self) -> list[dict]:
         """List the columns in a SharePoint list.
 
@@ -327,31 +346,32 @@ class SharePointList:
             graph_url=GRAPH_URL,
             site_id=self.site_id,
             list_id=self.list_id,
-            kwargs={"$expand": "fields"}
+            kwargs={"$expand": "fields"},
         )
 
-        # Raw columns data will include hidden metadata columns that we want 
+        # Raw columns data will include hidden metadata columns that we want
         # to exclude, since they will break our data validation rules
         # and are ultimately not useful. We filter those out here.
         column_list = []
 
         raw_response = self.client.make_request(
-            HTTPMethod.GET, columns_url).json()
-        
+            HTTPMethod.GET, columns_url
+        ).json()
+
         response_envelope = GraphAPIResponse.model_validate(raw_response)
 
         if not response_envelope.value:
             raise ValueError("No columns to return.")
 
         for column in response_envelope.value:
-            if column['name'] not in SHARE_POINT_LIST_EXCLUDED_COLUMNS: 
+            if column["name"] not in SHARE_POINT_LIST_EXCLUDED_COLUMNS:
                 column_list.append(
                     SharePointListColumn.model_validate(column).model_dump()
                 )
 
         self._column_list = column_list
         return column_list
-    
+
     def _get_row_by_id(self, row_id: int) -> dict[str, Any]:
         """
         Get a single row from a list by list id.
@@ -368,11 +388,13 @@ class SharePointList:
             site_id=self.site_id,
             list_id=self.list_id,
             row_id=row_id,
-            kwargs={"$select": "id"}
+            kwargs={"$select": "id"},
         )
 
         raw_response = self.client.make_request(HTTPMethod.GET, row_url).json()
-        validated_response = GraphAPIResponse[SharePointListRow].model_validate(raw_response)
+        validated_response = GraphAPIResponse[SharePointListRow].model_validate(
+            raw_response
+        )
         validated_row = validated_response.fields
 
         formatted_row = self._format_outgoing_row(validated_row)
@@ -401,19 +423,19 @@ class SharePointList:
             list_id=self.list_id,
             column_name=canonical_field_name,
             value=value,
-            kwargs={"$select": "id"}
+            kwargs={"$select": "id"},
         )
 
         raw_response = self.client.make_request(HTTPMethod.GET, row_url).json()
         validated_response = GraphAPIResponse.model_validate(raw_response)
 
         if validated_response.value:
-            validated_row = validated_response.value[0]['fields']
+            validated_row = validated_response.value[0]["fields"]
             formatted_row = self._format_outgoing_row(validated_row)
 
             # Add id back, since format outgoing row removes it
             # TODO: Is there a cleaner way around this?
-            formatted_row['id'] = validated_row['id']
+            formatted_row["id"] = validated_row["id"]
             return formatted_row
 
         raise ValueError("Row not found.")
@@ -435,7 +457,9 @@ class SharePointList:
             list_id=self.list_id,
         )
 
-        while response_envelope := self._fetch_page(next_link, {"$expand": "fields"}):
+        while response_envelope := self._fetch_page(
+            next_link, {"$expand": "fields"}
+        ):
             # API returns results wrapped in a response envelope
             # that contains pagination metadata
             # actual value is nested within that
@@ -443,16 +467,14 @@ class SharePointList:
             next_link = response_envelope.next_link
 
             # Returns unnecessary extra column information, filter it out
-            for row in response_envelope.value: # pyright: ignore
+            for row in response_envelope.value:  # pyright: ignore
                 validated_row = row.fields
 
                 formatted_row = self._format_outgoing_row(validated_row)
 
-                
                 yield formatted_row
-        
+
     def add_row(self, data: dict[str, Any]) -> Response:
-        # TODO: Add functionality to make this add rows, adding one or more rows.
         """Add a row to a SharePoint list.
 
         Note: This method does not currently work for Lists with
@@ -481,8 +503,9 @@ class SharePointList:
 
         return response
 
-    def edit_row(self, key_col: str, value: Any, 
-                       data: dict[str, Any]) -> Response:
+    def edit_row(
+        self, key_col: str, value: Any, data: dict[str, Any]
+    ) -> Response:
         """Edit a row in a SharePoint list.
 
         Note: This method does not currently work for Lists with
@@ -511,14 +534,14 @@ class SharePointList:
 
         # Then, we need to get the id of the row to edit
         returned_row = self.get_row(key_col, value)
-        row_id = returned_row['id']
+        row_id = returned_row["id"]
 
         edit_row_url = build_url(
             ListEndpoints.EDIT_ROW,
             graph_url=GRAPH_URL,
             list_id=self.list_id,
             site_id=self.site_id,
-            row_id=row_id
+            row_id=row_id,
         )
 
         fields_payload = self._format_payload_for_api(data)
@@ -548,26 +571,22 @@ class SharePointList:
 
         # Then, we need to get the id of the row to edit
         returned_row = self.get_row(key_col, value)
-        row_id = returned_row['id']
-    
+        row_id = returned_row["id"]
+
         delete_row_url = build_url(
             ListEndpoints.EDIT_ROW,
             graph_url=GRAPH_URL,
             list_id=self.list_id,
             site_id=self.site_id,
-            row_id=row_id
+            row_id=row_id,
         )
 
-        response = self.client.make_request(
-            HTTPMethod.DELETE, delete_row_url
-        )
+        response = self.client.make_request(HTTPMethod.DELETE, delete_row_url)
 
         return response
 
-    def upsert_row(
-        self, key_col: str, data: dict[str, Any]
-    ) -> dict[str, Any]:
-                # First, we need to check if the incoming column exists:
+    def upsert_row(self, key_col: str, data: dict[str, Any]) -> dict[str, Any]:
+        # First, we need to check if the incoming column exists:
         display_to_canonical, _ = self._get_column_mapping()
         self._check_incoming_field_name_valid(key_col, display_to_canonical)
 
@@ -576,13 +595,3 @@ class SharePointList:
         self._check_incoming_field_is_pk(key_col, list_columns)
 
         return {}
-
-
-if __name__ == "__main__":
-    site_name = "311-servicing-department-integrations"
-    list_name = "PPR 311 Requests"
-    sp_list = SharePointList.setup(site_name=site_name, list_name=list_name)
-
-    for row in sp_list.list_rows():
-        if row.get('Comments'):
-            print(row)

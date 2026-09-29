@@ -363,14 +363,6 @@ wheels = [
 ]
 
 [[package]]
-name = "citygeo-secrets"
-version = "4.3.0"
-source = { git = "https://github.com/CityOfPhiladelphia/citygeo_secrets.git#649283e2643033c263bcde7e28f1085db52884ed" }
-dependencies = [
-    { name = "keeper-secrets-manager-core" },
-]
-
-[[package]]
 name = "click"
 version = "8.5.0"
 source = { registry = "https://pypi.org/simple" }
@@ -475,7 +467,6 @@ version = "1.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "azure-identity" },
-    { name = "citygeo-secrets" },
     { name = "httpx" },
     { name = "openpyxl" },
     { name = "pandas" },
@@ -498,7 +489,6 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "azure-identity", specifier = ">=1.25.3" },
-    { name = "citygeo-secrets", git = "https://github.com/CityOfPhiladelphia/citygeo_secrets.git" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "openpyxl", specifier = ">=3.1.5" },
     { name = "pandas", specifier = ">=3.0.5" },
@@ -706,17 +696,6 @@ sdist = { url = "https://files.pythonhosted.org/packages/df/bf/f7da0350254c0ed7c
 wheels = [
     { url = "https://files.pythonhosted.org/packages/62/a1/3d680cbfd5f4b8f15abc1d571870c5fc3e594bb582bc3b64ea099db13e56/jinja2-3.1.6-py3-none-any.whl", hash = "sha256:85ece4451f492d0c13c5dd7c13a64681a86afae63a5f347908daf103ce6d2f67", size = 134899, upload-time = "2025-03-05T20:05:00.369Z" },
 ]
-
-[[package]]
-name = "keeper-secrets-manager-core"
-version = "16.6.6"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "cryptography" },
-    { name = "importlib-metadata" },
-    { name = "requests" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/c4/b2/1e0fe5d7b64ddb98609a16e35ded1234bd2bb48a67bc302facb27adbdda1/keeper_secrets_manager_core-16.6.6.tar.gz", hash = "sha256:bda9e733908b34edbac956825fc062e6934894f210d49b0bba1679d167d7be80", size = 43150, upload-time = "2024-09-18T00:05:49.519Z" }
 
 [[package]]
 name = "librt"

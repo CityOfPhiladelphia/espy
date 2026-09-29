@@ -25,17 +25,48 @@ uv add "git+https://github.com/CityOfPhiladelphia/espy.git" --tag v1.1.0
 uv lock --upgrade-package espy && uv sync
 ```
 
+### Authentication
+EsPy authenticates with an Azure (Entra ID) app registration that has read/write
+access to your SharePoint sites. Provide its credentials in one of two ways.
+
+**Environment variables (recommended).** If no `creds` are passed, EsPy reads:
+
+```bash
+export AZURE_TENANT_ID="..."
+export AZURE_CLIENT_ID="..."
+export AZURE_CLIENT_SECRET="..."
+export SHAREPOINT_HOSTNAME="example.sharepoint.com"
+```
+
+**Passing `creds` directly** to any `setup()` or `GraphAPIClient.authenticate()` call:
+
+```python
+creds = {
+    "tenant_id": "...",
+    "client_id": "...",       # a.k.a. Application ID
+    "client_secret": "...",   # a.k.a. Secret Value
+}
+sp_list = SharePointList.setup(site_name="list_site_name", list_name="list_name", creds=creds)
+```
+
+The SharePoint host is read from `SHAREPOINT_HOSTNAME` unless you pass `hostname=` to `setup()`.
+
 ### Usage Example
 ```python
 from espy.list import SharePointList
 
 # Instantiate a SharePoint List Object
-sp_list = SharePointList.setup(site_name="list_site_name", list_name="list_name")
+# (credentials read from AZURE_* environment variables)
+sp_list = SharePointList.setup(
+    site_name="list_site_name", list_name="list_name"
+)
 
 # Create a row mapping data to column names in the list
-row_to_add = {"name": "Billy Penn", 
-              "address": "1234 Market St, Philadelphia, PA", 
-              "age": 250}
+row_to_add = {
+    "name": "Billy Penn",
+    "address": "1234 Market St, Philadelphia, PA",
+    "age": 250,
+}
 
 
 response = sp_list.add_row(row_to_add)
