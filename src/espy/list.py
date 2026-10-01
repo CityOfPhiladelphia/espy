@@ -456,22 +456,19 @@ class SharePointList:
             site_id=self.site_id,
             list_id=self.list_id,
         )
+        
+        # Only the first request needs explicit params; every @odata.nextLink
+        # already embeds the full query string (including $skiptoken), and httpx
+        # replaces a URL's query string entirely when params is passed.
+        params = {"$expand": "fields"}
 
-        while response_envelope := self._fetch_page(
-            next_link, {"$expand": "fields"}
-        ):
-            # API returns results wrapped in a response envelope
-            # that contains pagination metadata
-            # actual value is nested within that
-
+        while response_envelope := self._fetch_page(next_link, params):
             next_link = response_envelope.next_link
+            params = None
 
-            # Returns unnecessary extra column information, filter it out
             for row in response_envelope.value:  # pyright: ignore
                 validated_row = row.fields
-
                 formatted_row = self._format_outgoing_row(validated_row)
-
                 yield formatted_row
 
     def add_row(self, data: dict[str, Any]) -> Response:
