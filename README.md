@@ -17,7 +17,7 @@ The docs will be served at ```http://localhost:3000/```.
 To install this library to your project, run:
 
 ```bash
-uv add "git+https://github.com/CityOfPhiladelphia/espy.git" --tag v2.0.0
+uv add "git+https://github.com/CityOfPhiladelphia/espy.git" --tag v2.0.1
 ```
 
 ### Check for Updates

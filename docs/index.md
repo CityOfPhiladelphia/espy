@@ -20,7 +20,7 @@ To install this library to your project, run:
 Include the tag for the latest version.
 
 ```bash
-uv add "git+https://github.com/CityOfPhiladelphia/espy.git" --tag v2.0.0
+uv add "git+https://github.com/CityOfPhiladelphia/espy.git" --tag v2.0.1
 ```
 
 ### Upgrading EsPy
