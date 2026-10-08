@@ -19,7 +19,6 @@ from espy.models.models import (
     APICredentials,
     BatchError,
     BatchResult,
-    APICredentials,
     ColumnKind,
     GraphBatchResponse,
     GraphBatchSubResponse,
@@ -30,9 +29,6 @@ from espy.models.models import (
 )
 from espy.operations import AddRow, BatchOperation, DeleteRow, EditRow, GetRow
 from espy.urls import build_url
-
-# TODO: Print warning that a list containing a hyperlink or location column
-# Cannot be updated with the api
 
 # The (method, url, body) parts of a single Graph request.
 type RequestParts = tuple[HTTPMethod, str, dict | None]
@@ -62,7 +58,7 @@ class ListEndpoints(StrEnum):
     # Exclude graph url from these as they may be needed for batch requests
     # which take a different base URL
     GET_ROW_BY_PK = (
-        "{graph_url}/sites/"
+        "sites/"
         "{site_id}/lists/{list_id}/items?"
         "$expand=fields&$filter=fields/{column_name} eq {value}"
     )
@@ -319,7 +315,6 @@ class SharePointList:
 
         url = build_url(
             ListEndpoints.GET_ROW_BY_PK,
-            graph_url=GRAPH_URL,
             site_id=self.site_id,
             list_id=self.list_id,
             column_name=canonical_field_name,
@@ -537,7 +532,7 @@ class SharePointList:
             site_id=self.site_id,
             list_id=self.list_id,
         )
-        
+
         # Only the first request needs explicit params; every @odata.nextLink
         # already embeds the full query string (including $skiptoken), and httpx
         # replaces a URL's query string entirely when params is passed.
@@ -558,10 +553,10 @@ class SharePointList:
 
         Args:
             key_col (str): The name of the primary key column to search on
-            value (Any): The value of the priamry key column
+            value (Any): The value of the primary key column
 
         Returns:
-            dict: A dictionary with row data
+            dict[str, Any]: A dictionary with row data.
         """
 
         method, url, _ = self._build_get(key_col, value)
@@ -607,10 +602,9 @@ class SharePointList:
 
         Args:
             key_col (str): The name of the primary key column to search on.
-            value: The value of the primary key column to search on.
+            value (Any): The value of the primary key column to search on.
             data (dict[str, Any]): A dict of row data to edit. Keys in the dict
-            must match the name of the name of the column in the SharePoint
-            list.
+            must match the name of the column in the SharePoint list.
 
         Returns:
             dict[str, Any]: A json response object from the API.
@@ -631,12 +625,14 @@ class SharePointList:
 
     def delete_row(self, key_col: str, value: Any) -> dict | None:
         """Delete a row in a SharePoint list.
+
         Args:
             key_col (str): The name of the primary key column to search on.
-            value: The value of the primary key column to search on.
+            value (Any): The value of the primary key column to search on.
 
         Returns:
-            dict[str, Any]: A json response object from the API.
+            dict | None: The interpreted API response, or None if the API
+            returned no content.
         """
         returned_row = self.get_row(key_col, value)
         row_id = returned_row["id"]
@@ -664,6 +660,16 @@ class SharePointList:
         """
         Given a list of user supplied BatchOperations, collate
         and process the operations as a batch.
+
+        Operations are sent in groups of at most MAX_BATCH_SIZE. Failures of
+        individual operations do not raise; they are reported on the
+        corresponding BatchResult.
+
+        Args:
+            operations (Sequence[BatchOperation]): The operations to run.
+
+        Returns:
+            list[BatchResult]: One result per operation, in input order.
         """
 
         results: list[BatchResult] = []
@@ -702,89 +708,127 @@ class SharePointList:
         Note: This method does not currently work for Lists with
         a Location column, Person column, or Hyperlink or image column.
 
+        Failures of individual rows do not raise; check ``BatchResult.ok``
+        on each result.
+
         Args:
-            data Sequence(dict[str, Any]): A sequence of row data to add. 
-            Keys in the row data must match the name of the name of the column in the SharePoint
-            list.
+            data (Sequence[dict[str, Any]]): The rows to add. Keys in each
+            dict must match the name of a column in the SharePoint list.
 
         Returns:
-            list[BatchResult]: A list of Batch Result objects.
+            list[BatchResult]: One result per row, in input order.
         """
-                
+
         operations = [AddRow(row) for row in data]
 
         return self.batch(operations)
 
-    def get_rows(self, key_col: str, values: list[Any]) -> list[BatchResult]:
-        """
-        Get multiple rows from a list by primary key.
+    def get_rows(
+        self, key_col: str, values: Sequence[Any]
+    ) -> list[BatchResult]:
+        """Get multiple rows from a list by primary key.
+
+        Failures of individual rows do not raise; check ``BatchResult.ok``
+        on each result.
 
         Args:
-            key_col (str): The name of the primary key column to search on
-            values list(Any): The values of the priamry key column
+            key_col (str): The name of the primary key column to search on.
+            values (Sequence[Any]): The values of the primary key column.
 
         Returns:
-            list[BatchResult]: A list of Batch Result objects.
+            list[BatchResult]: One result per value, in input order.
         """
 
         operations = [GetRow(key_col, value) for value in values]
 
         return self.batch(operations)
 
-    def edit_rows(self, key_col: str, values: list[Any], 
-                  data: list[dict[str, Any]]) -> list[BatchResult]:
-        """Edits rows in a SharePoint list.
+    def edit_rows(
+        self,
+        key_col: str,
+        values: Sequence[Any],
+        data: Sequence[dict[str, Any]],
+    ) -> list[BatchResult]:
+        """Edit multiple rows in a SharePoint list.
+
+        Each row is first looked up by primary key (one batch), then the
+        rows that were found are edited (a second batch). Rows that could
+        not be found are reported with their lookup error and are not edited.
 
         Note: This method does not currently work for Lists with
         a Location column, Person column, or Hyperlink or image column.
 
+        Failures of individual rows do not raise; check ``BatchResult.ok``
+        on each result.
+
         Args:
             key_col (str): The name of the primary key column to search on.
-            value: The value of the primary key column to search on.
-            values list(Any): The values of the priamry key column
-            data Sequence(dict[str, Any]): A sequence of row data to edit. 
-            Keys in the row data must match the name of the name of the column in the SharePoint
-            list.
+            values (Sequence[Any]): The values of the primary key column
+            identifying the rows to edit.
+            data (Sequence[dict[str, Any]]): The row data to apply;
+            ``data[i]`` is applied to the row matching ``values[i]``. Keys in
+            each dict must match the name of a column in the SharePoint list.
 
         Returns:
-            list[BatchResult]: A list of Batch Result objects.
+            list[BatchResult]: One result per value, in input order.
+
+        Raises:
+            ValueError: If ``values`` and ``data`` differ in length.
         """
+
+        if len(values) != len(data):
+            raise ValueError(
+                "values and data must be the same length "
+                f"(got {len(values)} and {len(data)})."
+            )
 
         get_results = self.get_rows(key_col, values)
 
-        # Make a copy of get results to overwrite with results
-        # of batch delete for final output
+        # Start from the lookup results; successful lookups are replaced
+        # by the result of the edit below.
         results = list(get_results)
 
         positions: list[int] = []
         edit_ops: list[EditRow] = []
 
-        for pos, (result, new_data) in enumerate(zip(get_results, data, strict=True)):
+        for pos, (result, new_data) in enumerate(
+            zip(get_results, data, strict=True)
+        ):
             if result.ok:
                 positions.append(pos)
                 edit_ops.append(EditRow(result.value["id"], new_data))
 
-        # Because batch returns in same order as entered, positions and batch
-        # align here
-        for pos, deleted in zip(positions, self.batch(edit_ops), strict=True):
-            results[pos] = deleted
+        # batch returns results in input order, so they align with positions
+        for pos, edited in zip(positions, self.batch(edit_ops), strict=True):
+            results[pos] = edited
 
         return results
 
-    def delete_rows(self, key_col: str, values: list[Any]) -> list[BatchResult]:
+    def delete_rows(
+        self, key_col: str, values: Sequence[Any]
+    ) -> list[BatchResult]:
         """Delete multiple rows in a SharePoint list.
+
+        Each row is first looked up by primary key (one batch), then the
+        rows that were found are deleted (a second batch). Rows that could
+        not be found are reported with their lookup error.
+
+        Failures of individual rows do not raise; check ``BatchResult.ok``
+        on each result.
+
         Args:
             key_col (str): The name of the primary key column to search on.
-            values list[Any]: The value of the primary key column to search on.
+            values (Sequence[Any]): The values of the primary key column
+            identifying the rows to delete.
 
         Returns:
-            list[BatchResult]: A list of Batch Result objects.
+            list[BatchResult]: One result per value, in input order.
         """
 
         get_results = self.get_rows(key_col, values)
 
-        # Make a copy of get results to overwrite with results
-        # of batch delete for final output
+        # Start from the lookup results; successful lookups are replaced
+        # by the result of the delete below.
         results = list(get_results)
 
         positions: list[int] = []
@@ -795,8 +839,7 @@ class SharePointList:
                 positions.append(pos)
                 delete_ops.append(DeleteRow(result.value["id"]))
 
-        # Because batch returns in same order as entered, positions and batch
-        # align here
+        # batch returns results in input order, so they align with positions
         for pos, deleted in zip(positions, self.batch(delete_ops), strict=True):
             results[pos] = deleted
 

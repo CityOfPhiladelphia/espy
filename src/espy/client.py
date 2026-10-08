@@ -3,6 +3,7 @@ from enum import StrEnum
 
 import httpx
 from azure.identity import ClientSecretCredential
+from pydantic import SecretStr
 
 from espy.constants import (
     CREDENTIAL_ENV_VARS,
@@ -40,10 +41,24 @@ def _creds_from_env() -> APICredentials:
         )
 
     return APICredentials(
-        tenant_id=os.environ[CREDENTIAL_ENV_VARS["tenant_id"]],
-        client_id=os.environ[CREDENTIAL_ENV_VARS["client_id"]],
-        client_secret=os.environ[CREDENTIAL_ENV_VARS["client_secret"]],
+        tenant_id=SecretStr(os.environ[CREDENTIAL_ENV_VARS["tenant_id"]]),
+        client_id=SecretStr(os.environ[CREDENTIAL_ENV_VARS["client_id"]]),
+        client_secret=SecretStr(
+            os.environ[CREDENTIAL_ENV_VARS["client_secret"]]
+        ),
     )
+
+
+def _reveal(value: SecretStr | str) -> str:
+    """Return the plain string for a SecretStr (or a str passed as-is).
+
+    Azure's credential classes need real strings; str(SecretStr) is the
+    masked placeholder '**********', which Entra rejects.
+    """
+    if isinstance(value, SecretStr):
+        return value.get_secret_value()
+
+    return value
 
 
 def resolve_hostname(hostname: str | None) -> str:
@@ -109,7 +124,11 @@ class GraphAPIClient:
         if creds is None:
             creds = _creds_from_env()
 
-        credential = ClientSecretCredential(**creds)
+        credential = ClientSecretCredential(
+            tenant_id=_reveal(creds["tenant_id"]),
+            client_id=_reveal(creds["client_id"]),
+            client_secret=_reveal(creds["client_secret"]),
+        )
 
         return cls(credential)
 
