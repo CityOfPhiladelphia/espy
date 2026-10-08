@@ -10,15 +10,23 @@ When used alone, it allows you to upload and download files to/from SharePoint.
 ## Import
  
 ```python
-from src.espy.client import GraphAPIClient
+from espy.client import GraphAPIClient
 ```
  
 ## Setup
  
-Instantiate with `.authenticate()`. At the moment, the `GraphAPIClient` is instantiated with CityGeo's Graph App in Azure. Future development will allow a user to pass their own credentials for authentication.
+Instantiate with `.authenticate()`. With no arguments, credentials are read from the `AZURE_TENANT_ID`, `AZURE_CLIENT_ID` and `AZURE_CLIENT_SECRET` environment variables.
  
 ```python
 client = GraphAPIClient.authenticate()
+```
+
+Or pass them directly:
+
+```python
+client = GraphAPIClient.authenticate(
+    {"tenant_id": "...", "client_id": "...", "client_secret": "..."}
+)
 ```
  
 ---
@@ -36,6 +44,7 @@ Uploads a file to a SharePoint Documents folder.
 | `site_name` | `str` | Name of the SharePoint site to upload the file to |
 | `local_path` | `str` | Exact local path where the file is located |
 | `dest_path` | `str` | Path, relative to the Documents folder, where the file should be saved |
+| `hostname` | `str` | Optional. SharePoint host name. Defaults to the `SHAREPOINT_HOSTNAME` environment variable |
  
 **Returns**
  

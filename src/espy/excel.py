@@ -3,13 +3,13 @@ from enum import StrEnum
 import pandas as pd
 from httpx import Response
 
-from espy.client import GraphAPIClient
+from espy.client import GraphAPIClient, resolve_hostname
 from espy.constants import GRAPH_URL
 from espy.models.graph_api_models import (
     MalformedRowError,
     PrimaryKeyValueNotFound,
 )
-from espy.models.models import HTTPMethod
+from espy.models.models import APICredentials, HTTPMethod
 from espy.urls import build_url
 
 
@@ -102,32 +102,39 @@ class ExcelWorksheet:
     @classmethod
     def setup(
         cls,
-        hostname: str,
+        *,
         site_name: str,
         document_library: str,
         workbook_path: str,
         worksheet_name: str | None = None,
         table_name: str | None = None,
+        hostname: str | None = None,
+        creds: APICredentials | None = None,
     ):
         """
         Sets up the ExcelWorkbook class. Creates a client and fetches
         necessary ids to have ExcelWorkbook operate on.
 
+        All arguments are keyword-only.
+
         Args:
-            hostname        : Sharepoint hostname. i.e. "phila.sharepoint.com"
             site_name       : The name of the sharepoint site. i.e. "ps360-metrics-share"
             document_library: The name of the document library. i.e. "Documents"
             workbook_path   : The path to the file you want to access
             relative to document_library. i.e. "Philly Stat - OIT/OIT_data.xlsx"
             worksheet_name  : The name of the worksheet you want to affect. i.e. "Metrics"
             table_name      : The name of the table object in the excel. i.e. "Table1"
+            hostname        : Sharepoint hostname. i.e. "example.sharepoint.com".
+            If None, read from SHAREPOINT_HOSTNAME.
+            creds           : tenant_id, client_id and client_secret. If None,
+            read from AZURE_TENANT_ID, AZURE_CLIENT_ID and AZURE_CLIENT_SECRET.
 
         Returns:
             ExcelWorkbook: An ExcelWorkboook object.
         """
-        client = GraphAPIClient.authenticate()
+        client = GraphAPIClient.authenticate(creds)
 
-        site_id = client.get_site_id(hostname, site_name)
+        site_id = client.get_site_id(resolve_hostname(hostname), site_name)
         drive_id = client.get_drive_id(site_id, document_library)
 
         workbook_id_url = build_url(
@@ -489,7 +496,7 @@ class ExcelWorksheet:
 
         return cols
 
-    def toggle_protection(self, password: str, protect: bool) -> None:
+    def toggle_protection(self, password: str | None, protect: bool) -> None:
         """
         Turns on/off sheet protection in the excel worksheet.
 

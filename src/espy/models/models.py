@@ -2,9 +2,9 @@
 
 from datetime import datetime
 from enum import StrEnum
-from typing import Any
+from typing import Any, TypedDict
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator, SecretStr
 from pydantic.alias_generators import to_camel
 
 from espy.operations import BatchOperation
@@ -94,6 +94,13 @@ class UnsupportedMethodError(Exception):
     """
 
 
+### Authentication
+class APICredentials(TypedDict):
+    tenant_id: SecretStr
+    client_id: SecretStr
+    client_secret: SecretStr
+
+
 ## API Response Classes
 ### Validation for data returned by the API
 class GraphCollection[T](BaseModel):
@@ -121,6 +128,12 @@ class GraphBatchResponse(BaseModel):
 
 
 #### Batch response data, user-facing models:
+class BatchError(BaseModel):
+    status: int | None
+    message: str
+    code: str | None = None
+
+
 class BatchResult(BaseModel):
     operation: BatchOperation
     value: Any = None
@@ -129,11 +142,6 @@ class BatchResult(BaseModel):
     @property
     def ok(self) -> bool:
         return self.error is None
-
-class BatchError(BaseModel):
-    status: int | None
-    message: str
-    code: str | None = None
 
 
 ### Share Point List Data

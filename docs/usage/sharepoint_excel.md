@@ -9,31 +9,31 @@ Supports retrieving, adding, deleting, modifying, and upserting rows in a ShareP
 ## Import
 
 ```python
-from src.espy.excel import ExcelWorksheet
+from espy.excel import ExcelWorksheet
 ```
 
 ## Setup
-Instantiate with `.setup()`. Four arguments are always required:
+Instantiate with `.setup()`. All arguments are keyword-only. Three are always required:
  
 | Argument | Description | Example |
 |---|---|---|
-| `hostname` | SharePoint host name | `phila.sharepoint.com` |
 | `site_name` | SharePoint site name | `ps360-metrics` |
 | `document_library` | Name of the document library | `Documents` |
 | `workbook_path` | Path of the Excel workbook | `"Philly Stat - OIT/OIT_data.xlsx"` |
 
 
-Two additional arguments are optional, depending on which functions you plan to run:
+The rest are optional:
  
 | Argument | Note | Example | Required for |
 |---|---|---|---|
 | `worksheet_name` | Name of the worksheet | `Metrics` | `toggle_protection` |
 | `table_name` | Name of the table | `Table1` | `add_rows`, `delete_row_by_pk`, `update_row_by_pk`, `list_rows`, `list_columns` |
+| `hostname` | SharePoint host name. If omitted, read from `SHAREPOINT_HOSTNAME` | `example.sharepoint.com` | |
+| `creds` | `{"tenant_id", "client_id", "client_secret"}`. If omitted, read from `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET` | | |
 
 
 ```python
 excel = ExcelWorksheet.setup(
-    hostname=hostname,
     site_name=site_name,
     document_library=document_library,
     workbook_path=workbook_path,
@@ -41,7 +41,7 @@ excel = ExcelWorksheet.setup(
     table_name=table_name,
 )
 ```
- 
+
 ---
 
 ## Viewing Data
@@ -115,6 +115,10 @@ Deletes a row based on a primary key value.
 - `KeyError` — the key isn't found as a column in the table.
 - `PrimaryKeyValueNotFound` — the value to look for doesn't exist.
 - `ValueError` — the operation is attempted on an empty table.
+
+!!! warning 
+    Use very carefully! Deleted data cannot be recovered!
+
 ```python
 pk_col = "primary_key"
 pk_val = "n"
@@ -133,6 +137,9 @@ Deletes a row at a specified index from the sheet.
 | `index` | `int` | 0-based index of the row to delete (e.g. `index=0` deletes the first row of data) |
 | `password` | `str`, optional | Sheet protection password |
  
+!!! warning 
+    Use very carefully! Deleted data cannot be recovered!
+
 ```python
 excel.delete_row_at_index(index=3)
 ```

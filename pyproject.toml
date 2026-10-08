@@ -1,12 +1,11 @@
 [project]
 name = "espy"
-version = "1.1.0"
+version = "2.0.2"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "azure-identity>=1.25.3",
-    "citygeo-secrets",
     "httpx>=0.28.1",
     "openpyxl>=3.1.5",
     "pandas>=3.0.5",
@@ -16,9 +15,6 @@ dependencies = [
 [build-system]
 requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
-
-[tool.uv.sources]
-citygeo-secrets = { git = "https://github.com/CityOfPhiladelphia/citygeo_secrets.git" }
 
 [tool.uv]
 default-groups = []

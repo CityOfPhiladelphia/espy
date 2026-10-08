@@ -15,6 +15,7 @@ def mock_client():
     return MagicMock()
 
 
+
 @pytest.fixture
 def worksheet(mock_client):  # Calls the above fixture
     return ExcelWorksheet(
@@ -49,8 +50,8 @@ def make_response(json_data=None):
 
 ### Testing the setup functions ###
 class TestSetup:
-    def test_setup_with_resolved_ids(self):
-        # Set up a mock client
+    def test_setup_with_resolved_ids(self, fake_creds):
+        # Set up a mock client 
         mock_instance = MagicMock()
         mock_instance.get_site_id.return_value = "test_site"
         mock_instance.get_drive_id.return_value = "test_drive"
@@ -64,12 +65,14 @@ class TestSetup:
             excel = ExcelWorksheet.setup(
                 hostname="garb.com",
                 site_name="garbsite",
+                creds=fake_creds,
                 document_library="garbdoc",
                 workbook_path="garbpath",
                 worksheet_name="garbsheet",
                 table_name="garbtable",
             )
 
+        MockedClient.authenticate.assert_called_once_with(fake_creds)
         assert isinstance(excel, ExcelWorksheet)
         assert excel.client is mock_instance
         assert excel.site_id == "test_site"
@@ -78,7 +81,7 @@ class TestSetup:
         assert excel.worksheet_name == "garbsheet"
         assert excel.table_name == "garbtable"
 
-    def test_setup_with_default_vals(self):
+    def test_setup_with_default_vals(self, fake_creds):
         mock_instance = MagicMock()
         mock_instance.get_site_id.return_value = "test_site"
         mock_instance.get_drive_id.return_value = "test_drive"
@@ -90,14 +93,40 @@ class TestSetup:
             MockedClient.authenticate.return_value = mock_instance
 
             excel = ExcelWorksheet.setup(
-                hostname="contoso.sharepoint.com",
+                hostname="example.sharepoint.com",
                 site_name="TeamSite",
+                creds=fake_creds,
                 document_library="Documents",
                 workbook_path="Reports/data.xlsx",
             )
 
         assert excel.worksheet_name is None
         assert excel.table_name is None
+
+    def test_setup_defaults_hostname_and_creds(self, monkeypatch):
+        monkeypatch.setenv("SHAREPOINT_HOSTNAME", "env.sharepoint.com")
+        mock_instance = MagicMock()
+        mock_instance.make_request.return_value = make_response(
+            {"id": "some_id"}
+        )
+
+        with patch("espy.excel.GraphAPIClient") as MockedClient:
+            MockedClient.authenticate.return_value = mock_instance
+
+            ExcelWorksheet.setup(
+                site_name="TeamSite",
+                document_library="Documents",
+                workbook_path="Reports/data.xlsx",
+            )
+
+        MockedClient.authenticate.assert_called_once_with(None)
+        mock_instance.get_site_id.assert_called_once_with(
+            "env.sharepoint.com", "TeamSite"
+        )
+
+    def test_setup_rejects_positional_args(self):
+        with pytest.raises(TypeError):
+            ExcelWorksheet.setup("TeamSite", "Documents", "Reports/data.xlsx")
 
 
 ### Testing the add row functions ###
