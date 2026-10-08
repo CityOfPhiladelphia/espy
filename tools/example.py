@@ -155,10 +155,10 @@ def test_delete_rows(sp_list: SharePointList):
 
 def main():
     sp_list = SharePointList.setup(site_name=SITE_NAME, list_name=LIST_NAME)
-    # test_get_rows(sp_list)
-    # test_add_rows(sp_list)
-    # test_edit_rows(sp_list)
-    # test_delete_rows(sp_list)
+    test_get_rows(sp_list)
+    test_add_rows(sp_list)
+    test_edit_rows(sp_list)
+    test_delete_rows(sp_list)
 
 
 if __name__ == "__main__":
