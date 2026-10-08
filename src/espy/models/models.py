@@ -130,12 +130,16 @@ class GraphBatchResponse(BaseModel):
 
 #### Batch response data, user-facing models:
 class BatchError(BaseModel):
+    """A model representing an error in a batch request made to the SharePoint API.
+    """
     status: int | None
     message: str
     code: str | None = None
 
 
 class BatchResult(BaseModel):
+    """A model representing a result for one request in a batch request made to the SharePoint API.
+    """
     operation: BatchOperation
     value: Any = None
     error: BatchError | None = None

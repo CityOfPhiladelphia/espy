@@ -631,8 +631,7 @@ class SharePointList:
             value (Any): The value of the primary key column to search on.
 
         Returns:
-            dict | None: The interpreted API response, or None if the API
-            returned no content.
+            dict | None: The interpreted API response, or None if the API returned no content.
         """
         returned_row = self.get_row(key_col, value)
         row_id = returned_row["id"]
