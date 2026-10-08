@@ -46,7 +46,9 @@ creds = {
     "client_id": "...",
     "client_secret": "...",
 }
-sp_list = SharePointList.setup(site_name="list_site_name", list_name="list_name", creds=creds)
+sp_list = SharePointList.setup(
+    site_name="list_site_name", list_name="list_name", creds=creds
+)
 ```
 
 The SharePoint host is read from `SHAREPOINT_HOSTNAME` unless you pass `hostname=` to `setup()`.

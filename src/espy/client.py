@@ -195,7 +195,9 @@ class GraphAPIClient:
             msg = f"""{e} | Server Error Body: 
             {response.json()}"""
 
-            raise httpx.HTTPError(error_msg) from e
+            raise httpx.HTTPStatusError(
+                msg, request=e.request, response=e.response
+            )
 
         return response
 

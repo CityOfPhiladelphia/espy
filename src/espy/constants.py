@@ -1,5 +1,4 @@
 # constants.py
-MAX_BATCH_SIZE = 20
 
 SCOPE = "https://graph.microsoft.com/.default"
 GRAPH_URL = "https://graph.microsoft.com/v1.0"
@@ -14,6 +13,8 @@ CREDENTIAL_ENV_VARS = {
     "client_id": "AZURE_CLIENT_ID",
     "client_secret": "AZURE_CLIENT_SECRET",
 }
+
+MAX_BATCH_SIZE = 20
 
 SHAREPOINT_LIST_EXCLUDED_COLUMNS = {
     "@odata.etag",

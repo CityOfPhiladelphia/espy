@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any, TypedDict
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator, SecretStr
+from pydantic import BaseModel, ConfigDict, Field, SecretStr, model_validator
 from pydantic.alias_generators import to_camel
 
 from espy.operations import BatchOperation
@@ -83,7 +83,7 @@ ACCEPTABLE_PYTHON_TYPES: dict[ColumnKind, tuple[type, ...]] = {
         str,
     ),
     ColumnKind.TERM: (str,),
-    ColumnKind.TEXT: (str,)
+    ColumnKind.TEXT: (str,),
 }
 
 
@@ -92,6 +92,7 @@ class UnsupportedMethodError(Exception):
     """Unsupported Method Error. Raised when
     a method against an API is not permitted.
     """
+
 
 ### Authentication
 class APICredentials(TypedDict):
@@ -122,11 +123,18 @@ class GraphBatchSubResponse(BaseModel):
     headers: dict
     body: dict[str, Any] | None = None
 
+
 class GraphBatchResponse(BaseModel):
     responses: list[GraphBatchSubResponse]
 
 
 #### Batch response data, user-facing models:
+class BatchError(BaseModel):
+    status: int | None
+    message: str
+    code: str | None = None
+
+
 class BatchResult(BaseModel):
     operation: BatchOperation
     value: Any = None
@@ -135,11 +143,6 @@ class BatchResult(BaseModel):
     @property
     def ok(self) -> bool:
         return self.error is None
-
-class BatchError(BaseModel):
-    status: int | None
-    message: str
-    code: str | None = None
 
 
 ### Share Point List Data

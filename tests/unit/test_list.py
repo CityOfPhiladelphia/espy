@@ -334,7 +334,6 @@ def test_list_column_returns_list_of_columns(
     assert result[1].type == ColumnKind.BOOLEAN
 
 
-
 def test_add_row_breaks_with_bad_column_name(
     configured_test_list, mocked_column_data, monkeypatch
 ):
@@ -359,7 +358,6 @@ def test_column_kind_enum_matches_type_mapping():
 
     assert writable_kinds.isdisjoint(READ_ONLY_COLUMN_KINDS)
     assert set(ColumnKind) == writable_kinds | READ_ONLY_COLUMN_KINDS
-
 
 
 def test_add_row_breaks_with_bad_data_type(

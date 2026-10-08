@@ -19,6 +19,9 @@ build-backend = "setuptools.build_meta"
 [tool.uv]
 default-groups = []
 
+[tool.uv.sources]
+citygeo-secrets = { git = "https://github.com/CityOfPhiladelphia/citygeo_secrets.git", rev = "v4.3.0" }
+
 [tool.ruff]
 line-length = 80
 
@@ -28,6 +31,7 @@ ignore_missing_imports = true
 
 [dependency-groups]
 dev = [
+    "citygeo-secrets",
     "fawltydeps>=0.20.0",
     "ipython>=9.16.1",
     "isort>=8.0.1",

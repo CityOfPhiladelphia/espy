@@ -118,8 +118,14 @@ class TestSetup:
                 workbook_path="Reports/data.xlsx",
             )
 
-            assert excel.worksheet_name is None
-            assert excel.table_name is None
+        MockedClient.authenticate.assert_called_once_with(None)
+        mock_instance.get_site_id.assert_called_once_with(
+            "env.sharepoint.com", "TeamSite"
+        )
+
+    def test_setup_rejects_positional_args(self):
+        with pytest.raises(TypeError):
+            ExcelWorksheet.setup("TeamSite", "Documents", "Reports/data.xlsx")
 
 
 ### Testing the add row functions ###

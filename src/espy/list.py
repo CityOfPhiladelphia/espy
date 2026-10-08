@@ -16,6 +16,7 @@ from espy.constants import (
 from espy.models.models import (
     ACCEPTABLE_PYTHON_TYPES,
     READ_ONLY_COLUMN_KINDS,
+    APICredentials,
     BatchError,
     BatchResult,
     APICredentials,
@@ -460,8 +461,9 @@ class SharePointList:
         if sub_response is None:
             return BatchResult(
                 operation=operation,
-                error=BatchError(status=None, 
-                                 message="No response returned by Graph"),
+                error=BatchError(
+                    status=None, message="No response returned by Graph"
+                ),
             )
 
         if not 200 <= sub_response.status < 300:
@@ -548,7 +550,6 @@ class SharePointList:
             for row in response_envelope.value:  # pyright: ignore
                 validated_row = row.fields
                 formatted_row = self._format_outgoing_row(validated_row)
-
                 yield formatted_row
 
     def get_row(self, key_col: str, value: Any) -> dict[str, Any]:
