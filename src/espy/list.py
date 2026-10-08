@@ -10,7 +10,6 @@ from pydantic import ValidationError
 from espy.client import GraphAPIClient, resolve_hostname
 from espy.constants import (
     GRAPH_URL,
-    HOST_NAME,
     MAX_BATCH_SIZE,
     SHAREPOINT_LIST_EXCLUDED_COLUMNS,
 )
@@ -270,8 +269,6 @@ class SharePointList:
         raw_data = self.client.make_request(
             HTTPMethod.GET, url, params=params
         ).json()
-            HTTPMethod.GET, url, params=params
-        ).json()
 
         response_envelope = GraphCollection[SharePointListRow].model_validate(
             raw_data
@@ -321,6 +318,7 @@ class SharePointList:
 
         url = build_url(
             ListEndpoints.GET_ROW_BY_PK,
+            graph_url=GRAPH_URL,
             site_id=self.site_id,
             list_id=self.list_id,
             column_name=canonical_field_name,

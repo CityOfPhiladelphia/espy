@@ -49,7 +49,7 @@ def make_response(json_data=None):
 
 ### Testing the setup functions ###
 class TestSetup:
-    def test_setup_with_resolved_ids(self):
+    def test_setup_with_resolved_ids(self, fake_creds):
         # Set up a mock client
         mock_instance = MagicMock()
         mock_instance.get_site_id.return_value = "test_site"
@@ -112,14 +112,14 @@ class TestSetup:
         with patch("espy.excel.GraphAPIClient") as MockedClient:
             MockedClient.authenticate.return_value = mock_instance
 
-            ExcelWorksheet.setup(
+            excel = ExcelWorksheet.setup(
                 site_name="TeamSite",
                 document_library="Documents",
                 workbook_path="Reports/data.xlsx",
             )
 
-        assert excel.worksheet_name is None
-        assert excel.table_name is None
+            assert excel.worksheet_name is None
+            assert excel.table_name is None
 
 
 ### Testing the add row functions ###
