@@ -1,4 +1,5 @@
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from requests.exceptions import HTTPError
 
@@ -7,6 +8,8 @@ from espy.operations import AddRow, DeleteRow, EditRow, GetRow
 
 SITE_NAME = "ps360-metrics-share"
 LIST_NAME = "PPR 311 Test List"
+
+TZ = ZoneInfo("America/New_York")
 
 
 def test_get_rows(sp_list: SharePointList):
@@ -25,7 +28,7 @@ def test_add_rows(sp_list: SharePointList):
 
     data_to_add = [
         {
-            "Date/Time Opened": str(datetime.now()),
+            "Date/Time Opened": str(datetime.now(tz=TZ)),
             "Address/Intersection": "1234 MARKET ST",
             "Service Request Number": "99999999",
             "Description": "Inserted as a test.",
@@ -35,7 +38,7 @@ def test_add_rows(sp_list: SharePointList):
             "Notes": None,
         },
         {
-            "Date/Time Opened": str(datetime.now()),
+            "Date/Time Opened": str(datetime.now(tz=TZ)),
             "Address/Intersection": "1234 MARKET ST",
             "Service Request Number": "99999998",
             "Description": "Inserted as a test.",
@@ -45,7 +48,7 @@ def test_add_rows(sp_list: SharePointList):
             "Notes": None,
         },
         {
-            "Date/Time Opened": str(datetime.now()),
+            "Date/Time Opened": str(datetime.now(tz=TZ)),
             "Address/Intersection": "1234 MARKET ST",
             "Service Request Number": "99999997",
             "Description": "Inserted as a test.",
@@ -69,7 +72,7 @@ def test_edit_rows(sp_list: SharePointList):
 
     data_to_edit = [
         {
-            "Date/Time Opened": str(datetime.now()),
+            "Date/Time Opened": str(datetime.now(tz=TZ)),
             "Address/Intersection": "1234 MARKET ST",
             "Service Request Number": "99999999",
             "Description": "Inserted as a test.",
@@ -79,7 +82,7 @@ def test_edit_rows(sp_list: SharePointList):
             "Notes": None,
         },
         {
-            "Date/Time Opened": str(datetime.now()),
+            "Date/Time Opened": str(datetime.now(tz=TZ)),
             "Address/Intersection": "1234 MARKET ST",
             "Service Request Number": "99999998",
             "Description": "Inserted as a test.",
@@ -89,7 +92,7 @@ def test_edit_rows(sp_list: SharePointList):
             "Notes": None,
         },
         {
-            "Date/Time Opened": str(datetime.now()),
+            "Date/Time Opened": str(datetime.now(tz=TZ)),
             "Address/Intersection": "1234 MARKET ST",
             "Service Request Number": "99999997",
             "Description": "Inserted as a test.",

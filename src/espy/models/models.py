@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any, TypedDict
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator, SecretStr
+from pydantic import BaseModel, ConfigDict, Field, SecretStr, model_validator
 from pydantic.alias_generators import to_camel
 
 from espy.operations import BatchOperation
@@ -122,6 +122,7 @@ class GraphBatchSubResponse(BaseModel):
     status: int
     headers: dict
     body: dict[str, Any] | None = None
+
 
 class GraphBatchResponse(BaseModel):
     responses: list[GraphBatchSubResponse]

@@ -22,13 +22,11 @@ def mocked_response(fixture_dict: dict) -> httpx.Response:
     return mock_response
 
 
-
 def mocked_request(fixture_dict):
     mock_request = MagicMock()
     mock_request.return_value = mocked_response(fixture_dict)
 
     return mock_request
-
 
 
 @pytest.fixture
@@ -336,7 +334,6 @@ def test_list_column_returns_list_of_columns(
     assert result[1].type == ColumnKind.BOOLEAN
 
 
-
 def test_add_row_breaks_with_bad_column_name(
     configured_test_list, mocked_column_data, monkeypatch
 ):
@@ -356,13 +353,11 @@ def test_add_row_breaks_with_bad_column_name(
         configured_test_list.add_row(data)
 
 
-
 def test_column_kind_enum_matches_type_mapping():
     writable_kinds = set(ACCEPTABLE_PYTHON_TYPES.keys())
 
     assert writable_kinds.isdisjoint(READ_ONLY_COLUMN_KINDS)
     assert set(ColumnKind) == writable_kinds | READ_ONLY_COLUMN_KINDS
-
 
 
 def test_add_row_breaks_with_bad_data_type(
@@ -384,7 +379,6 @@ def test_add_row_breaks_with_bad_data_type(
         configured_test_list.add_row(data)
 
 
-
 def test_edit_row_breaks_with_bad_column_name(
     configured_test_list, mocked_column_data, monkeypatch
 ):
@@ -403,6 +397,7 @@ def test_edit_row_breaks_with_bad_column_name(
 
     with pytest.raises(KeyError):
         configured_test_list.edit_row("col_four", "123456", data)
+
 
 def test_edit_row_breaks_with_bad_data_type(
     configured_test_list, mocked_column_data, monkeypatch

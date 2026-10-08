@@ -1,4 +1,4 @@
-from typing import Any, TypeAlias
+from typing import Any
 
 from pydantic.dataclasses import dataclass
 
@@ -64,4 +64,4 @@ class DeleteRow:
     row_id: int
 
 
-BatchOperation: TypeAlias = GetRow | AddRow | EditRow | DeleteRow
+BatchOperation = GetRow | AddRow | EditRow | DeleteRow

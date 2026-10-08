@@ -46,10 +46,12 @@ export SHAREPOINT_HOSTNAME="example.sharepoint.com"
 ```python
 creds = {
     "tenant_id": "...",
-    "client_id": "...",       # a.k.a. Application ID
-    "client_secret": "...",   # a.k.a. Secret Value
+    "client_id": "...",  # a.k.a. Application ID
+    "client_secret": "...",  # a.k.a. Secret Value
 }
-sp_list = SharePointList.setup(site_name="list_site_name", list_name="list_name", creds=creds)
+sp_list = SharePointList.setup(
+    site_name="list_site_name", list_name="list_name", creds=creds
+)
 ```
 
 The SharePoint host is read from `SHAREPOINT_HOSTNAME` unless you pass `hostname=` to `setup()`.

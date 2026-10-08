@@ -15,7 +15,6 @@ def mock_client():
     return MagicMock()
 
 
-
 @pytest.fixture
 def worksheet(mock_client):  # Calls the above fixture
     return ExcelWorksheet(
@@ -51,7 +50,7 @@ def make_response(json_data=None):
 ### Testing the setup functions ###
 class TestSetup:
     def test_setup_with_resolved_ids(self, fake_creds):
-        # Set up a mock client 
+        # Set up a mock client
         mock_instance = MagicMock()
         mock_instance.get_site_id.return_value = "test_site"
         mock_instance.get_drive_id.return_value = "test_drive"

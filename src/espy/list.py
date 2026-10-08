@@ -16,9 +16,9 @@ from espy.constants import (
 from espy.models.models import (
     ACCEPTABLE_PYTHON_TYPES,
     READ_ONLY_COLUMN_KINDS,
+    APICredentials,
     BatchError,
     BatchResult,
-    APICredentials,
     ColumnKind,
     GraphBatchResponse,
     GraphBatchSubResponse,
@@ -457,8 +457,9 @@ class SharePointList:
         if sub_response is None:
             return BatchResult(
                 operation=operation,
-                error=BatchError(status=None, 
-                                 message="No response returned by Graph"),
+                error=BatchError(
+                    status=None, message="No response returned by Graph"
+                ),
             )
 
         if not 200 <= sub_response.status < 300:
@@ -532,7 +533,7 @@ class SharePointList:
             site_id=self.site_id,
             list_id=self.list_id,
         )
-        
+
         # Only the first request needs explicit params; every @odata.nextLink
         # already embeds the full query string (including $skiptoken), and httpx
         # replaces a URL's query string entirely when params is passed.
