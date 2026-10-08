@@ -7,9 +7,7 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from espy.client import GraphAPIClient
-
-# TODO: Make host name a variable, not a constant. Edit in optional config file?
+from espy.client import GraphAPIClient, resolve_hostname
 from espy.constants import (
     GRAPH_URL,
     HOST_NAME,
@@ -21,6 +19,7 @@ from espy.models.models import (
     READ_ONLY_COLUMN_KINDS,
     BatchError,
     BatchResult,
+    APICredentials,
     ColumnKind,
     GraphBatchResponse,
     GraphBatchSubResponse,
@@ -63,8 +62,9 @@ class ListEndpoints(StrEnum):
     # Exclude graph url from these as they may be needed for batch requests
     # which take a different base URL
     GET_ROW_BY_PK = (
-        "sites/{site_id}/lists/{list_id}/items?"
-        "$expand=fields&$filter=fields/{column_name} eq '{value}'"
+        "{graph_url}/sites/"
+        "{site_id}/lists/{list_id}/items?"
+        "$expand=fields&$filter=fields/{column_name} eq {value}"
     )
 
     ADD_ROW = "sites/{site_id}/lists/{list_id}/items"
@@ -120,21 +120,33 @@ class SharePointList:
         return {column.display_name: column.type for column in self._columns}
 
     @classmethod
-    def setup(cls, site_name: str, list_name: str):
+    def setup(
+        cls,
+        *,
+        site_name: str,
+        list_name: str,
+        hostname: str | None = None,
+        creds: APICredentials | None = None,
+    ):
         """Authenticates and fetches the ids needed to create the SharePointList
-        object.
+        object. All arguments are keyword-only.
 
         Args:
             site_name (str): The site name of the SharePoint list.
             list_name (str): The name of the SharePoint list.
+            hostname (str | None, optional): SharePoint hostname, i.e.
+            "example.sharepoint.com". If None, read from SHAREPOINT_HOSTNAME.
+            creds (APICredentials | None, optional): tenant_id, client_id and
+            client_secret. If None, read from AZURE_TENANT_ID, AZURE_CLIENT_ID
+            and AZURE_CLIENT_SECRET.
 
         Returns:
             SharePointList: A SharePointList object, instantiated with client, \
                 site_id, and list_id.
         """
-        client = GraphAPIClient.authenticate()
+        client = GraphAPIClient.authenticate(creds)
 
-        site_id = client.get_site_id(HOST_NAME, site_name)
+        site_id = client.get_site_id(resolve_hostname(hostname), site_name)
 
         list_id_url = build_url(
             ListEndpoints.LIST_ID,
@@ -258,6 +270,8 @@ class SharePointList:
         raw_data = self.client.make_request(
             HTTPMethod.GET, url, params=params
         ).json()
+            HTTPMethod.GET, url, params=params
+        ).json()
 
         response_envelope = GraphCollection[SharePointListRow].model_validate(
             raw_data
@@ -273,6 +287,7 @@ class SharePointList:
 
         Args:
             row: A validated list row returned by the Microsoft Graph API
+
 
         Returns (dict): A dictionary with null fields added back
         """
@@ -522,20 +537,18 @@ class SharePointList:
             site_id=self.site_id,
             list_id=self.list_id,
         )
+        
+        # Only the first request needs explicit params; every @odata.nextLink
+        # already embeds the full query string (including $skiptoken), and httpx
+        # replaces a URL's query string entirely when params is passed.
+        params = {"$expand": "fields"}
 
-        while response_envelope := self._fetch_page(
-            next_link, {"$expand": "fields"}
-        ):
-            # API returns results wrapped in a response envelope
-            # that contains pagination metadata
-            # actual value is nested within that
-
+        while response_envelope := self._fetch_page(next_link, params):
             next_link = response_envelope.next_link
+            params = None
 
-            # Returns unnecessary extra column information, filter it out
-            for row in response_envelope.value:
+            for row in response_envelope.value:  # pyright: ignore
                 validated_row = row.fields
-
                 formatted_row = self._format_outgoing_row(validated_row)
 
                 yield formatted_row

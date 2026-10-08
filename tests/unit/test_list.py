@@ -1,5 +1,5 @@
 from collections.abc import Iterator
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import httpx
 import pytest
@@ -34,6 +34,47 @@ def configured_test_list(configured_client) -> SharePointList:
     test_list = SharePointList(configured_client, "site_id", "list_id")
 
     return test_list
+
+
+def test_setup_authenticates_and_resolves_ids(fake_creds, monkeypatch):
+    monkeypatch.setenv("SHAREPOINT_HOSTNAME", "env.sharepoint.com")
+    mock_instance = MagicMock()
+    mock_instance.get_site_id.return_value = "test_site"
+    mock_instance.make_request.return_value = mocked_response({"id": "list_id"})
+
+    with patch("espy.list.GraphAPIClient") as MockedClient:
+        MockedClient.authenticate.return_value = mock_instance
+
+        sp_list = SharePointList.setup(
+            site_name="TeamSite", list_name="MyList", creds=fake_creds
+        )
+
+    MockedClient.authenticate.assert_called_once_with(fake_creds)
+    assert sp_list.client is mock_instance
+    assert sp_list.site_id == "test_site"
+    assert sp_list.list_id == "list_id"
+    mock_instance.get_site_id.assert_called_once_with(
+        "env.sharepoint.com", "TeamSite"
+    )
+
+
+def test_setup_uses_custom_hostname(fake_creds):
+    mock_instance = MagicMock()
+    mock_instance.make_request.return_value = mocked_response({"id": "list_id"})
+
+    with patch("espy.list.GraphAPIClient") as MockedClient:
+        MockedClient.authenticate.return_value = mock_instance
+
+        SharePointList.setup(
+            site_name="TeamSite",
+            list_name="MyList",
+            hostname="example.sharepoint.com",
+            creds=fake_creds,
+        )
+
+    mock_instance.get_site_id.assert_called_once_with(
+        "example.sharepoint.com", "TeamSite"
+    )
 
 
 @pytest.fixture
@@ -293,6 +334,7 @@ def test_list_column_returns_list_of_columns(
     assert result[1].type == ColumnKind.BOOLEAN
 
 
+
 def test_add_row_breaks_with_bad_column_name(
     configured_test_list, mocked_column_data, monkeypatch
 ):
@@ -317,6 +359,7 @@ def test_column_kind_enum_matches_type_mapping():
 
     assert writable_kinds.isdisjoint(READ_ONLY_COLUMN_KINDS)
     assert set(ColumnKind) == writable_kinds | READ_ONLY_COLUMN_KINDS
+
 
 
 def test_add_row_breaks_with_bad_data_type(

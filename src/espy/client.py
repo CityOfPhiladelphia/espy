@@ -1,13 +1,78 @@
 import os
 from enum import StrEnum
 
-import citygeo_secrets as cgs
 import httpx
 from azure.identity import ClientSecretCredential
 
-from espy.constants import GRAPH_APP, GRAPH_URL, HOST_NAME, SCOPE
-from espy.models.models import HTTPMethod, UnsupportedMethodError
+from espy.constants import (
+    CREDENTIAL_ENV_VARS,
+    GRAPH_URL,
+    HOSTNAME_ENV_VAR,
+    SCOPE,
+)
+from espy.models.models import (
+    APICredentials,
+    HTTPMethod,
+    UnsupportedMethodError,
+)
 from espy.urls import build_url
+
+
+def _creds_from_env() -> APICredentials:
+    """
+    Read Graph API credentials from the standard Azure environment
+    variables.
+
+    Raises:
+        OSError: Raised when any of the variables are not set.
+
+    Returns:
+        APICredentials: The credentials read from the environment.
+    """
+    missing = [
+        var for var in CREDENTIAL_ENV_VARS.values() if not os.getenv(var)
+    ]
+
+    if missing:
+        raise OSError(
+            "No creds were passed and these environment variables are not "
+            f"set: {', '.join(missing)}"
+        )
+
+    return APICredentials(
+        tenant_id=os.environ[CREDENTIAL_ENV_VARS["tenant_id"]],
+        client_id=os.environ[CREDENTIAL_ENV_VARS["client_id"]],
+        client_secret=os.environ[CREDENTIAL_ENV_VARS["client_secret"]],
+    )
+
+
+def resolve_hostname(hostname: str | None) -> str:
+    """
+    Return the SharePoint hostname to use. An explicitly passed hostname
+    wins; otherwise it is read from the SHAREPOINT_HOSTNAME environment
+    variable.
+
+    Args:
+        hostname (str | None): The hostname passed by the user, if any.
+
+    Raises:
+        OSError: Raised when no hostname is passed and the environment
+        variable is not set.
+
+    Returns:
+        str: The SharePoint hostname, e.g. "example.sharepoint.com".
+    """
+    if hostname:
+        return hostname
+
+    hostname = os.getenv(HOSTNAME_ENV_VAR)
+
+    if not hostname:
+        raise OSError(
+            f"No hostname was passed and {HOSTNAME_ENV_VAR} is not set."
+        )
+
+    return hostname
 
 
 class ClientEndpoints(StrEnum):
@@ -30,21 +95,21 @@ class GraphAPIClient:
     def __init__(self, credential: ClientSecretCredential):
         self.credential = credential
 
-    @staticmethod
-    def build_client_secret_credential(creds: dict) -> ClientSecretCredential:
-        tenant_id = creds["Tenant ID"]
-        client_id = creds["Application ID"]
-        client_secret = creds["Secret Value"]
-
-        return ClientSecretCredential(tenant_id, client_id, client_secret)
-
     @classmethod
-    def authenticate(cls):
-        # TODO: Change this to accept a dictionary of creds since people will have different graph apps
+    def authenticate(cls, creds: APICredentials | None = None):
         """Authenticate to SharePoint by generating the Client Secret
-        credential."""
-        creds = cgs.get_secrets(GRAPH_APP)[GRAPH_APP]
-        credential = cls.build_client_secret_credential(creds)
+        credential.
+
+        Args:
+            creds (APICredentials | None, optional): tenant_id, client_id and
+            client_secret for an Azure app registration. If None, they are
+            read from AZURE_TENANT_ID, AZURE_CLIENT_ID and AZURE_CLIENT_SECRET.
+        """
+
+        if creds is None:
+            creds = _creds_from_env()
+
+        credential = ClientSecretCredential(**creds)
 
         return cls(credential)
 
@@ -130,9 +195,7 @@ class GraphAPIClient:
             msg = f"""{e} | Server Error Body: 
             {response.json()}"""
 
-            raise httpx.HTTPStatusError(
-                msg, request=e.request, response=e.response
-            )
+            raise httpx.HTTPError(error_msg) from e
 
         return response
 
@@ -158,10 +221,15 @@ class GraphAPIClient:
             if drive["name"] == document_library:
                 return drive["id"]
 
+
         raise RuntimeError(f"Document library '{document_library}' not found.")
 
     def upload_local_file(
-        self, site_name: str, local_path: str, dest_path: str
+        self,
+        site_name: str,
+        local_path: str,
+        dest_path: str,
+        hostname: str | None = None,
     ) -> dict:
         """
         Upload a file to a SharePoint Documents folder.
@@ -170,6 +238,8 @@ class GraphAPIClient:
             site_name (str) : The name of the sharepoint site you want to upload a file to
             local_path (str): the exact local path where your file is
             dest_path (str): the path, relative to the Documents folder, where you want to save the file
+            hostname (str)  : Sharepoint hostname. Defaults to the
+            SHAREPOINT_HOSTNAME environment variable.
 
             Example: Setting dest_path="FolderName"
             will create a file found at Documents/FolderName/file.xlsx
@@ -187,7 +257,9 @@ class GraphAPIClient:
         upload_url = build_url(
             ClientEndpoints.UPLOAD_FILE,
             graph_url=GRAPH_URL,
-            site_id=self.get_site_id(hostname=HOST_NAME, site_name=site_name),
+            site_id=self.get_site_id(
+                hostname=resolve_hostname(hostname), site_name=site_name
+            ),
             dest_path=dest_path,
             file_name=file_name,
         )

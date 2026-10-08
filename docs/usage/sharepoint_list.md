@@ -6,11 +6,20 @@ from espy.list import SharePointList
 ```
 
 ## Instantiate with .setup()
+All arguments are keyword-only.
+
 ```python
 sp_list = SharePointList.setup(
     site_name="list_site_name", list_name="list_name"
 )
 ```
+
+Optional arguments:
+
+| Argument | Default | Description |
+|---|---|---|
+| `hostname` | `None` | SharePoint host name, e.g. `example.sharepoint.com`. If omitted, read from `SHAREPOINT_HOSTNAME`. |
+| `creds` | `None` | `{"tenant_id", "client_id", "client_secret"}`. If omitted, read from `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`. |
 
 ## List Columns
 Lists all user-added columns in the list. Does not include hidden programmatic columns.

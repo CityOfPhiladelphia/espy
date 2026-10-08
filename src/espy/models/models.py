@@ -2,9 +2,9 @@
 
 from datetime import datetime
 from enum import StrEnum
-from typing import Any
+from typing import Any, TypedDict
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator, SecretStr
 from pydantic.alias_generators import to_camel
 
 from espy.operations import BatchOperation
@@ -83,7 +83,7 @@ ACCEPTABLE_PYTHON_TYPES: dict[ColumnKind, tuple[type, ...]] = {
         str,
     ),
     ColumnKind.TERM: (str,),
-    ColumnKind.TEXT: (str,),
+    ColumnKind.TEXT: (str,)
 }
 
 
@@ -92,6 +92,12 @@ class UnsupportedMethodError(Exception):
     """Unsupported Method Error. Raised when
     a method against an API is not permitted.
     """
+
+### Authentication
+class APICredentials(TypedDict):
+    tenant_id: SecretStr
+    client_id: SecretStr
+    client_secret: SecretStr
 
 
 ## API Response Classes
