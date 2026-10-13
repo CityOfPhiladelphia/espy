@@ -65,7 +65,7 @@ row_to_add = {
 }
 
 
-response = sp_list.add_row(row_to_add)  # Returns a JSON response
+response = sp_list.add_row(row_to_add)  # Returns a dict
 ```
 
 ### Edit Row
