@@ -19,7 +19,7 @@ MAX_BATCH_SIZE = 20
 SHAREPOINT_LIST_EXCLUDED_COLUMNS = {
     "@odata.etag",
     "Title",
-    # "ID",
+    "ID",
     "LinkTitle",
     "_ColorTag",
     "ComplianceAssetId",

@@ -242,7 +242,6 @@ class GraphAPIClient:
             if drive["name"] == document_library:
                 return drive["id"]
 
-
         raise RuntimeError(f"Document library '{document_library}' not found.")
 
     def upload_local_file(

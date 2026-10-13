@@ -8,6 +8,7 @@ from example import main
 
 SECRET_NAME = "AppReg: CityGeo-Databridge-Updates (All Fields)"
 
+
 @contextmanager
 def set_env_vars():
     """
@@ -25,7 +26,7 @@ def set_env_vars():
         "AZURE_TENANT_ID": AZURE_TENANT_ID,
         "AZURE_CLIENT_ID": AZURE_CLIENT_ID,
         "AZURE_CLIENT_SECRET": AZURE_CLIENT_SECRET,
-        "SHAREPOINT_HOSTNAME": SHAREPOINT_HOSTNAME
+        "SHAREPOINT_HOSTNAME": SHAREPOINT_HOSTNAME,
     }
 
     os.environ.update(env_vars)
@@ -37,9 +38,11 @@ def set_env_vars():
         for key, _ in env_vars.items():
             os.environ.pop(key, None)
 
+
 def run_with_env_vars(func: Callable):
     with set_env_vars():
         func()
+
 
 if __name__ == "__main__":
     run_with_env_vars(main)

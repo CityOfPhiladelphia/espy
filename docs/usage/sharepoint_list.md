@@ -107,49 +107,59 @@ Gets multiple rows from the list, specified by primary key.
 ```python
 key_col = "user_id"
 values = ["24", "25", "26"]
-response = sp_list.get_rows(key_col=key_col, values=values) # Returns a list of BatchResponse objects
+response = sp_list.get_rows(
+    key_col=key_col, values=values
+)  # Returns a list of BatchResponse objects
 ```
 
 ### Add Rows
 Add multiple rows to the list.
 
 ```python
-rows_to_add = [{
-    "user_id": "1",
-    "name": "Billy Penn",
-    "address": "1234 Market St, Philadelphia, PA",
-    "age": 381,
-},
-{
-    "user_id": "2",
-    "name": "Betsy Ross",
-    "address": "239 Arch St, Philadelphia, PA",
-    "age": 274,
-}]
-response = sp_list.add_rows(rows_to_add)  # Returns a list of BatchResponse objects
+rows_to_add = [
+    {
+        "user_id": "1",
+        "name": "Billy Penn",
+        "address": "1234 Market St, Philadelphia, PA",
+        "age": 381,
+    },
+    {
+        "user_id": "2",
+        "name": "Betsy Ross",
+        "address": "239 Arch St, Philadelphia, PA",
+        "age": 274,
+    },
+]
+response = sp_list.add_rows(
+    rows_to_add
+)  # Returns a list of BatchResponse objects
 ```
 
 ### Edit Rows
 Edits multiple rows in the list, use primary key to identify the rows, and values to determine which rows should be edited.
 
 ```python
-rows_to_edit = [{
-    "user_id": "1",
-    "name": "Billy Penn",
-    "address": "1234 Market St, Philadelphia, PA",
-    "age": 381,
-},
-{
-    "user_id": "2",
-    "name": "Betsy Ross",
-    "address": "239 Arch St, Philadelphia, PA",
-    "age": 274,
-}]
+rows_to_edit = [
+    {
+        "user_id": "1",
+        "name": "Billy Penn",
+        "address": "1234 Market St, Philadelphia, PA",
+        "age": 381,
+    },
+    {
+        "user_id": "2",
+        "name": "Betsy Ross",
+        "address": "239 Arch St, Philadelphia, PA",
+        "age": 274,
+    },
+]
 
 key_col = "user_id"
 values = ["1", "2"]
 
-response = sp_list.edit_rows(key_col=key_col, values=values, data=data_to_edit) # Returns a list of BatchResponse objects
+response = sp_list.edit_rows(
+    key_col=key_col, values=values, data=data_to_edit
+)  # Returns a list of BatchResponse objects
 ```
 
 ### Delete Rows

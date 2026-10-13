@@ -23,6 +23,7 @@ def test_get_rows_batch(sp_list: SharePointList):
 
     print(response)
 
+
 def test_get_rows(sp_list: SharePointList):
     key_col = "Service Request Number"
     values = ["19914185", "19914171", "19914114"]
@@ -73,39 +74,40 @@ def test_add_rows_batch(sp_list: SharePointList):
 
     print(response)
 
+
 def test_add_rows(sp_list: SharePointList):
     data_to_add = [
-            {
-                "Date/Time Opened": str(datetime.now(tz=TZ)),
-                "Address/Intersection": "1234 MARKET ST",
-                "Service Request Number": "99999999",
-                "Description": "Inserted as a test.",
-                "Tree Inside Park or at Rec Center": None,
-                "ZipCode": "19107",
-                "Status": "New",
-                "Notes": None,
-            },
-            {
-                "Date/Time Opened": str(datetime.now(tz=TZ)),
-                "Address/Intersection": "1234 MARKET ST",
-                "Service Request Number": "99999998",
-                "Description": "Inserted as a test.",
-                "Tree Inside Park or at Rec Center": None,
-                "ZipCode": "19107",
-                "Status": "New",
-                "Notes": None,
-            },
-            {
-                "Date/Time Opened": str(datetime.now(tz=TZ)),
-                "Address/Intersection": "1234 MARKET ST",
-                "Service Request Number": "99999997",
-                "Description": "Inserted as a test.",
-                "Tree Inside Park or at Rec Center": None,
-                "ZipCode": "19107",
-                "Status": "New",
-                "Notes": None,
-            },
-        ]
+        {
+            "Date/Time Opened": str(datetime.now(tz=TZ)),
+            "Address/Intersection": "1234 MARKET ST",
+            "Service Request Number": "99999999",
+            "Description": "Inserted as a test.",
+            "Tree Inside Park or at Rec Center": None,
+            "ZipCode": "19107",
+            "Status": "New",
+            "Notes": None,
+        },
+        {
+            "Date/Time Opened": str(datetime.now(tz=TZ)),
+            "Address/Intersection": "1234 MARKET ST",
+            "Service Request Number": "99999998",
+            "Description": "Inserted as a test.",
+            "Tree Inside Park or at Rec Center": None,
+            "ZipCode": "19107",
+            "Status": "New",
+            "Notes": None,
+        },
+        {
+            "Date/Time Opened": str(datetime.now(tz=TZ)),
+            "Address/Intersection": "1234 MARKET ST",
+            "Service Request Number": "99999997",
+            "Description": "Inserted as a test.",
+            "Tree Inside Park or at Rec Center": None,
+            "ZipCode": "19107",
+            "Status": "New",
+            "Notes": None,
+        },
+    ]
 
     response = sp_list.add_rows(data_to_add)
 
@@ -175,6 +177,7 @@ def test_edit_rows_batch(sp_list: SharePointList):
 
     print(response)
 
+
 def test_edit_rows(sp_list: SharePointList):
     key_col = "Service Request Number"
     values = ["99999999", "99999998", "99999997"]
@@ -212,9 +215,12 @@ def test_edit_rows(sp_list: SharePointList):
         },
     ]
 
-    response = sp_list.edit_rows(key_col=key_col, values=values, data=data_to_edit)
+    response = sp_list.edit_rows(
+        key_col=key_col, values=values, data=data_to_edit
+    )
 
     print(response)
+
 
 def test_delete_rows_batch(sp_list: SharePointList):
     key_col = "Service Request Number"
@@ -238,6 +244,7 @@ def test_delete_rows_batch(sp_list: SharePointList):
 
     print(response)
 
+
 def test_delete_rows(sp_list: SharePointList):
     key_col = "Service Request Number"
     values = ["99999999", "99999998", "99999997"]
@@ -249,9 +256,9 @@ def test_delete_rows(sp_list: SharePointList):
 
 def main():
     sp_list = SharePointList.setup(site_name=SITE_NAME, list_name=LIST_NAME)
-    #test_get_rows(sp_list)
-    #test_add_rows(sp_list)
-    #test_edit_rows(sp_list)
+    # test_get_rows(sp_list)
+    # test_add_rows(sp_list)
+    # test_edit_rows(sp_list)
     test_delete_rows(sp_list)
 
 

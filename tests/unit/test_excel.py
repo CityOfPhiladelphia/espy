@@ -112,7 +112,7 @@ class TestSetup:
         with patch("espy.excel.GraphAPIClient") as MockedClient:
             MockedClient.authenticate.return_value = mock_instance
 
-            excel = ExcelWorksheet.setup(
+            ExcelWorksheet.setup(
                 site_name="TeamSite",
                 document_library="Documents",
                 workbook_path="Reports/data.xlsx",
