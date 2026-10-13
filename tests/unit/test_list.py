@@ -826,3 +826,24 @@ def test_delete_rows_with_no_matches_skips_second_batch(
 
     assert len(fake.batches) == 1
     assert not any(r.ok for r in results)
+
+
+def test_delete_row_returns_none_on_empty_204(batch_list, monkeypatch):
+    calls = []
+
+    def fake_request(_self, method, url, **kwargs):
+        calls.append(method)
+        response = MagicMock()
+        response.status_code = 204
+        # An empty 204 body makes the real Response.json() raise
+        response.json.side_effect = ValueError("no content")
+        if method == "GET":
+            response.status_code = 200
+            response.json.side_effect = None
+            response.json.return_value = lookup_body(3)
+        return response
+
+    monkeypatch.setattr("espy.list.GraphAPIClient.make_request", fake_request)
+
+    assert batch_list.delete_row("col_one", "x") is None
+    assert calls == ["GET", "DELETE"]

@@ -89,7 +89,7 @@ Delete a row in a list, use primary key to identify the row.
     Use very carefully! Deleted data cannot be recovered!
 
 ```python
-response = sp_list.delete_row("user_id", "1")  # Returns a JSON http response
+sp_list.delete_row("user_id", "1")  # Returns None; raises on failure
 ```
 
 ## Batch Methods

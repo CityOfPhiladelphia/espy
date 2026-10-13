@@ -392,8 +392,10 @@ class SharePointList:
 
         return (method, url, body)
 
-    def _interpret_delete(self, body: dict | None) -> dict | None:
-        return body
+    def _interpret_delete(self, body: dict | None) -> None:
+        # A successful delete returns 204 No Content, so there is nothing to
+        # interpret. This exists so batch deletes share the Interpreter shape.
+        return None
 
     def _dispatch_batch_operation(
         self, operation: BatchOperation
@@ -623,15 +625,15 @@ class SharePointList:
 
         return self._interpret_edit(response.json())
 
-    def delete_row(self, key_col: str, value: Any) -> dict | None:
+    def delete_row(self, key_col: str, value: Any) -> None:
         """Delete a row in a SharePoint list.
 
         Args:
             key_col (str): The name of the primary key column to search on.
             value (Any): The value of the primary key column to search on.
 
-        Returns:
-            dict | None: The interpreted API response, or None if the API returned no content.
+        Raises:
+            httpx.HTTPStatusError: If the API rejects the request.
         """
         returned_row = self.get_row(key_col, value)
         row_id = returned_row["id"]
@@ -640,9 +642,9 @@ class SharePointList:
 
         single_request_url = f"{GRAPH_URL}/{url}"
 
-        response = self.client.make_request(method, single_request_url)
-
-        return self._interpret_delete(response.json())
+        # The API returns 204 No Content on success, so there is no body to
+        # parse. make_request raises if the delete fails.
+        self.client.make_request(method, single_request_url)
 
     def upsert_row(self, key_col: str, data: dict[str, Any]) -> dict[str, Any]:
 
