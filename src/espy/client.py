@@ -18,78 +18,6 @@ from espy.models.models import (
 )
 from espy.urls import build_url
 
-
-def _creds_from_env() -> APICredentials:
-    """
-    Read Graph API credentials from the standard Azure environment
-    variables.
-
-    Raises:
-        OSError: Raised when any of the variables are not set.
-
-    Returns:
-        APICredentials: The credentials read from the environment.
-    """
-    missing = [
-        var for var in CREDENTIAL_ENV_VARS.values() if not os.getenv(var)
-    ]
-
-    if missing:
-        raise OSError(
-            "No creds were passed and these environment variables are not "
-            f"set: {', '.join(missing)}"
-        )
-
-    return APICredentials(
-        tenant_id=SecretStr(os.environ[CREDENTIAL_ENV_VARS["tenant_id"]]),
-        client_id=SecretStr(os.environ[CREDENTIAL_ENV_VARS["client_id"]]),
-        client_secret=SecretStr(
-            os.environ[CREDENTIAL_ENV_VARS["client_secret"]]
-        ),
-    )
-
-
-def _reveal(value: SecretStr | str) -> str:
-    """Return the plain string for a SecretStr (or a str passed as-is).
-
-    Azure's credential classes need real strings; str(SecretStr) is the
-    masked placeholder '**********', which Entra rejects.
-    """
-    if isinstance(value, SecretStr):
-        return value.get_secret_value()
-
-    return value
-
-
-def resolve_hostname(hostname: str | None) -> str:
-    """
-    Return the SharePoint hostname to use. An explicitly passed hostname
-    wins; otherwise it is read from the SHAREPOINT_HOSTNAME environment
-    variable.
-
-    Args:
-        hostname (str | None): The hostname passed by the user, if any.
-
-    Raises:
-        OSError: Raised when no hostname is passed and the environment
-        variable is not set.
-
-    Returns:
-        str: The SharePoint hostname, e.g. "example.sharepoint.com".
-    """
-    if hostname:
-        return hostname
-
-    hostname = os.getenv(HOSTNAME_ENV_VAR)
-
-    if not hostname:
-        raise OSError(
-            f"No hostname was passed and {HOSTNAME_ENV_VAR} is not set."
-        )
-
-    return hostname
-
-
 class ClientEndpoints(StrEnum):
     SITE_ID = "{graph_url}/sites/{hostname}:/sites/{site_name}"
 
@@ -104,7 +32,6 @@ class ClientEndpoints(StrEnum):
         "{graph_url}/sites/{site_id}"
         "/drives/{drive_id}/root:/{file_path}:/content"
     )
-
 
 class GraphAPIClient:
     def __init__(self, credential: ClientSecretCredential):
@@ -325,3 +252,74 @@ class GraphAPIClient:
         )
 
         return request.content
+
+def _creds_from_env() -> APICredentials:
+    """
+    Read Graph API credentials from the standard Azure environment
+    variables.
+
+    Raises:
+        OSError: Raised when any of the variables are not set.
+
+    Returns:
+        APICredentials: The credentials read from the environment.
+    """
+    missing = [
+        var for var in CREDENTIAL_ENV_VARS.values() if not os.getenv(var)
+    ]
+
+    if missing:
+        raise OSError(
+            "No creds were passed and these environment variables are not "
+            f"set: {', '.join(missing)}"
+        )
+
+    return APICredentials(
+        tenant_id=SecretStr(os.environ[CREDENTIAL_ENV_VARS["tenant_id"]]),
+        client_id=SecretStr(os.environ[CREDENTIAL_ENV_VARS["client_id"]]),
+        client_secret=SecretStr(
+            os.environ[CREDENTIAL_ENV_VARS["client_secret"]]
+        ),
+    )
+
+# ========== Helper Functions =========== #
+
+def _reveal(value: SecretStr | str) -> str:
+    """Return the plain string for a SecretStr (or a str passed as-is).
+
+    Azure's credential classes need real strings; str(SecretStr) is the
+    masked placeholder '**********', which Entra rejects.
+    """
+    if isinstance(value, SecretStr):
+        return value.get_secret_value()
+
+    return value
+
+
+def resolve_hostname(hostname: str | None) -> str:
+    """
+    Return the SharePoint hostname to use. An explicitly passed hostname
+    wins; otherwise it is read from the SHAREPOINT_HOSTNAME environment
+    variable.
+
+    Args:
+        hostname (str | None): The hostname passed by the user, if any.
+
+    Raises:
+        OSError: Raised when no hostname is passed and the environment
+        variable is not set.
+
+    Returns:
+        str: The SharePoint hostname, e.g. "example.sharepoint.com".
+    """
+    if hostname:
+        return hostname
+
+    hostname = os.getenv(HOSTNAME_ENV_VAR)
+
+    if not hostname:
+        raise OSError(
+            f"No hostname was passed and {HOSTNAME_ENV_VAR} is not set."
+        )
+
+    return hostname

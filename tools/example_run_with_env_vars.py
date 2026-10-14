@@ -1,12 +1,17 @@
 import os
 from collections.abc import Callable
 from contextlib import contextmanager
-
-import citygeo_secrets as cgs
-
 from example import main
 
-SECRET_NAME = "AppReg: CityGeo-Databridge-Updates (All Fields)"
+# Use your own secret manager here
+class FakeSecretManager:
+    def __init__(self, secret_name: str):
+        self.secret_name = secret_name
+        
+    def fake_get_secret(self) -> dict:
+        """Returns a dictionary"""
+        return {}
+
 
 
 @contextmanager
@@ -15,8 +20,8 @@ def set_env_vars():
     Temporarily sets environment variables within a 'with' block.
     Restores the original environment upon exit.
     """
+    creds = FakeSecretManager("fake_secret").fake_get_secret()
 
-    creds = cgs.get_secrets(SECRET_NAME)[SECRET_NAME]
     AZURE_TENANT_ID = creds["Tenant ID"]
     AZURE_CLIENT_ID = creds["Application ID"]
     AZURE_CLIENT_SECRET = creds["Secret Value"]

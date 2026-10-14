@@ -73,13 +73,13 @@ Edit a row in the list, use primary key to identify the row.
 
 ```python
 row_to_edit = {
-    "user_id": "1",
+    "user_id": 1,
     "name": "William Penn",
     "address": "1234 Market St, Philadelphia, PA",
     "age": 250,
 }
 
-response = sp_list.edit_row("user_id", "1", row_to_edit)
+response = sp_list.edit_row("user_id", 1, row_to_edit)
 ```
 
 ### Delete Row
@@ -89,7 +89,7 @@ Delete a row in a list, use primary key to identify the row.
     Use very carefully! Deleted data cannot be recovered!
 
 ```python
-sp_list.delete_row("user_id", "1")  # Returns None; raises on failure
+sp_list.delete_row("user_id", 1)  # Returns None; raises on failure
 ```
 
 ## Batch Methods
@@ -136,7 +136,7 @@ response = sp_list.add_rows(
 ```
 
 ### Edit Rows
-Edits multiple rows in the list, use primary key to identify the rows, and values to determine which rows should be edited.
+Edits multiple rows in the list. Finds pertinent rows to edit by matching the values in values onto the key_col, and updates those rows with data.
 
 ```python
 rows_to_edit = [
@@ -155,7 +155,7 @@ rows_to_edit = [
 ]
 
 key_col = "user_id"
-values = ["1", "2"]
+values = [1, 2]
 
 response = sp_list.edit_rows(
     key_col=key_col, values=values, data=data_to_edit
