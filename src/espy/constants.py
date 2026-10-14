@@ -14,7 +14,9 @@ CREDENTIAL_ENV_VARS = {
     "client_secret": "AZURE_CLIENT_SECRET",
 }
 
-SHARE_POINT_LIST_EXCLUDED_COLUMNS = [
+MAX_BATCH_SIZE = 20
+
+SHAREPOINT_LIST_EXCLUDED_COLUMNS = {
     "@odata.etag",
     "Title",
     "ID",
@@ -45,4 +47,4 @@ SHARE_POINT_LIST_EXCLUDED_COLUMNS = [
     "AppAuthorLookupId",
     "AppEditor",
     "AppEditorLookupId",
-]
+}

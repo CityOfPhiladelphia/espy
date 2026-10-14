@@ -20,7 +20,7 @@ To install this library to your project, run:
 Include the tag for the latest version.
 
 ```bash
-uv add "git+https://github.com/CityOfPhiladelphia/espy.git" --tag v2.0.2
+uv add "git+https://github.com/CityOfPhiladelphia/espy.git" --tag v3.0.0
 ```
 
 ### Upgrading EsPy
@@ -46,10 +46,12 @@ export SHAREPOINT_HOSTNAME="example.sharepoint.com"
 ```python
 creds = {
     "tenant_id": "...",
-    "client_id": "...",       # a.k.a. Application ID
-    "client_secret": "...",   # a.k.a. Secret Value
+    "client_id": "...",  # a.k.a. Application ID
+    "client_secret": "...",  # a.k.a. Secret Value
 }
-sp_list = SharePointList.setup(site_name="list_site_name", list_name="list_name", creds=creds)
+sp_list = SharePointList.setup(
+    site_name="list_site_name", list_name="list_name", creds=creds
+)
 ```
 
 The SharePoint host is read from `SHAREPOINT_HOSTNAME` unless you pass `hostname=` to `setup()`.
